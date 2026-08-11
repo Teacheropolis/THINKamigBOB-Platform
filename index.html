@@ -16805,6 +16805,24 @@ body.starterScreenActive,
     linear-gradient(180deg, rgba(0,0,0,.12), transparent 22%, transparent 72%, rgba(0,0,0,.34)) !important;
 }
 </style>
+
+<!-- =====================================================
+STUDENT PLATFORM INDUSTRIAL BACKGROUND
+Replaces only the start-screen blueprint layers with the approved static asset.
+Foreground layout, panels, controls, and behavior remain unchanged.
+===================================================== -->
+<style id="studentPlatformIndustrialBackground">
+#startScreen{
+  background-color:#071019 !important;
+  background-image:url("assets/images/student-platform/student-platform-industrial-background.png") !important;
+  background-size:cover !important;
+  background-position:center center !important;
+  background-repeat:no-repeat !important;
+}
+#startScreen::before{
+  background-image:none !important;
+}
+</style>
 <!-- =====================================================
 JS SECTION — MISSION PASSPORT CONNECTION
 Future extraction target: passport.js.
