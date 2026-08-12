@@ -1,0 +1,103 @@
+:root {
+  color-scheme: light;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #102f45;
+  background: #071019;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  background-color: #1b363d;
+  background-image:
+    linear-gradient(180deg, rgba(7, 16, 25, 0.18), rgba(7, 16, 25, 0.48)),
+    url("../assets/student-platform-industrial-background.png");
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+.public-header {
+  display: flex;
+  min-height: 5.5rem;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 1rem max(1rem, calc((100% - 74rem) / 2));
+  border-bottom: 4px solid #d8a526;
+  color: #fff;
+  background: #102f45;
+}
+
+.public-header strong,
+.public-header small { display: block; }
+.public-header strong { font-size: clamp(1.1rem, 3vw, 1.45rem); }
+.public-header small { color: #cfe4ee; }
+
+.public-brand-mark {
+  display: grid;
+  width: 3.2rem;
+  height: 3.2rem;
+  place-items: center;
+  flex: 0 0 auto;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  color: #102f45;
+  background: #d8a526;
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+
+main {
+  width: min(100% - 2rem, 74rem);
+  margin: auto;
+  padding: clamp(2rem, 7vw, 6rem) 0;
+}
+
+.public-status {
+  max-width: 52rem;
+  padding: clamp(1.5rem, 5vw, 3rem);
+  border: 1px solid rgba(197, 213, 220, 0.95);
+  border-left: 7px solid #2f7f5e;
+  border-radius: 1rem;
+  background: rgba(247, 251, 252, 0.96);
+  box-shadow: 0 1rem 2.5rem rgba(7, 16, 25, 0.35);
+}
+
+.public-eyebrow {
+  margin: 0 0 0.5rem;
+  color: #2f7f5e;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(2rem, 6vw, 3.75rem);
+  line-height: 1.08;
+}
+
+.public-status p:not(.public-eyebrow) {
+  color: #506774;
+  font-size: clamp(1rem, 2.4vw, 1.25rem);
+  line-height: 1.55;
+}
+
+.public-note {
+  padding-top: 1rem;
+  border-top: 1px solid #c5d5dc;
+  font-size: 0.92rem !important;
+}
+
+footer {
+  padding: 1.25rem;
+  color: #d1e3ea;
+  background: #17394d;
+  text-align: center;
+  font-size: 0.78rem;
+}
