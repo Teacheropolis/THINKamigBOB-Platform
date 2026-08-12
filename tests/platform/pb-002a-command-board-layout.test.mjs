@@ -34,9 +34,10 @@ test("top navigation displays approved teacher orientation and reserved areas", 
   assert.match(appSource, /Coming in future build\./);
 });
 
-test("TODAY board contains every approved PB-002A placeholder verbatim", () => {
+test("Today board contains every approved PB-002A classroom area", () => {
   const requiredContent = [
-    "TODAY",
+    "aria-label=\"Today\"",
+    "Class focus, organization, and readiness at a glance.",
     "Today's Mission",
     "Coming in future build",
     "Today's Engineering Time",
@@ -53,6 +54,7 @@ test("TODAY board contains every approved PB-002A placeholder verbatim", () => {
   for (const content of requiredContent) {
     assert.ok(teacherViewSource.includes(content), `expected ${content}`);
   }
+  assert.doesNotMatch(teacherViewSource, /platform-today-heading|Classroom Command Board|>TODAY</);
 });
 
 test("command board preserves PB-002A exclusions outside authorized timer and memo areas", () => {

@@ -109,7 +109,7 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function shell(content, { title, eyebrow = "Platform Foundation", signedIn = false, teacherContext = null } = {}) {
+function shell(content, { title, eyebrow = "Platform Foundation", subtitle = "", signedIn = false, teacherContext = null } = {}) {
   document.title = `${title} | THINKamigBOB`;
   return `
     <header class="platform-header">
@@ -133,6 +133,7 @@ function shell(content, { title, eyebrow = "Platform Foundation", signedIn = fal
       <div class="platform-page-heading">
         <p class="platform-eyebrow">${escapeHtml(eyebrow)}</p>
         <h1>${escapeHtml(title)}</h1>
+        ${subtitle ? `<p class="platform-page-subtitle">${escapeHtml(subtitle)}</p>` : ""}
       </div>
       ${content}
     </main>
@@ -314,15 +315,7 @@ function teacherDashboardView(state) {
         <p id="teacher-nav-status" class="platform-nav-status" role="status" aria-live="polite">Reserved areas are labeled for future builds.</p>
       </nav>
 
-      <section class="platform-today-board" aria-labelledby="today-board-title">
-        <div class="platform-today-heading">
-          <div>
-            <p class="platform-eyebrow">Classroom Command Board</p>
-            <h2 id="today-board-title">TODAY</h2>
-          </div>
-          <p>Class focus, organization, and readiness at a glance.</p>
-        </div>
-
+      <section class="platform-today-board" aria-label="Today">
         <div class="platform-today-primary-grid">
           <section class="platform-command-card platform-command-card-mission">
             <p class="platform-command-label">Class focus</p>
@@ -431,6 +424,7 @@ function teacherDashboardView(state) {
   `, {
     title: "Teacher Command Center",
     eyebrow: "TODAY view",
+    subtitle: "Class focus, organization, and readiness at a glance.",
     signedIn: true,
     teacherContext: { teacherName, className, periodLabel },
   });

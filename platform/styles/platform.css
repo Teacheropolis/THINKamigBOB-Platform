@@ -229,16 +229,15 @@ summary:focus-visible {
 #platform-main.platform-main:has(> .platform-command-layout) {
   width: 100%;
   margin: 0;
+  padding-top: clamp(1.25rem, 2.5vw, 2rem);
   padding-inline: max(clamp(0.625rem, 2vw, 1rem), calc((100% - 1180px) / 2));
   border-radius: 0;
-  background-color: #1b363d;
+  background-color: #27313d;
   background-image:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.1), rgba(7, 16, 25, 0.2)),
-    url("../../assets/images/student-platform/student-platform-industrial-background.png");
-  background-attachment: fixed;
-  background-position: center center;
-  background-repeat: no-repeat;
-  background-size: cover;
+    linear-gradient(180deg, rgba(18, 51, 70, 0.2), rgba(39, 49, 61, 0) 18rem),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+    linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+  background-size: auto, 2.5rem 2.5rem, 2.5rem 2.5rem;
   box-shadow: 0 1rem 2.5rem rgba(7, 27, 39, 0.18);
 }
 
@@ -248,6 +247,12 @@ summary:focus-visible {
   border-radius: 1rem;
   background: rgba(247, 251, 252, 0.94);
   box-shadow: 0 0.75rem 1.75rem rgba(7, 27, 39, 0.14);
+}
+
+#platform-main.platform-main:has(> .platform-command-layout) .platform-page-subtitle {
+  margin: 0.5rem 0 0;
+  color: var(--platform-muted);
+  font-size: clamp(0.95rem, 2vw, 1.1rem);
 }
 
 #platform-main.platform-main:has(> .platform-command-layout) .platform-rhythm-title {
@@ -359,11 +364,6 @@ summary:focus-visible {
 .platform-nav-status { margin: 0.35rem 0 0; padding-top: 0.75rem; border-top: 1px solid var(--platform-border); color: var(--platform-muted); font-size: 0.68rem; }
 
 .platform-today-board { min-width: 0; }
-.platform-today-heading { display: flex; align-items: end; justify-content: space-between; gap: 1rem; margin-bottom: 1rem; padding: 1.25rem 1.4rem; border-radius: 1rem; color: #fff; background: linear-gradient(125deg, var(--platform-navy), var(--platform-blue-dark)); box-shadow: var(--platform-shadow); }
-.platform-today-heading .platform-eyebrow { color: #bde5d3; }
-.platform-today-heading h2 { margin: 0; font-size: clamp(2.2rem, 6vw, 4.5rem); line-height: 0.95; letter-spacing: 0.03em; }
-.platform-today-heading > p { max-width: 24rem; margin: 0; color: #d7e9ef; text-align: right; }
-
 .platform-today-primary-grid,
 .platform-class-rhythm { display: grid; gap: 1rem; }
 .platform-today-primary-grid { grid-template-columns: 1.4fr 1fr 1fr; }
@@ -473,6 +473,12 @@ summary:focus-visible {
 .platform-footer { padding: 1.25rem; color: #d1e3ea; background: #17394d; text-align: center; font-size: 0.78rem; }
 .platform-noscript { max-width: 45rem; margin: 3rem auto; padding: 2rem; }
 
+@media (max-width: 1280px) and (min-width: 681px) {
+  #platform-main.platform-main:has(> .platform-command-layout) {
+    padding-top: clamp(1rem, 2vw, 1.5rem);
+  }
+}
+
 @media (max-width: 800px) {
   .platform-entry-grid, .platform-form-layout, .platform-placeholder-grid { grid-template-columns: 1fr; }
   .platform-placeholder-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -492,6 +498,13 @@ summary:focus-visible {
   .platform-evidence-source-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
+@media (max-width: 680px) {
+  #platform-main.platform-main:has(> .platform-command-layout) {
+    padding-top: clamp(2rem, 5vw, 4rem);
+    background-image: linear-gradient(180deg, rgba(18, 51, 70, 0.18), rgba(39, 49, 61, 0) 14rem);
+  }
+}
+
 @media (max-width: 520px) {
   .platform-header { align-items: flex-start; }
   .platform-brand small { display: none; }
@@ -503,8 +516,7 @@ summary:focus-visible {
   .platform-header-actions .platform-button { width: auto; flex: 1; }
   .platform-teacher-orientation { display: grid; grid-template-columns: 1fr 1fr; }
   .platform-teacher-orientation span:first-child { grid-column: 1 / -1; }
-  .platform-today-heading, .platform-teacher-feed { align-items: flex-start; flex-direction: column; }
-  .platform-today-heading > p { text-align: left; }
+  .platform-teacher-feed { align-items: flex-start; flex-direction: column; }
   .platform-today-primary-grid, .platform-class-rhythm { grid-template-columns: 1fr; }
   .platform-command-card-mission { grid-column: auto; }
   .platform-student-display-controls { grid-column: auto; grid-template-columns: 1fr; }
