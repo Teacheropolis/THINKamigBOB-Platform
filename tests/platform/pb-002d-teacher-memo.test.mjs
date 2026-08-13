@@ -89,7 +89,7 @@ test("teacher editor and Student Display follow the approved separation", () => 
   ]) assert.ok(appSource.includes(text), `expected ${text}`);
   assert.match(appSource, /maxlength="\$\{TEACHER_MEMO_MAX_CHARACTERS\}"/);
   assert.match(appSource,
-    /session\.signOut\(\);\s*teacherMemo\.clear\(\);\s*studentDisplayMode\.clear\(\);\s*navigate\(ROUTES\.WELCOME/);
+    /session\.signOut\(\);\s*teacherMemo\.clear\(\);\s*todaysMission\.clear\(\);\s*studentDisplayMode\.clear\(\);\s*navigate\(ROUTES\.WELCOME/);
   assert.match(cssSource,
     /\.platform-teacher-memo-actions button \{ min-height: 2\.75rem/);
 

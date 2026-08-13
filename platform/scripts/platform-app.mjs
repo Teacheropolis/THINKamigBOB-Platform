@@ -27,6 +27,12 @@ import {
   createStudentDisplayModeStore,
   STUDENT_DISPLAY_MODES,
 } from "./student-display-mode.mjs";
+import {
+  createTodaysMissionStore,
+  TODAYS_MISSION_AVAILABILITY,
+  TODAYS_MISSION_FOCUS_MAX_CHARACTERS,
+  TODAYS_MISSION_TITLE_MAX_CHARACTERS,
+} from "./todays-mission.mjs";
 
 export const ROUTES = Object.freeze({
   WELCOME: "/welcome",
@@ -44,7 +50,17 @@ const root = document.querySelector("#platform-root");
 const session = createSessionStore(window.sessionStorage);
 const lessonTimer = createLessonTimer({ storage: window.sessionStorage });
 const teacherMemo = createTeacherMemoStore({ storage: window.sessionStorage });
+const todaysMission = createTodaysMissionStore({ storage: window.sessionStorage });
 const studentDisplayMode = createStudentDisplayModeStore({ storage: window.sessionStorage });
+const MISSIONS_FIRST_REMINDER = "Missions First! Read your directions before opening Builder or Workshop.";
+const MISSION_FOCUS_OPTIONS = Object.freeze([
+  "Learn what today's mission is asking us to do.",
+  "Build, test, and make one thoughtful improvement.",
+  "Use evidence to explain what worked and what changed.",
+  "Work together, solve problems, and share our thinking.",
+  "Reflect on what we learned and what we would try next.",
+]);
+const CUSTOM_MISSION_FOCUS = "custom";
 const LESSON_TIMER_DISPLAY_SESSION_KEY = "thinkamigbob.pb002b.lesson-timer-display.v1";
 const knownRoutes = new Set(Object.values(ROUTES));
 let lessonTimerPresentationInterval = null;
@@ -299,12 +315,23 @@ function teacherDashboardView(state) {
   const memoState = teacherMemo.read();
   const memoText = escapeHtml(memoState.text);
   const hasMemo = Boolean(memoState.text);
-  const selectedDisplayMode = studentDisplayMode.read({ hasMemo });
+  const missionState = todaysMission.read();
+  const hasMission = Boolean(missionState.title);
+  const hasMessageContent = hasMemo || hasMission;
+  const selectedDisplayMode = studentDisplayMode.read({ hasMemo: hasMessageContent });
   const showStudentTimer = selectedDisplayMode !== STUDENT_DISPLAY_MODES.MESSAGE;
   const showStudentMemo = hasMemo && selectedDisplayMode !== STUDENT_DISPLAY_MODES.TIMER;
-  const studentDisplayClass = showStudentTimer && showStudentMemo
+  const showStudentMission = hasMission && selectedDisplayMode !== STUDENT_DISPLAY_MODES.TIMER;
+  const showStudentMessage = showStudentMission || showStudentMemo;
+  const studentDisplayClass = showStudentTimer && showStudentMessage
     ? "platform-student-display-combined"
-    : showStudentMemo ? "platform-student-display-message-only" : "platform-student-display-timer-only";
+    : showStudentMessage ? "platform-student-display-message-only" : "platform-student-display-timer-only";
+  const builderAvailable = missionState.builder === TODAYS_MISSION_AVAILABILITY.AVAILABLE;
+  const workshopAvailable = missionState.workshop === TODAYS_MISSION_AVAILABILITY.AVAILABLE;
+  const selectedFocusOption = MISSION_FOCUS_OPTIONS.includes(missionState.focus)
+    ? missionState.focus
+    : missionState.focus ? CUSTOM_MISSION_FOCUS : "";
+  const customFocusVisible = selectedFocusOption === CUSTOM_MISSION_FOCUS;
   return shell(`
     <div class="platform-command-layout">
       <nav class="platform-teacher-nav" aria-label="Teacher navigation">
@@ -320,7 +347,58 @@ function teacherDashboardView(state) {
           <section class="platform-command-card platform-command-card-mission">
             <p class="platform-command-label">Class focus</p>
             <h3>Today's Mission</h3>
-            <p>Coming in future build</p>
+            <form class="platform-todays-mission-form" data-form="todays-mission" novalidate>
+              <label for="todays-mission-title">Mission title or Goal</label>
+              <input id="todays-mission-title" name="title" type="text" maxlength="${TODAYS_MISSION_TITLE_MAX_CHARACTERS}" value="${escapeHtml(missionState.title)}" aria-describedby="todays-mission-title-count">
+              <small id="todays-mission-title-count"><span data-todays-mission-title-count>${missionState.title.length}</span>/${TODAYS_MISSION_TITLE_MAX_CHARACTERS}</small>
+              <label for="todays-mission-focus-choice">Short classroom focus</label>
+              <select id="todays-mission-focus-choice" name="focusChoice" data-mission-focus-choice>
+                <option value=""${selectedFocusOption ? "" : " selected"}>Choose a classroom focus</option>
+                ${MISSION_FOCUS_OPTIONS.map((option) => `<option value="${escapeHtml(option)}"${selectedFocusOption === option ? " selected" : ""}>${escapeHtml(option)}</option>`).join("")}
+                <option value="${CUSTOM_MISSION_FOCUS}"${customFocusVisible ? " selected" : ""}>Customize your own</option>
+              </select>
+              <div class="platform-todays-mission-custom-focus" data-mission-custom-focus${customFocusVisible ? "" : " hidden"}>
+                <label for="todays-mission-focus">Customize your classroom focus</label>
+                <textarea id="todays-mission-focus" name="focus" maxlength="${TODAYS_MISSION_FOCUS_MAX_CHARACTERS}" aria-describedby="todays-mission-focus-count">${customFocusVisible ? escapeHtml(missionState.focus) : ""}</textarea>
+                <small id="todays-mission-focus-count"><span data-todays-mission-focus-count>${customFocusVisible ? missionState.focus.length : 0}</span>/${TODAYS_MISSION_FOCUS_MAX_CHARACTERS}</small>
+              </div>
+              <fieldset>
+                <legend>Builder today</legend>
+                <label><input type="radio" name="builder" value="${TODAYS_MISSION_AVAILABILITY.AVAILABLE}"${builderAvailable ? " checked" : ""}> Available today</label>
+                <label><input type="radio" name="builder" value="${TODAYS_MISSION_AVAILABILITY.NOT_PART}"${hasMission && !builderAvailable ? " checked" : ""}> Not part of today's mission</label>
+              </fieldset>
+              <fieldset>
+                <legend>Workshop today</legend>
+                <label><input type="radio" name="workshop" value="${TODAYS_MISSION_AVAILABILITY.AVAILABLE}"${workshopAvailable ? " checked" : ""}> Available today</label>
+                <label><input type="radio" name="workshop" value="${TODAYS_MISSION_AVAILABILITY.NOT_PART}"${hasMission && !workshopAvailable ? " checked" : ""}> Not part of today's mission</label>
+              </fieldset>
+              <p class="platform-missions-first-reminder">${MISSIONS_FIRST_REMINDER}</p>
+              <div class="platform-todays-mission-actions">
+                <button type="submit">Save Today's Mission</button>
+                <button type="button" data-action="clear-todays-mission"${hasMission ? "" : " disabled"}>Clear Today's Mission</button>
+              </div>
+              <p class="platform-error platform-todays-mission-error" data-todays-mission-error role="alert" hidden></p>
+              <p class="platform-todays-mission-status" data-todays-mission-status data-state="${hasMission ? "saved" : "empty"}" role="status" aria-live="polite">${hasMission ? "Today's Mission saved for refresh and Student Display." : "No Today's Mission has been prepared for this browser session."}</p>
+            </form>
+            <div class="platform-todays-mission-confirmation" data-todays-mission-confirmation role="alertdialog" aria-modal="true" aria-labelledby="todays-mission-clear-title" aria-describedby="todays-mission-clear-description" hidden>
+              <div class="platform-todays-mission-confirmation-panel">
+                <h4 id="todays-mission-clear-title">Clear Today’s Mission?</h4>
+                <p id="todays-mission-clear-description">This will remove the saved current-session mission announcement.</p>
+                <div class="platform-todays-mission-confirmation-actions">
+                  <button type="button" data-action="keep-todays-mission">Keep Mission</button>
+                  <button type="button" data-action="confirm-clear-todays-mission">Clear Mission</button>
+                </div>
+              </div>
+            </div>
+            <div class="platform-todays-mission-saved"${hasMission ? "" : " hidden"} data-todays-mission-saved>
+              <p class="platform-command-label">Current mission announcement</p>
+              <h4 data-todays-mission-saved-title>${escapeHtml(missionState.title)}</h4>
+              <p data-todays-mission-saved-focus>${escapeHtml(missionState.focus)}</p>
+              <ul>
+                <li data-todays-mission-saved-builder>Builder: ${builderAvailable ? "Available today" : "Not part of today's mission"}</li>
+                <li data-todays-mission-saved-workshop>Workshop: ${workshopAvailable ? "Available today" : "Not part of today's mission"}</li>
+              </ul>
+            </div>
           </section>
           <section class="platform-command-card platform-command-card-timer">
             <p class="platform-command-label">Class timing</p>
@@ -378,7 +456,7 @@ function teacherDashboardView(state) {
             <div class="platform-student-display-mode-controls" role="group" aria-label="Student Display content">
               <p>Student Display content</p>
               <button type="button" data-action="select-presentation-mode" data-presentation-mode="${STUDENT_DISPLAY_MODES.COMBINED}" aria-pressed="${selectedDisplayMode === STUDENT_DISPLAY_MODES.COMBINED}">Timer + Message</button>
-              <button type="button" data-action="select-presentation-mode" data-presentation-mode="${STUDENT_DISPLAY_MODES.MESSAGE}" aria-pressed="${selectedDisplayMode === STUDENT_DISPLAY_MODES.MESSAGE}"${hasMemo ? "" : " disabled"}>Message only</button>
+              <button type="button" data-action="select-presentation-mode" data-presentation-mode="${STUDENT_DISPLAY_MODES.MESSAGE}" aria-pressed="${selectedDisplayMode === STUDENT_DISPLAY_MODES.MESSAGE}"${hasMessageContent ? "" : " disabled"}>Message only</button>
               <button type="button" data-action="select-presentation-mode" data-presentation-mode="${STUDENT_DISPLAY_MODES.TIMER}" aria-pressed="${selectedDisplayMode === STUDENT_DISPLAY_MODES.TIMER}">Timer only</button>
             </div>
             <button class="platform-student-display-button" type="button" data-action="open-timer-display">Open Student Display</button>
@@ -419,6 +497,14 @@ function teacherDashboardView(state) {
       <div class="platform-student-memo" data-student-memo${showStudentMemo ? "" : " hidden"}>
         <h3 id="student-message-title">Class Message</h3>
         <p data-student-memo-text>${memoText}</p>
+      </div>
+      <div class="platform-student-mission" data-student-mission${showStudentMission ? "" : " hidden"}>
+        <h3 id="student-mission-title">Today's Mission</h3>
+        <h4 data-student-mission-title>${escapeHtml(missionState.title)}</h4>
+        <p data-student-mission-focus>${escapeHtml(missionState.focus)}</p>
+        <p data-student-mission-builder>Builder: ${builderAvailable ? "Available today" : "Not part of today's mission"}</p>
+        <p data-student-mission-workshop>Workshop: ${workshopAvailable ? "Available today" : "Not part of today's mission"}</p>
+        <p class="platform-missions-first-reminder">${MISSIONS_FIRST_REMINDER}</p>
       </div>
     </section>
   `, {
@@ -651,26 +737,75 @@ function syncTeacherMemoPresentation() {
   syncStudentDisplayPresentation();
 }
 
+function missionAvailabilityText(value) {
+  return value === TODAYS_MISSION_AVAILABILITY.AVAILABLE
+    ? "Available today"
+    : "Not part of today's mission";
+}
+
+function missionFocusValue(form) {
+  const choice = form.elements.focusChoice?.value ?? "";
+  return choice === CUSTOM_MISSION_FOCUS ? (form.elements.focus?.value ?? "") : choice;
+}
+
+function syncMissionFocusChoice(form) {
+  const choice = form.elements.focusChoice?.value ?? "";
+  const custom = form.querySelector("[data-mission-custom-focus]");
+  if (custom) custom.hidden = choice !== CUSTOM_MISSION_FOCUS;
+}
+
+function syncTodaysMissionPresentation() {
+  const state = todaysMission.read();
+  const hasMission = Boolean(state.title);
+  const clearButton = document.querySelector('[data-action="clear-todays-mission"]');
+  const saved = document.querySelector("[data-todays-mission-saved]");
+  const values = {
+    "[data-todays-mission-saved-title]": state.title,
+    "[data-todays-mission-saved-focus]": state.focus,
+    "[data-todays-mission-saved-builder]": `Builder: ${missionAvailabilityText(state.builder)}`,
+    "[data-todays-mission-saved-workshop]": `Workshop: ${missionAvailabilityText(state.workshop)}`,
+    "[data-student-mission-title]": state.title,
+    "[data-student-mission-focus]": state.focus,
+    "[data-student-mission-builder]": `Builder: ${missionAvailabilityText(state.builder)}`,
+    "[data-student-mission-workshop]": `Workshop: ${missionAvailabilityText(state.workshop)}`,
+  };
+  if (clearButton) clearButton.disabled = !hasMission;
+  if (saved) saved.hidden = !hasMission;
+  Object.entries(values).forEach(([selector, text]) => {
+    const element = document.querySelector(selector);
+    if (element) element.textContent = hasMission ? text : "";
+  });
+  syncStudentDisplayPresentation();
+}
+
 function syncStudentDisplayPresentation() {
   const hasMemo = Boolean(teacherMemo.read().text);
-  const selectedMode = studentDisplayMode.read({ hasMemo });
+  const hasMission = Boolean(todaysMission.read().title);
+  const hasMessageContent = hasMemo || hasMission;
+  const selectedMode = studentDisplayMode.read({ hasMemo: hasMessageContent });
   const showTimer = selectedMode !== STUDENT_DISPLAY_MODES.MESSAGE;
   const showMemo = hasMemo && selectedMode !== STUDENT_DISPLAY_MODES.TIMER;
+  const showMission = hasMission && selectedMode !== STUDENT_DISPLAY_MODES.TIMER;
+  const showMessage = showMemo || showMission;
   const display = document.querySelector("#platform-student-timer-display");
   const timer = document.querySelector("[data-student-engineering-time]");
   const memo = document.querySelector("[data-student-memo]");
+  const mission = document.querySelector("[data-student-mission]");
   if (timer) timer.hidden = !showTimer;
   if (memo) memo.hidden = !showMemo;
+  if (mission) mission.hidden = !showMission;
   if (display) {
-    display.classList.toggle("platform-student-display-combined", showTimer && showMemo);
-    display.classList.toggle("platform-student-display-message-only", !showTimer && showMemo);
-    display.classList.toggle("platform-student-display-timer-only", showTimer && !showMemo);
-    display.setAttribute("aria-labelledby", showTimer ? "student-timer-title" : "student-message-title");
+    display.classList.toggle("platform-student-display-combined", showTimer && showMessage);
+    display.classList.toggle("platform-student-display-message-only", !showTimer && showMessage);
+    display.classList.toggle("platform-student-display-timer-only", showTimer && !showMessage);
+    display.setAttribute("aria-labelledby", showTimer
+      ? "student-timer-title"
+      : showMission ? "student-mission-title" : "student-message-title");
   }
   document.querySelectorAll("[data-presentation-mode]").forEach((control) => {
     control.setAttribute("aria-pressed", String(control.dataset.presentationMode === selectedMode));
     if (control.dataset.presentationMode === STUDENT_DISPLAY_MODES.MESSAGE) {
-      control.disabled = !hasMemo;
+      control.disabled = !hasMessageContent;
     }
   });
 }
@@ -772,6 +907,42 @@ function handleSubmit(event) {
       status.textContent = "Saved for refresh and Student Display.";
     }
   }
+
+  if (form.dataset.form === "todays-mission") {
+    const result = todaysMission.save({
+      title: data.get("title"),
+      focus: missionFocusValue(form),
+      builder: data.get("builder"),
+      workshop: data.get("workshop"),
+    });
+    const error = form.querySelector("[data-todays-mission-error]");
+    const status = form.querySelector("[data-todays-mission-status]");
+    const messages = {
+      "missing-title": "Enter a mission title before saving.",
+      "title-too-long": "Keep the mission title to 80 characters or fewer.",
+      "missing-focus": "Enter a short classroom focus before saving.",
+      "focus-too-long": "Keep the classroom focus to 180 characters or fewer.",
+      "missing-builder": "Choose whether Builder is part of today's mission.",
+      "missing-workshop": "Choose whether Workshop is part of today's mission.",
+    };
+    if (!result.ok) {
+      if (status) status.textContent = "";
+      if (error) {
+        error.textContent = messages[result.reason] ?? "Today's Mission could not be saved.";
+        error.hidden = false;
+      }
+      return;
+    }
+    if (error) {
+      error.textContent = "";
+      error.hidden = true;
+    }
+    syncTodaysMissionPresentation();
+    if (status) {
+      status.dataset.state = "saved";
+      status.textContent = "Today's Mission saved for refresh and Student Display.";
+    }
+  }
 }
 
 function handleClick(event) {
@@ -782,6 +953,7 @@ function handleClick(event) {
     lessonTimer.clear();
     session.signOut();
     teacherMemo.clear();
+    todaysMission.clear();
     studentDisplayMode.clear();
     navigate(ROUTES.WELCOME, { replace: true });
   }
@@ -823,9 +995,50 @@ function handleClick(event) {
       status.textContent = "Memo cleared. No memo is currently saved.";
     }
   }
+  if (action.dataset.action === "clear-todays-mission") {
+    const confirmation = document.querySelector("[data-todays-mission-confirmation]");
+    if (confirmation && confirmation.hidden) {
+      confirmation.hidden = false;
+      confirmation.querySelector('[data-action="keep-todays-mission"]')?.focus();
+    }
+  }
+  if (action.dataset.action === "keep-todays-mission") {
+    closeTodaysMissionClearConfirmation();
+  }
+  if (action.dataset.action === "confirm-clear-todays-mission") {
+    if (action.disabled) return;
+    action.disabled = true;
+    todaysMission.clear();
+    syncTodaysMissionPresentation();
+    const form = document.querySelector('[data-form="todays-mission"]');
+    if (form) {
+      form.elements.title.value = "";
+      form.elements.focusChoice.value = "";
+      form.elements.focus.value = "";
+      syncMissionFocusChoice(form);
+      form.querySelectorAll('input[type="radio"]').forEach((control) => {
+        control.checked = false;
+      });
+    }
+    const titleCount = document.querySelector("[data-todays-mission-title-count]");
+    const focusCount = document.querySelector("[data-todays-mission-focus-count]");
+    const error = document.querySelector("[data-todays-mission-error]");
+    const status = document.querySelector("[data-todays-mission-status]");
+    if (titleCount) titleCount.textContent = "0";
+    if (focusCount) focusCount.textContent = "0";
+    if (error) {
+      error.textContent = "";
+      error.hidden = true;
+    }
+    if (status) {
+      status.dataset.state = "empty";
+      status.textContent = "Today's Mission cleared. No mission announcement is currently saved.";
+    }
+    closeTodaysMissionClearConfirmation({ restoreFocus: false });
+  }
   if (action.dataset.action === "select-presentation-mode") {
-    const hasMemo = Boolean(teacherMemo.read().text);
-    const result = studentDisplayMode.select(action.dataset.presentationMode, { hasMemo });
+    const hasMessageContent = Boolean(teacherMemo.read().text || todaysMission.read().title);
+    const result = studentDisplayMode.select(action.dataset.presentationMode, { hasMemo: hasMessageContent });
     if (result.ok) syncStudentDisplayPresentation();
   }
   if (action.dataset.action === "open-timer-display") {
@@ -859,7 +1072,55 @@ function render() {
 
 root.addEventListener("submit", handleSubmit);
 root.addEventListener("click", handleClick);
+function closeTodaysMissionClearConfirmation({ restoreFocus = true } = {}) {
+  const confirmation = document.querySelector("[data-todays-mission-confirmation]");
+  if (!confirmation || confirmation.hidden) return;
+  confirmation.hidden = true;
+  const confirmButton = confirmation.querySelector('[data-action="confirm-clear-todays-mission"]');
+  if (confirmButton) confirmButton.disabled = false;
+  if (restoreFocus) document.querySelector('[data-action="clear-todays-mission"]')?.focus();
+}
+
+function handleTodaysMissionEdit(event) {
+  const missionForm = event.target.closest('[data-form="todays-mission"]');
+  if (missionForm) {
+    syncMissionFocusChoice(missionForm);
+    const title = missionForm.elements.title?.value ?? "";
+    const focus = missionFocusValue(missionForm);
+    const builder = new FormData(missionForm).get("builder") ?? "";
+    const workshop = new FormData(missionForm).get("workshop") ?? "";
+    const saved = todaysMission.read();
+    const titleCount = missionForm.querySelector("[data-todays-mission-title-count]");
+    const focusCount = missionForm.querySelector("[data-todays-mission-focus-count]");
+    const error = missionForm.querySelector("[data-todays-mission-error]");
+    const status = missionForm.querySelector("[data-todays-mission-status]");
+    if (titleCount) titleCount.textContent = String(title.length);
+    if (focusCount) focusCount.textContent = String(focus.length);
+    if (error) {
+      error.textContent = "";
+      error.hidden = true;
+    }
+    if (status) {
+      const hasUnsavedChanges = title.trim() !== saved.title || focus.trim() !== saved.focus ||
+        builder !== saved.builder || workshop !== saved.workshop;
+      status.dataset.state = hasUnsavedChanges ? "unsaved" : (saved.title ? "saved" : "empty");
+      status.textContent = hasUnsavedChanges
+        ? "Unsaved changes. Save before refreshing or opening Student Display."
+        : (saved.title
+            ? "Today's Mission saved for refresh and Student Display."
+            : "No Today's Mission has been prepared for this browser session.");
+    }
+    return true;
+  }
+  return false;
+}
+
+root.addEventListener("change", (event) => {
+  handleTodaysMissionEdit(event);
+});
+
 root.addEventListener("input", (event) => {
+  if (handleTodaysMissionEdit(event)) return;
   const field = event.target.closest("[data-teacher-memo]");
   if (!field) return;
   const count = document.querySelector("[data-teacher-memo-count]");
@@ -882,6 +1143,12 @@ root.addEventListener("input", (event) => {
 window.addEventListener("hashchange", render);
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
+  const missionConfirmation = document.querySelector("[data-todays-mission-confirmation]:not([hidden])");
+  if (missionConfirmation) {
+    event.preventDefault();
+    closeTodaysMissionClearConfirmation();
+    return;
+  }
   const display = document.querySelector("#platform-student-timer-display:not([hidden])");
   if (!display) return;
   storeLessonTimerDisplayOpen(false);

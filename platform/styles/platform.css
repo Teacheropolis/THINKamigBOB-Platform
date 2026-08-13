@@ -373,10 +373,45 @@ summary:focus-visible {
 .platform-rhythm-card,
 .platform-teacher-feed { border: 1px solid var(--platform-border); border-radius: 0.85rem; background: var(--platform-surface); }
 .platform-command-card, .platform-rhythm-card { min-height: 10rem; padding: 1.15rem; }
-.platform-command-card-mission { border-top: 6px solid var(--platform-blue); }
+.platform-command-card-mission { min-width: 0; align-self: start; border-top: 6px solid var(--platform-blue); }
 .platform-command-card h3, .platform-rhythm-card h3, .platform-teacher-feed h3 { margin: 0.15rem 0 0.55rem; font-size: 1.08rem; }
 .platform-command-card p:last-child, .platform-rhythm-card p { margin-bottom: 0; color: var(--platform-muted); }
 .platform-command-label { margin: 0; color: var(--platform-green); font-size: 0.65rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.platform-todays-mission-form { display: grid; gap: 0.5rem; }
+.platform-todays-mission-form > label,
+.platform-todays-mission-form legend { color: var(--platform-ink); font-size: 0.75rem; font-weight: 700; }
+.platform-todays-mission-form > input,
+.platform-todays-mission-form > select,
+.platform-todays-mission-custom-focus > textarea { width: 100%; min-width: 0; min-height: 2.75rem; padding: 0.6rem; border: 2px solid var(--platform-border); border-radius: 0.5rem; color: var(--platform-ink); background: #fff; font: inherit; line-height: 1.4; }
+.platform-todays-mission-custom-focus { display: grid; gap: 0.35rem; }
+.platform-todays-mission-custom-focus[hidden] { display: none; }
+.platform-todays-mission-custom-focus > label { color: var(--platform-ink); font-size: 0.75rem; font-weight: 700; }
+.platform-todays-mission-custom-focus > textarea { min-height: 4.5rem; resize: vertical; }
+.platform-todays-mission-custom-focus > small { color: var(--platform-muted); text-align: right; }
+.platform-todays-mission-form > small { margin-top: -0.4rem; color: var(--platform-muted); text-align: right; }
+.platform-todays-mission-form fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.35rem; margin: 0; padding: 0.55rem; border: 1px solid var(--platform-border); border-radius: 0.5rem; }
+.platform-todays-mission-form fieldset label { display: flex; min-height: 2.75rem; align-items: center; gap: 0.4rem; padding: 0.35rem; border-radius: 0.35rem; color: var(--platform-ink); font-size: 0.72rem; line-height: 1.25; }
+.platform-todays-mission-form fieldset input { width: 1.15rem; height: 1.15rem; flex: 0 0 auto; accent-color: var(--platform-green); }
+.platform-missions-first-reminder { margin: 0; padding: 0.65rem 0.75rem; border-left: 4px solid #c28b12; color: var(--platform-ink) !important; background: #fff8e4; font-size: 0.78rem; font-weight: 750; line-height: 1.35; }
+.platform-todays-mission-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.45rem; }
+.platform-todays-mission-actions button { min-height: 2.75rem; padding: 0.45rem 0.65rem; border: 2px solid var(--platform-blue); border-radius: 0.5rem; color: var(--platform-navy); background: #f3fafc; font-weight: 700; cursor: pointer; }
+.platform-todays-mission-actions button:disabled { border-color: #b9c7cd; color: #64757d; background: #edf2f4; cursor: not-allowed; }
+.platform-todays-mission-confirmation { position: fixed; z-index: 30; inset: 0; display: grid; place-items: center; padding: 1rem; background: rgb(8 31 46 / 72%); }
+.platform-todays-mission-confirmation[hidden] { display: none; }
+.platform-todays-mission-confirmation-panel { width: min(100%, 28rem); padding: 1.25rem; border: 3px solid #c28b12; border-radius: 0.8rem; background: #fff; box-shadow: 0 1rem 3rem rgb(0 0 0 / 35%); }
+.platform-todays-mission-confirmation-panel h4 { margin: 0 0 0.5rem; color: var(--platform-navy); font-size: 1.35rem; }
+.platform-todays-mission-confirmation-panel p { margin: 0 0 1rem; color: var(--platform-ink); line-height: 1.5; }
+.platform-todays-mission-confirmation-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+.platform-todays-mission-confirmation-actions button { min-height: 2.75rem; padding: 0.55rem; border: 2px solid var(--platform-blue); border-radius: 0.5rem; color: var(--platform-navy); background: #f3fafc; font: inherit; font-weight: 750; cursor: pointer; }
+.platform-todays-mission-confirmation-actions [data-action="confirm-clear-todays-mission"] { border-color: #9b3a2c; color: #76281e; background: #fff4f1; }
+.platform-todays-mission-error { min-height: 1em; margin: 0; font-size: 0.72rem; }
+.platform-todays-mission-status { min-height: 2.75rem; margin: 0; padding: 0.65rem 0.75rem; border: 2px solid var(--platform-border); border-radius: 0.5rem; color: var(--platform-ink); background: #f4f7f8; font-size: 0.78rem; font-weight: 700; line-height: 1.35; }
+.platform-todays-mission-status[data-state="saved"] { border-color: var(--platform-green); color: #174a35; background: #eaf6ef; }
+.platform-todays-mission-status[data-state="unsaved"] { border-color: #c28b12; color: #684900; background: #fff8e4; }
+.platform-todays-mission-saved { margin-top: 0.75rem; padding-top: 0.65rem; border-top: 1px solid var(--platform-border); }
+.platform-todays-mission-saved h4 { margin: 0.35rem 0; color: var(--platform-navy); overflow-wrap: anywhere; }
+.platform-todays-mission-saved > p:not(.platform-command-label) { margin: 0; color: var(--platform-ink); overflow-wrap: anywhere; white-space: pre-wrap; }
+.platform-todays-mission-saved ul { margin: 0.55rem 0 0; padding-left: 1.2rem; color: var(--platform-muted); font-size: 0.78rem; }
 .platform-command-card-timer { align-self: start; }
 .platform-lesson-timer { display: grid; gap: 0.6rem; }
 .platform-timer-remaining { color: var(--platform-navy); font-size: clamp(2.4rem, 5vw, 4rem); font-variant-numeric: tabular-nums; font-weight: 800; letter-spacing: 0.03em; line-height: 1; }
@@ -469,6 +504,14 @@ summary:focus-visible {
 .platform-student-display-timer-only .platform-student-engineering-time { gap: clamp(0.75rem, 2vh, 1.5rem); }
 .platform-student-display-message-only .platform-student-memo { width: min(68rem, 92vw); }
 .platform-student-display-message-only .platform-student-memo p { font-size: clamp(1.75rem, 4.2vw, 3.25rem); }
+.platform-student-mission { width: min(68rem, 92vw); padding: clamp(1rem, 2.5vw, 1.75rem); border: 2px solid rgba(255, 255, 255, 0.28); border-radius: 1rem; background: rgba(7, 27, 39, 0.72); text-align: center; }
+.platform-student-mission h3,
+.platform-student-mission h4,
+.platform-student-mission p { margin: 0; }
+.platform-student-mission h3 { color: #bde5d3; font-size: clamp(1rem, 2vw, 1.35rem); text-transform: uppercase; letter-spacing: 0.08em; }
+.platform-student-mission h4 { margin-top: 0.35rem; font-size: clamp(1.7rem, 4vw, 3rem); overflow-wrap: anywhere; }
+.platform-student-mission > p:not(.platform-missions-first-reminder) { margin-top: 0.35rem; font-size: clamp(0.95rem, 2vw, 1.3rem); white-space: pre-wrap; }
+.platform-student-mission .platform-missions-first-reminder { margin-top: 0.75rem; color: #fff !important; background: rgba(194, 139, 18, 0.2); text-align: left; }
 
 .platform-footer { padding: 1.25rem; color: #d1e3ea; background: #17394d; text-align: center; font-size: 0.78rem; }
 .platform-noscript { max-width: 45rem; margin: 3rem auto; padding: 2rem; }
@@ -519,6 +562,9 @@ summary:focus-visible {
   .platform-teacher-feed { align-items: flex-start; flex-direction: column; }
   .platform-today-primary-grid, .platform-class-rhythm { grid-template-columns: 1fr; }
   .platform-command-card-mission { grid-column: auto; }
+  .platform-todays-mission-form fieldset,
+  .platform-todays-mission-actions,
+  .platform-todays-mission-confirmation-actions { grid-template-columns: 1fr; }
   .platform-student-display-controls { grid-column: auto; grid-template-columns: 1fr; }
   .platform-timer-controls { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .platform-timer-duration > div { grid-template-columns: 1fr; }

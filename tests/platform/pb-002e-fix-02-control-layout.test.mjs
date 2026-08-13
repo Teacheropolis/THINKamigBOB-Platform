@@ -40,7 +40,7 @@ test("one shared section follows both cards and owns all presentation controls",
   }
   assert.match(controls, /aria-label="Student Display content"/);
   assert.match(controls,
-    /data-presentation-mode="\$\{STUDENT_DISPLAY_MODES\.MESSAGE\}"[^>]*\$\{hasMemo \? "" : " disabled"\}/);
+    /data-presentation-mode="\$\{STUDENT_DISPLAY_MODES\.MESSAGE\}"[^>]*\$\{hasMessageContent \? "" : " disabled"\}/);
 });
 
 test("shared controls remain responsive, accessible, and use existing ownership", () => {

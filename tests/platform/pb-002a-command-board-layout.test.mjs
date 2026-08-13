@@ -39,7 +39,7 @@ test("Today board contains every approved PB-002A classroom area", () => {
     "aria-label=\"Today\"",
     "Class focus, organization, and readiness at a glance.",
     "Today's Mission",
-    "Coming in future build",
+    "No Today's Mission has been prepared for this browser session.",
     "Today's Engineering Time",
     "Teacher Memo",
     "Wins",
@@ -61,10 +61,13 @@ test("command board preserves PB-002A exclusions outside authorized timer and me
   assert.doesNotMatch(teacherViewSource, /setInterval|setTimeout|fetch\s*\(|localStorage|WebSocket|EventSource/);
   assert.doesNotMatch(teacherViewSource, /student progress|support signal|teacher moment|shoutout|kit checkout|hall of fame|google drive|google forms|artificial intelligence/i);
   assert.doesNotMatch(teacherViewSource, /href=.*(?:builder|workshop)/i);
-  assert.equal((teacherViewSource.match(/<input/g) ?? []).length, 1);
+  assert.equal((teacherViewSource.match(/<input/g) ?? []).length, 6);
   assert.match(teacherViewSource, /<input[^>]+data-timer-duration/);
-  assert.equal((teacherViewSource.match(/<textarea/g) ?? []).length, 1);
+  assert.match(teacherViewSource, /<input[^>]+name="title"/);
+  assert.equal((teacherViewSource.match(/type="radio"/g) ?? []).length, 4);
+  assert.equal((teacherViewSource.match(/<textarea/g) ?? []).length, 2);
   assert.match(teacherViewSource, /<textarea[^>]+data-teacher-memo/);
+  assert.match(teacherViewSource, /<textarea[^>]+name="focus"/);
   assert.doesNotMatch(teacherViewSource, /contenteditable/i);
 });
 

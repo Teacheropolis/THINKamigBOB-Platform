@@ -81,7 +81,7 @@ test("teacher owns one accessible three-mode control group", () => {
     assert.ok(appSource.includes(label), `expected ${label}`);
   }
   assert.match(appSource,
-    /data-presentation-mode="\$\{STUDENT_DISPLAY_MODES\.MESSAGE\}"[^>]*aria-pressed[^>]*\$\{hasMemo \? "" : " disabled"\}/);
+    /data-presentation-mode="\$\{STUDENT_DISPLAY_MODES\.MESSAGE\}"[^>]*aria-pressed[^>]*\$\{hasMessageContent \? "" : " disabled"\}/);
   assert.match(cssSource,
     /\.platform-student-display-mode-controls button \{ min-height: 2\.75rem/);
 });
@@ -91,7 +91,7 @@ test("mode presentation hides content without changing timer or memo models", ()
   assert.match(appSource, /memo\.hidden = !showMemo/);
   assert.match(appSource, /studentDisplayMode\.select/);
   assert.match(appSource,
-    /teacherMemo\.clear\(\);\s*studentDisplayMode\.clear\(\);\s*navigate/);
+    /teacherMemo\.clear\(\);\s*todaysMission\.clear\(\);\s*studentDisplayMode\.clear\(\);\s*navigate/);
   assert.doesNotMatch(appSource,
     /studentDisplayMode\.(?:select|read)[^\n]*(?:lessonTimer|teacherMemo\.save)/);
 });

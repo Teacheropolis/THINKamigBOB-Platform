@@ -31,9 +31,9 @@ test("timer-only and combined presentation use the approved mode owner", () => {
   assert.match(appSource,
     /selectedDisplayMode !== STUDENT_DISPLAY_MODES\.MESSAGE/);
   assert.match(appSource,
-    /hasMemo && selectedDisplayMode !== STUDENT_DISPLAY_MODES\.TIMER/);
+    /hasMessageContent = hasMemo \|\| hasMission/);
   assert.match(appSource,
-    /display\.classList\.toggle\("platform-student-display-combined", showTimer && showMemo\)/);
+    /display\.classList\.toggle\("platform-student-display-combined", showTimer && showMessage\)/);
 });
 
 test("presentation remains control-free and uses the single shared teacher trigger", () => {
