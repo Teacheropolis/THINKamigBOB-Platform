@@ -3516,6 +3516,9 @@ function mountWhiteboard() {
   const canvas = whiteboardCanvas();
   if (!canvas || canvas.dataset.mounted === "true") return;
   canvas.dataset.mounted = "true";
+  document.querySelectorAll(".platform-whiteboard-quick-menu").forEach((menu) => {
+    menu.addEventListener("mouseleave", () => menu.removeAttribute("open"));
+  });
   const surface = canvas.parentElement; canvas.width = Math.max(900, Math.round(surface.clientWidth || 900)); canvas.height = Math.max(520, Math.round(surface.clientHeight || 520));
   try { whiteboardObjects = JSON.parse(window.sessionStorage.getItem(WHITEBOARD_OBJECT_SESSION_KEY) ?? "[]"); } catch { whiteboardObjects = []; }
   try { const view = JSON.parse(window.sessionStorage.getItem(WHITEBOARD_VIEW_SESSION_KEY) ?? "{}"); whiteboardGridUnit = ["plain", "inch", "cm", "mm"].includes(view.gridUnit) ? view.gridUnit : "plain"; whiteboardRulerUnit = ["none", "english", "metric"].includes(view.rulerUnit) ? view.rulerUnit : "none"; whiteboardZoom = Math.min(300, Math.max(50, Number(view.zoom) || 100)); whiteboardRuler = view.ruler && typeof view.ruler === "object" ? { ...whiteboardRuler, ...view.ruler } : { ...whiteboardRuler, y: canvas.height - 92 }; whiteboardDrawingTitle = String(view.title || "Workshop Drawing").slice(0, 60); whiteboardControlsDock = ["top", "left", "right", "bottom"].includes(view.controlsDock) ? view.controlsDock : "top"; whiteboardControlsHidden = Boolean(view.controlsHidden); } catch { whiteboardGridUnit = "plain"; whiteboardRulerUnit = "none"; whiteboardZoom = 100; whiteboardDrawingTitle = "Workshop Drawing"; whiteboardControlsDock = "top"; whiteboardControlsHidden = false; }
