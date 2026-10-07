@@ -1684,6 +1684,7 @@ function teacherDashboardView(state) {
         <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="lasso-select" title="Lasso select for image"><span aria-hidden="true">⌁</span><small>Lasso</small></button>
         <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="eraser" title="Eraser object"><span aria-hidden="true">◇</span><small>Eraser</small></button>
         <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="fill" title="Paint can — fill shape"><span aria-hidden="true">◩</span><small>Paint</small></button>
+        <button type="button" data-action="whiteboard-quick-text" title="Add text"><span aria-hidden="true">T</span><small>Text</small></button>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">✎</span><small>Pen</small></summary><div>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pen">Pen</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="calligraphy">Calligraphy pen</button>
@@ -4195,6 +4196,16 @@ function handleClick(event) {
       setWhiteboardStatus(`${label} is active.`);
     }
     action.closest("details")?.removeAttribute("open");
+    whiteboardCanvas()?.focus({ preventScroll: true });
+    return;
+  }
+  if (action.dataset.action === "whiteboard-quick-text") {
+    const field = document.querySelector("[data-whiteboard-text]");
+    const text = window.prompt("Text to add to the whiteboard:", field?.value ?? "");
+    if (!text?.trim() || !field) return;
+    field.value = text.trim().slice(0, 120);
+    document.querySelector('[data-action="whiteboard-add-text"]')?.click();
+    setWhiteboardStatus("Text added. Drag the selected text to position it.");
     whiteboardCanvas()?.focus({ preventScroll: true });
     return;
   }
