@@ -3600,6 +3600,12 @@ function mountWhiteboard() {
   }
   document.querySelectorAll(".platform-whiteboard-quick-menu").forEach((menu) => {
     menu.addEventListener("mouseleave", () => menu.removeAttribute("open"));
+    menu.addEventListener("toggle", () => {
+      if (!menu.open) return;
+      document.querySelectorAll(".platform-whiteboard-quick-menu[open]").forEach((other) => { if (other !== menu) other.removeAttribute("open"); });
+      const bounds = menu.querySelector("summary")?.getBoundingClientRect();
+      if (bounds) { menu.style.setProperty("--quick-menu-left", `${Math.max(8, Math.min(window.innerWidth - 210, bounds.left))}px`); menu.style.setProperty("--quick-menu-top", `${bounds.bottom + 5}px`); }
+    });
   });
   const surface = canvas.parentElement; canvas.width = Math.max(900, Math.round(surface.clientWidth || 900)); canvas.height = Math.max(520, Math.round(surface.clientHeight || 520));
   try { whiteboardObjects = JSON.parse(window.sessionStorage.getItem(WHITEBOARD_OBJECT_SESSION_KEY) ?? "[]"); } catch { whiteboardObjects = []; }
