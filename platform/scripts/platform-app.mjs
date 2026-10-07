@@ -3133,30 +3133,36 @@ function openWhiteboardTextEntry(point, canvas) {
   const surface = canvas.parentElement;
   if (!surface) return;
   surface.querySelector("[data-whiteboard-text-entry]")?.remove();
-  const entry = document.createElement("form");
+  const entry = document.createElement("textarea");
   entry.className = "platform-whiteboard-text-entry";
   entry.dataset.whiteboardTextEntry = "true";
-  entry.innerHTML = '<label>Text<textarea maxlength="120" placeholder="Type text for the board" required></textarea></label><div><button type="button" data-whiteboard-text-cancel>Cancel</button><button type="submit">Add Text</button></div>';
+  entry.maxLength = 120;
+  entry.placeholder = "Type here";
+  entry.setAttribute("aria-label", "Type whiteboard text at this location");
   const scaleX = canvas.clientWidth / canvas.width;
   const scaleY = canvas.clientHeight / canvas.height;
-  entry.style.left = `${Math.max(4, Math.min(canvas.clientWidth - 328, point.x * scaleX))}px`;
-  entry.style.top = `${Math.max(4, Math.min(canvas.clientHeight - 150, point.y * scaleY))}px`;
-  const textarea = entry.querySelector("textarea");
-  const close = () => { entry.remove(); canvas.focus({ preventScroll: true }); };
-  entry.addEventListener("submit", (event) => {
-    event.preventDefault();
-    const value = textarea.value.trim().slice(0, 120);
-    if (!value) return;
+  entry.style.left = `${Math.max(4, Math.min(canvas.clientWidth - 230, point.x * scaleX))}px`;
+  entry.style.top = `${Math.max(4, Math.min(canvas.clientHeight - 55, point.y * scaleY))}px`;
+  let finished = false;
+  const close = () => { if (finished) return; finished = true; entry.remove(); canvas.focus({ preventScroll: true }); };
+  const commit = () => {
+    if (finished) return;
+    const value = entry.value.trim().slice(0, 120);
+    if (!value) { close(); setWhiteboardStatus("Text placement canceled."); return; }
     pushWhiteboardHistory();
     const size = Math.max(22, Number(document.querySelector("[data-whiteboard-size]")?.value ?? 6) * 5);
     const object = createWhiteboardObject("text", { text: value, x: point.x, y: point.y, width: Math.min(canvas.width - point.x, Math.max(180, value.length * size * 0.55)), height: size * 1.3, fontSize: size, color: document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d", background: document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent", rotation: 0 });
     whiteboardObjects.push(object); whiteboardSelectedObjectId = object.id; close(); renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls(); setWhiteboardStatus("Text added at the selected spot. Drag it to reposition it.");
+  };
+  entry.addEventListener("blur", commit);
+  entry.addEventListener("input", () => { entry.style.height = "auto"; entry.style.height = `${Math.min(180, Math.max(48, entry.scrollHeight))}px`; });
+  entry.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") { event.preventDefault(); close(); setWhiteboardStatus("Text placement canceled."); }
+    else if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); commit(); }
   });
-  entry.querySelector("[data-whiteboard-text-cancel]").addEventListener("click", () => { close(); setWhiteboardStatus("Text placement canceled."); });
-  textarea.addEventListener("keydown", (event) => { if (event.key === "Escape") { event.preventDefault(); close(); setWhiteboardStatus("Text placement canceled."); } else if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) entry.requestSubmit(); });
   surface.append(entry);
-  textarea.focus();
-  setWhiteboardStatus("Type in the text box, then choose Add Text. Use Ctrl+Enter or Command+Enter as a shortcut.");
+  entry.focus();
+  setWhiteboardStatus("Type directly on the board. Press Enter or click elsewhere to finish; Escape cancels.");
 }
 
 function drawWhiteboardGrid(context, canvas) {

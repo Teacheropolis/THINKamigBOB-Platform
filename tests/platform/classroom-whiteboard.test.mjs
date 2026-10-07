@@ -68,7 +68,9 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   assert.match(app, /data-whiteboard-quick-tool="text"/);
   assert.match(app, /openWhiteboardTextEntry\(point, canvas\)/);
   assert.match(app, /data-whiteboard-text-entry/);
-  assert.match(app, /Type in the text box, then choose Add Text/);
+  assert.match(app, /Type directly on the board\. Press Enter or click elsewhere to finish; Escape cancels\./);
+  assert.match(app, /entry\.addEventListener\("blur", commit\)/);
+  assert.match(app, /event\.key === "Enter" && !event\.shiftKey/);
   assert.match(app, /Text added at the selected spot\. Drag it to reposition it\./);
   assert.ok(app.indexOf('if (tool === "text")') < app.indexOf('if (directTools && tool !== "select" && selected)'), "Text placement must take priority over background objects");
   assert.match(app, /button\.dataset\.whiteboardQuickTool === nextTool/);

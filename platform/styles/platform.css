@@ -1166,9 +1166,7 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-whiteboard-measurement-tip { padding: 0.7rem; border-left: 5px solid #d39a00; border-radius: 0.4rem; background: #fff7cf; font-weight: 800; }
 .platform-whiteboard-surface { position: relative; grid-area: surface; min-height: 0; overflow: auto; border: 4px solid var(--platform-navy); border-radius: 0.75rem; background: #fff; box-shadow: 0 0.7rem 2rem rgba(7, 27, 39, 0.18); }
 .platform-whiteboard-surface canvas { display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
-.platform-whiteboard-text-entry { position: absolute; z-index: 25; display: grid; width: min(20rem, calc(100% - 1rem)); gap: 0.4rem; padding: 0.55rem; border: 3px solid var(--platform-blue-dark); border-radius: 0.55rem; background: #fff; box-shadow: 0 0.7rem 1.5rem rgba(7,27,39,0.28); }
-.platform-whiteboard-text-entry textarea { min-height: 5rem; padding: 0.55rem; resize: both; font: 700 1rem/1.35 var(--platform-font); }
-.platform-whiteboard-text-entry div { display: flex; justify-content: flex-end; gap: 0.35rem; }
+.platform-whiteboard-text-entry { position: absolute; z-index: 25; width: min(14rem, calc(100% - 0.5rem)); min-height: 3rem; padding: 0.35rem 0.45rem; overflow: hidden; resize: none; border: 2px dashed var(--platform-blue-dark); border-radius: 0.25rem; color: var(--platform-navy); background: rgba(255,255,255,0.94); box-shadow: 0 0.25rem 0.7rem rgba(7,27,39,0.2); font: 700 1.05rem/1.3 Lexend, system-ui, sans-serif; }
 .platform-whiteboard-status { grid-area: status; font-size: 0.8rem; font-weight: 700; }
 .platform-whiteboard-context-menu[hidden] { display: none !important; }
 .platform-whiteboard-context-menu { position: fixed; z-index: 285; display: grid; min-width: 10rem; gap: 0.25rem; padding: 0.35rem; border: 2px solid var(--platform-blue); border-radius: 0.55rem; background: #fff; box-shadow: 0 0.75rem 1.5rem rgba(7,27,39,0.3); }
