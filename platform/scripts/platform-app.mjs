@@ -3543,13 +3543,6 @@ function mountWhiteboard() {
         canvas.setPointerCapture?.(event.pointerId); setWhiteboardStatus("Ruler selected directly. Drag to place it where you want."); return;
       }
     }
-    if (directTools && tool !== "select" && selected) {
-      pushWhiteboardHistory(); whiteboardSelectedObjectId = selected.id;
-      const bounds = objectBounds(selected); const resizeCorner = selected.type !== "dimension" ? whiteboardResizeCorner(bounds, point) : "";
-      whiteboardDrawing = { tool: "select", objectId: selected.id, start: point, original: cloneEditableWhiteboardObject(selected), resize: Boolean(resizeCorner), resizeCorner };
-      syncWhiteboardDimensionCompareControl(); renderWhiteboardObjects(canvas); canvas.setPointerCapture?.(event.pointerId);
-      setWhiteboardStatus(selected.type === "dimension" ? "Measurement selected directly. Drag its red line or label to reposition it." : "Object selected directly. Drag to move it without changing tools."); return;
-    }
     if (tool === "text") {
       const text = window.prompt("Text to add at this spot:", "");
       if (!text?.trim()) { setWhiteboardStatus("Text placement canceled. Click another blank spot to try again."); return; }
@@ -3559,6 +3552,13 @@ function mountWhiteboard() {
       const object = createWhiteboardObject("text", { text: value, x: point.x, y: point.y, width: Math.min(canvas.width - point.x, Math.max(180, value.length * size * 0.55)), height: size * 1.3, fontSize: size, color: document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d", background: document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent", rotation: 0 });
       whiteboardObjects.push(object); whiteboardSelectedObjectId = object.id; renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls();
       setWhiteboardStatus("Text added at the selected spot. Drag it to reposition it."); return;
+    }
+    if (directTools && tool !== "select" && selected) {
+      pushWhiteboardHistory(); whiteboardSelectedObjectId = selected.id;
+      const bounds = objectBounds(selected); const resizeCorner = selected.type !== "dimension" ? whiteboardResizeCorner(bounds, point) : "";
+      whiteboardDrawing = { tool: "select", objectId: selected.id, start: point, original: cloneEditableWhiteboardObject(selected), resize: Boolean(resizeCorner), resizeCorner };
+      syncWhiteboardDimensionCompareControl(); renderWhiteboardObjects(canvas); canvas.setPointerCapture?.(event.pointerId);
+      setWhiteboardStatus(selected.type === "dimension" ? "Measurement selected directly. Drag its red line or label to reposition it." : "Object selected directly. Drag to move it without changing tools."); return;
     }
     if (tool === "lasso-select") {
       whiteboardLassoPoints = [point]; whiteboardLassoBounds = null; whiteboardSelectionDownload = "";

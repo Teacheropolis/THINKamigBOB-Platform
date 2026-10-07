@@ -68,6 +68,7 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   assert.match(app, /data-whiteboard-quick-tool="text"/);
   assert.match(app, /Text to add at this spot:/);
   assert.match(app, /Text added at the selected spot\. Drag it to reposition it\./);
+  assert.ok(app.indexOf('if (tool === "text")') < app.indexOf('if (directTools && tool !== "select" && selected)'), "Text placement must take priority over background objects");
   assert.match(app, /button\.dataset\.whiteboardQuickTool === nextTool/);
   assert.match(css, /data-controls-hidden="true"\] \.platform-whiteboard-quick-actions \{ flex-wrap: wrap; overflow: visible;/);
   assert.match(css, /\.platform-whiteboard-quick-actions \{ position: relative;[^}]*z-index: 40;[^}]*flex-wrap: wrap;[^}]*overflow: visible;/);
