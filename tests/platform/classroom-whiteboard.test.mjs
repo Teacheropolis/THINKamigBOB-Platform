@@ -63,9 +63,10 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   assert.match(app, /action\.closest\("details"\)\?\.removeAttribute\("open"\)/);
   assert.match(app, /action\.dataset\.action === "whiteboard-quick-tool"/);
   assert.match(app, /button\.dataset\.whiteboardQuickTool === nextTool/);
-  assert.match(css, /data-controls-hidden="true"\] \.platform-whiteboard-quick-actions \{ flex-wrap: wrap;/);
+  assert.match(css, /data-controls-hidden="true"\] \.platform-whiteboard-quick-actions \{ flex-wrap: wrap; overflow: visible;/);
   assert.match(css, /button\[aria-pressed="true"\]/);
   assert.match(css, /\.platform-whiteboard-quick-menu > div/);
+  assert.match(css, /\.platform-whiteboard-quick-menu\[open\] \{ z-index: 45; \}/);
 });
 
 test("saved boards support repeating weekdays or a specific calendar date", () => {
