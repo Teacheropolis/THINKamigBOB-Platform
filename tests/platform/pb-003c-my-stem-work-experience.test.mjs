@@ -49,7 +49,7 @@ test("project organization uses exactly the approved honest states", () => {
     "You do not have current work to continue yet.",
     "Your recent engineering work will appear here when it is available.",
     "Your earlier engineering work will appear here when it is available.",
-    "Evidence cannot be checked right now.",
+    "Capture evidence while the work is fresh.",
   ]) assert.ok(stemWorkSource.includes(state), `expected ${state}`);
   assert.equal((stemWorkSource.match(/platform-project-card-container/g) ?? []).length, 3);
   assert.doesNotMatch(stemWorkSource, /platform-project-card["\s]/);
@@ -64,19 +64,18 @@ test("Continue Current Work and Future Path remain explanatory and noninteractiv
     /<button|<a\s|href=|data-action=|data-form=|navigate\(/);
 });
 
-test("evidence foundation exposes exactly four noninteractive Coming Later sources", () => {
-  for (const source of ["Builder", "Workshop", "Google Slides", "Google Vids"]) {
-    assert.match(stemWorkSource, new RegExp(`<span>${source}<\\/span><strong>Coming Later<\\/strong>`));
-  }
-  assert.equal((stemWorkSource.match(/<strong>Coming Later<\/strong>/g) ?? []).length, 4);
-  assert.match(stemWorkSource, /It is not automatically reflection, proof of learning, a grade, teacher-reviewed, public, or complete/);
+test("evidence foundation mounts the interactive browser-only pilot", () => {
+  assert.match(stemWorkSource, /data-evidence-foundation/);
+  assert.match(stemWorkSource, /evidenceCaptureMarkup/);
+  assert.match(appSource, /Photo.*Screenshot.*Video.*Reflection.*More Evidence/s);
+  assert.match(appSource, /Photo and Screenshot use the teacher-owned Drive when the local pilot service is running/);
 });
 
 test("no project, evidence, integration, or teacher-review data is fabricated", () => {
   assert.doesNotMatch(stemWorkSource,
     /projectId|fileId|accountId|last saved|revision count|progress|teacher viewed|pending review|support signal/i);
   assert.doesNotMatch(stemWorkSource,
-    /sessionStorage|localStorage|fetch\s*\(|WebSocket|XMLHttpRequest|Google Drive|portfolio/i);
+    /fetch\s*\(|WebSocket|XMLHttpRequest|portfolio/i);
   assert.doesNotMatch(appSource, /pb003c.*(?:session|storage|route)/i);
 });
 

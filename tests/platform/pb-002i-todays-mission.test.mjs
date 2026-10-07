@@ -5,6 +5,7 @@ import vm from "node:vm";
 
 const appSource = fs.readFileSync(new URL("../../platform/scripts/platform-app.mjs", import.meta.url), "utf8");
 const cssSource = fs.readFileSync(new URL("../../platform/styles/platform.css", import.meta.url), "utf8");
+const missionSource = fs.readFileSync(new URL("../../platform/scripts/todays-mission.mjs", import.meta.url), "utf8");
 
 async function loadMissionModule() {
   const source = fs.readFileSync(new URL("../../platform/scripts/todays-mission.mjs", import.meta.url), "utf8")
@@ -55,19 +56,18 @@ test("Today’s Mission rejects incomplete, oversized, and invalid stored values
   assert.equal(store.read().title, "");
 });
 
-test("teacher editor uses approved copy, explicit choices, and honest states", () => {
+test("teacher editor merges goals into Quick class setup and derives activity availability", () => {
   for (const text of [
-    "Mission title or Goal", "Short classroom focus", "Choose a classroom focus",
-    "Customize your own", "Builder today", "Workshop today",
-    "Available today", "Not part of today's mission", "Save Today's Mission",
-    "Clear Today's Mission", "Missions First! Read your directions before opening Builder or Workshop.",
-    "No Today's Mission has been prepared for this browser session.",
-    "Unsaved changes. Save before refreshing or opening Student Display.",
+    "Today’s plan", "Today’s Goals", "Quick class setup",
+    "Save Today’s Plan Setting",
+    "Suggested automatically from the class grade, mission goal, and selected activities",
+    "+ Add a Goal", "Delete",
   ]) assert.ok(appSource.includes(text), `expected ${text}`);
-  assert.match(appSource, /name="builder"[\s\S]*builderAvailable \? " checked" : ""/);
-  assert.match(appSource, /name="workshop"[\s\S]*workshopAvailable \? " checked" : ""/);
-  assert.match(appSource, /function missionFocusValue\(form\)/);
-  assert.match(appSource, /data-mission-custom-focus\$\{customFocusVisible \? "" : " hidden"\}/);
+  assert.match(appSource, /resources\.some\(\(item\) => item\.type === "Builder"\)/);
+  assert.match(appSource, /resources\.some\(\(item\) => item\.type === "Workshop"\)/);
+  assert.doesNotMatch(appSource, /Student Activity Access Today/);
+  assert.doesNotMatch(appSource, /Short classroom focus/);
+  assert.doesNotMatch(appSource, /Not part of today's mission<\/label>/);
 });
 
 test("Student Display presents saved mission only in message-bearing modes", () => {
@@ -81,28 +81,18 @@ test("Student Display presents saved mission only in message-bearing modes", () 
 
 test("PB-002I remains isolated and Chromebook responsive", () => {
   assert.match(appSource, /todaysMission\.clear\(\);[\s\S]*studentDisplayMode\.clear\(\)/);
-  assert.doesNotMatch(appSource, /fetch\(|XMLHttpRequest|localStorage|indexedDB/);
+  assert.doesNotMatch(missionSource, /fetch\(|XMLHttpRequest|localStorage|indexedDB/);
   assert.match(cssSource, /\.platform-todays-mission-form/);
   assert.match(cssSource, /min-height: 2\.75rem/);
   assert.match(cssSource, /@media \(max-width: 520px\)[\s\S]*\.platform-todays-mission-actions/);
 });
 
-test("Today’s Mission Clear requires an accessible safe confirmation", () => {
-  assert.match(appSource, /data-todays-mission-confirmation role="alertdialog" aria-modal="true"/);
-  assert.match(appSource, /saved current-session mission announcement/);
-  assert.match(appSource, /data-action="keep-todays-mission">Keep Mission/);
-  assert.match(appSource, /data-action="confirm-clear-todays-mission">Clear Mission/);
-  assert.match(appSource, /confirmation\.querySelector\('\[data-action="keep-todays-mission"\]'\)\?\.focus\(\)/);
-});
-
-test("Today’s Mission Clear cancellation and Escape preserve saved state", () => {
-  assert.match(appSource, /action\.dataset\.action === "keep-todays-mission"[\s\S]*closeTodaysMissionClearConfirmation\(\)/);
-  assert.match(appSource, /missionConfirmation[\s\S]*event\.preventDefault\(\);[\s\S]*closeTodaysMissionClearConfirmation\(\);[\s\S]*return;/);
-  assert.doesNotMatch(appSource, /action\.dataset\.action === "clear-todays-mission"\) \{\s*todaysMission\.clear\(\)/);
-});
-
-test("Today’s Mission clears only after explicit confirmation and guards double activation", () => {
-  assert.match(appSource, /action\.dataset\.action === "confirm-clear-todays-mission"[\s\S]*if \(action\.disabled\) return;[\s\S]*action\.disabled = true;[\s\S]*todaysMission\.clear\(\)/);
-  assert.match(appSource, /closeTodaysMissionClearConfirmation\(\{ restoreFocus: false \}\)/);
-  assert.match(cssSource, /\.platform-todays-mission-confirmation\[hidden\] \{ display: none; \}/);
+test("Quick goals can be edited, deleted, added, and saved for the class", () => {
+  assert.match(appSource, /automaticGoalsForClass/);
+  assert.match(appSource, /Build a Shelter/);
+  assert.match(appSource, /data-action="add-quick-goal"/);
+  assert.match(appSource, /data-action="delete-quick-goal"/);
+  assert.match(appSource, /todayGoalsMode/);
+  assert.match(appSource, /todayGoals\.join\(" • "\)/);
+  assert.match(cssSource, /\.platform-quick-goals/);
 });

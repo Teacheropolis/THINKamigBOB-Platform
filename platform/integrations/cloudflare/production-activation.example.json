@@ -1,0 +1,14 @@
+{
+  "platformOrigin": "https://REPLACE-WITH-PUBLISHED-PLATFORM.example",
+  "stagingOrigin": "https://REPLACE-WITH-PRIVATE-STAGING.example",
+  "zoneName": "REPLACE-WITH-CLOUDFLARE-ZONE.example",
+  "googleSignInClientId": "REPLACE-WITH-PUBLIC-GOOGLE-SIGNIN-CLIENT-ID",
+  "googleOAuthClientId": "REPLACE-WITH-PUBLIC-GOOGLE-DRIVE-OAUTH-CLIENT-ID",
+  "authDatabaseId": "REPLACE-WITH-AUTH-D1-DATABASE-ID",
+  "evidenceDatabaseId": "REPLACE-WITH-EVIDENCE-D1-DATABASE-ID",
+  "auditPolicyApproved": false,
+  "auditPurpose": "authentication-and-classroom-security",
+  "auditAuthorizedViewers": "authorized-platform-security-operators",
+  "auditRetentionDays": null,
+  "auditDeletionEnforcement": "REPLACE-WITH-APPROVED-REQUIREMENT"
+}

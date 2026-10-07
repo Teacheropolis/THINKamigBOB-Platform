@@ -139,6 +139,20 @@ export function createLessonTimer({ storage, now = () => Date.now() } = {}) {
       if (current.status !== LESSON_TIMER_STATES.READY || current.remainingSeconds <= 0) return current;
       return persist({ ...current, status: LESSON_TIMER_STATES.RUNNING, endsAt: now() + current.remainingSeconds * 1000 });
     },
+    startScheduled(durationMinutes, remainingSeconds) {
+      const duration = Number(durationMinutes);
+      const remaining = Number(remainingSeconds);
+      if (!Number.isInteger(duration) || duration < MIN_LESSON_MINUTES || duration > MAX_LESSON_MINUTES ||
+          !Number.isInteger(remaining) || remaining <= 0 || remaining > duration * 60) return { ok: false, state: read() };
+      const state = persist({
+        version: 1,
+        status: LESSON_TIMER_STATES.RUNNING,
+        durationSeconds: duration * 60,
+        remainingSeconds: remaining,
+        endsAt: now() + remaining * 1000,
+      });
+      return { ok: true, state };
+    },
     pause() {
       const current = read();
       if (current.status !== LESSON_TIMER_STATES.RUNNING) return current;

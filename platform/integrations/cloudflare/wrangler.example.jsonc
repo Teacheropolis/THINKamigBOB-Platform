@@ -1,0 +1,31 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "thinkamigbob-evidence-api",
+  "main": "./evidence-worker.mjs",
+  "compatibility_date": "2026-09-27",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "d1_databases": [
+    {
+      "binding": "EVIDENCE_DB",
+      "database_name": "thinkamigbob-evidence",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "services": [
+    {
+      "binding": "PLATFORM_AUTH",
+      "service": "REPLACE-WITH-PLATFORM-AUTH-WORKER"
+    }
+  ],
+  "vars": {
+    "PRODUCTION_ENABLED": "false",
+    "PLATFORM_ORIGIN": "https://REPLACE-WITH-PUBLISHED-PLATFORM.example",
+    "DASHBOARD_URL": "https://REPLACE-WITH-PUBLISHED-PLATFORM.example/platform/index.html#/teacher/dashboard",
+    "GOOGLE_OAUTH_CLIENT_ID": "REPLACE-WITH-PUBLIC-OAUTH-CLIENT-ID",
+    "GOOGLE_OAUTH_REDIRECT_URI": "https://REPLACE-WITH-PUBLISHED-PLATFORM.example/api/evidence/google/v1/connect/callback"
+  }
+}

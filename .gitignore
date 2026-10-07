@@ -16,3 +16,11 @@ Unverified Updates/
 
 # Zip files
 *.zip
+
+# Local Cloudflare Worker secrets
+platform/integrations/cloudflare/.dev.vars
+platform/integrations/cloudflare/.dev.vars.*
+
+# Local production activation values (keep the non-secret example only)
+platform/integrations/cloudflare/production-activation.json
+platform/integrations/cloudflare/.generated/

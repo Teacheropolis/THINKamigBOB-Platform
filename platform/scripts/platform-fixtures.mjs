@@ -21,8 +21,11 @@ const classes = Object.freeze([
     code: "STEM-101",
     displayName: "Preview STEM Class",
     periodLabel: "Period 2",
+    grade: 5,
     teacherId: "teacher-preview-1",
   }),
+  Object.freeze({ id: "class-preview-2", code: "STEM-202", displayName: "Engineering Lab", periodLabel: "Period 4", grade: 5, teacherId: "teacher-preview-1" }),
+  Object.freeze({ id: "class-preview-3", code: "STEM-303", displayName: "Innovation Studio", periodLabel: "Period 6", grade: 5, teacherId: "teacher-preview-1" }),
 ]);
 
 const students = Object.freeze([
@@ -63,6 +66,10 @@ export function getClassById(classId) {
 
 export function getClassForTeacher(teacherId) {
   return classes.find((classRecord) => classRecord.teacherId === teacherId) ?? null;
+}
+
+export function getClassesForTeacher(teacherId) {
+  return classes.filter((classRecord) => classRecord.teacherId === teacherId);
 }
 
 export function getTeacherById(teacherId) {

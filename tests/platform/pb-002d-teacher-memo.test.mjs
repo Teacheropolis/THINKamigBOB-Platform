@@ -4,7 +4,10 @@ import { readFileSync } from "node:fs";
 
 import {
   createTeacherMemoStore,
+  TEACHER_MEMO_COLORS,
   TEACHER_MEMO_MAX_CHARACTERS,
+  TEACHER_MEMO_SIZES,
+  TEACHER_MEMO_STYLES,
   TEACHER_MEMO_SESSION_KEY,
 } from "../../platform/scripts/teacher-memo.mjs";
 
@@ -12,6 +15,7 @@ const appSource = readFileSync(
   new URL("../../platform/scripts/platform-app.mjs", import.meta.url), "utf8");
 const cssSource = readFileSync(
   new URL("../../platform/styles/platform.css", import.meta.url), "utf8");
+const EMPTY_MEMO = { version: 3, text: "", color: "white", size: "extra-large", style: "bold", segments: [], image: "" };
 
 function createMemoryStorage() {
   const data = new Map();
@@ -24,7 +28,7 @@ function createMemoryStorage() {
 
 test("memo starts empty and stores one bounded plain-text value", () => {
   const memo = createTeacherMemoStore({ storage: createMemoryStorage() });
-  assert.deepEqual(memo.read(), { version: 1, text: "" });
+  assert.deepEqual(memo.read(), EMPTY_MEMO);
   assert.equal(TEACHER_MEMO_MAX_CHARACTERS, 240);
   const saved = memo.save("  Bring your design notebook.  ");
   assert.equal(saved.ok, true);
@@ -55,8 +59,8 @@ test("update replaces the single memo and clear is stable", () => {
   memo.save("First message");
   memo.save("Updated message");
   assert.equal(memo.read().text, "Updated message");
-  assert.deepEqual(memo.clear(), { version: 1, text: "" });
-  assert.deepEqual(memo.clear(), { version: 1, text: "" });
+  assert.deepEqual(memo.clear(), EMPTY_MEMO);
+  assert.deepEqual(memo.clear(), EMPTY_MEMO);
   assert.equal(storage.getItem(TEACHER_MEMO_SESSION_KEY), null);
 });
 
@@ -72,26 +76,53 @@ test("malformed, incompatible, non-string, and oversized data fail closed", () =
   const storage = createMemoryStorage();
   for (const value of [
     "not json",
-    JSON.stringify({ version: 2, text: "Message" }),
+    JSON.stringify({ version: 4, text: "Message" }),
     JSON.stringify({ version: 1, text: 42 }),
     JSON.stringify({ version: 1, text: "x".repeat(241) }),
   ]) {
     storage.setItem(TEACHER_MEMO_SESSION_KEY, value);
-    assert.deepEqual(createTeacherMemoStore({ storage }).read(),
-      { version: 1, text: "" });
+    assert.deepEqual(createTeacherMemoStore({ storage }).read(), EMPTY_MEMO);
   }
+});
+
+test("memo stores only approved full-screen formatting", () => {
+  const memo = createTeacherMemoStore({ storage: createMemoryStorage() });
+  assert.deepEqual(TEACHER_MEMO_COLORS, ["white", "yellow", "light-blue", "green", "pink"]);
+  assert.deepEqual(TEACHER_MEMO_SIZES, ["large", "extra-large", "huge"]);
+  assert.deepEqual(TEACHER_MEMO_STYLES, ["regular", "bold", "underline", "bold-underline"]);
+  const saved = memo.save("Cleanup in five minutes", { color: "yellow", size: "huge", style: "bold-underline" });
+  assert.equal(saved.state.version, 3);
+  assert.deepEqual(saved.state.segments, [{ text: "Cleanup in five minutes", color: "yellow", size: "huge", style: "bold-underline" }]);
+  assert.deepEqual(memo.save("Safe defaults", { color: "javascript:red", size: "giant", style: "blink" }).state.segments,
+    [{ text: "Safe defaults", color: "white", size: "extra-large", style: "bold" }]);
 });
 
 test("teacher editor and Student Display follow the approved separation", () => {
   for (const text of [
     "Class-wide message or agenda", "Save Memo", "Clear Memo",
-    "Current class message",
+    "Current class message", "Apply to Selected Text", "Selected text color", "Selected text size", "Selected text style", "Optional image",
   ]) assert.ok(appSource.includes(text), `expected ${text}`);
-  assert.match(appSource, /maxlength="\$\{TEACHER_MEMO_MAX_CHARACTERS\}"/);
+  assert.match(appSource, /contenteditable="true"/);
+  assert.match(appSource, /memoFormatRevision \+= 1/);
+  assert.match(appSource, /wrapper\.dataset\.memoPriority/);
+  assert.match(appSource, /priority >= winningPriority/);
+  assert.match(appSource, /document\.addEventListener\("selectionchange"/);
+  assert.match(appSource, /memoSelectionRange\?\.cloneRange\(\)/);
+  assert.match(appSource, /querySelectorAll\("\[data-student-memo\]"\)/);
+  assert.doesNotMatch(appSource, /querySelectorAll\("\[data-memo-color\]"\)/);
+  assert.match(appSource, /root\.addEventListener\("beforeinput"/);
+  assert.match(appSource, /event\.inputType !== "insertText"/);
+  assert.match(appSource, /New typing will use/);
   assert.match(appSource,
     /session\.signOut\(\);\s*teacherMemo\.clear\(\);\s*todaysMission\.clear\(\);\s*studentDisplayMode\.clear\(\);\s*navigate\(ROUTES\.WELCOME/);
   assert.match(cssSource,
     /\.platform-teacher-memo-actions button \{ min-height: 2\.75rem/);
+  assert.match(cssSource, /data-memo-size="huge"/);
+  assert.match(cssSource, /data-memo-style="bold-underline"/);
+  assert.match(cssSource, /\.platform-teacher-memo-toolbar \{ display: grid; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\)/);
+  assert.match(cssSource, /\.platform-teacher-memo-toolbar button \{ grid-column: 1 \/ -1; width: 100%; \}/);
+  assert.match(cssSource, /\.platform-teacher-memo-editor \{[^}]*background: var\(--platform-navy\)/);
+  assert.match(cssSource, /\.platform-teacher-memo-saved \{[^}]*background: var\(--platform-navy\)/);
 
   const displayStart = appSource.indexOf(
     '<section id="platform-student-timer-display"');
@@ -113,7 +144,7 @@ test("memo save state and Student Display access are clear and persistent", () =
   const memoCardEnd = appSource.indexOf("</section>", memoCardStart);
   const memoCardSource = appSource.slice(memoCardStart, memoCardEnd);
   assert.doesNotMatch(memoCardSource, /data-action="open-timer-display"|data-presentation-mode/);
-  assert.match(appSource, /platform-student-display-controls/);
+  assert.match(appSource, /platform-timer-display-actions/);
   assert.match(cssSource,
     /\.platform-teacher-memo-status\[data-state="saved"\]/);
   assert.match(cssSource,

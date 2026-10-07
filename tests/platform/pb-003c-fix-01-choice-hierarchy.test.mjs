@@ -28,7 +28,7 @@ test("approved student-facing empty-state language is exact", () => {
     "Available mission choices will appear in Mission Choice.",
     "Your recent engineering work will appear here when it is available.",
     "Your earlier engineering work will appear here when it is available.",
-    "Evidence cannot be checked right now.",
+    "Capture evidence while the work is fresh.",
   ]) assert.ok(stemWorkSource.includes(message), `expected ${message}`);
 });
 

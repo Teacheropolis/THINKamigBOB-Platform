@@ -40,7 +40,7 @@ test("FIX-01 empty-state meanings remain unchanged", () => {
     "Available mission choices will appear in Mission Choice.",
     "Your recent engineering work will appear here when it is available.",
     "Your earlier engineering work will appear here when it is available.",
-    "Evidence cannot be checked right now.",
+    "Capture evidence while the work is fresh.",
   ]) assert.ok(stemWorkSource.includes(message), `expected ${message}`);
 });
 
@@ -63,4 +63,3 @@ test("visual refinement adds no controls, data, routes, storage, or integrations
   assert.doesNotMatch(stemWorkSource, /data-project|projectId|sessionStorage|localStorage|fetch\s*\(/);
   assert.doesNotMatch(stemWorkSource, /platform-project-card["\s]/);
 });
-

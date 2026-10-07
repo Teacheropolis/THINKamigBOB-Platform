@@ -48,17 +48,16 @@ test("Student Home presents the approved sections in logical order", () => {
 
 test("unowned information uses only the approved honest states", () => {
   for (const message of [
-    "No current goal is available yet.",
     "No verified Win is available yet.",
     "No Challenge is available yet.",
-    "Check unavailable.",
   ]) assert.ok(studentHomeSource.includes(message), `expected ${message}`);
 
   assert.match(studentHomeSource, /No mission is ready to continue yet\./);
-  assert.match(studentHomeSource, /No new missions are available right now\./);
+  assert.match(studentHomeSource, /data-pb002j-current-goal/);
+  assert.match(studentHomeSource, /data-pb002j-available-missions/);
 });
 
-test("Choose Your Path remains an honest noninteractive foundation", () => {
+test("Choose Your Path preserves Continue and Side Paths while reserving the approved projection mount", () => {
   for (const section of ["Continue", "Available Missions", "Side Paths"]) {
     assert.ok(studentHomeSource.includes(section), `expected ${section}`);
   }
@@ -68,14 +67,15 @@ test("Choose Your Path remains an honest noninteractive foundation", () => {
     '<section class="platform-stem-work"', missionChoiceStart);
   const missionChoiceSource = studentHomeSource.slice(missionChoiceStart, missionChoiceEnd);
   assert.doesNotMatch(studentHomeSource, /platform-student-path-card/);
-  assert.doesNotMatch(missionChoiceSource, /href=|navigate\(|data-action=|data-form=/);
+  assert.doesNotMatch(missionChoiceSource, /navigate\(|data-action=|data-form=/);
+  assert.match(missionChoiceSource, /data-pb002j-available-missions/);
 });
 
 test("BOB is visible guidance only and adds no speech or conversational behavior", () => {
   assert.match(studentHomeSource, /Welcome, \$\{studentName\}/);
   assert.doesNotMatch(studentHomeSource,
     /Read Aloud|Stop Reading|speechSynthesis|SpeechSynthesis|microphone|chatbot|prompt|audio/i);
-  assert.doesNotMatch(`${appSource}\n${fixtureSource}`,
+  assert.doesNotMatch(`${studentHomeSource}\n${fixtureSource}`,
     /pb003a.*session|student-home.*sessionStorage|localStorage|fetch\s*\(|WebSocket/i);
 });
 

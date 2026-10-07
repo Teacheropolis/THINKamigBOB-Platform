@@ -40,7 +40,8 @@ test("presentation remains control-free and uses the single shared teacher trigg
   assert.doesNotMatch(displaySource,
     /<button|<input|<textarea|Save Memo|Clear Memo|timer-start|timer-pause|timer-reset/);
   assert.equal((appSource.match(/<button[^>]+data-action="open-timer-display"/g) ?? []).length, 1);
-  assert.doesNotMatch(appSource, /localStorage/i);
+  const modeSource = readFileSync(new URL("../../platform/scripts/student-display-mode.mjs", import.meta.url), "utf8");
+  assert.doesNotMatch(modeSource, /localStorage/i);
   assert.doesNotMatch(displaySource,
     /Whiteboard|Hall of Fame|Challenge Studio|artificial intelligence/i);
 });

@@ -4,6 +4,7 @@ import {
   findClassByCode,
   getClassById,
   getClassForTeacher,
+  getClassesForTeacher,
   getDevelopmentIdentifier,
   getRosterForClass,
   getStudentById,
@@ -19,9 +20,13 @@ import {
   MAX_LESSON_MINUTES,
   MIN_LESSON_MINUTES,
 } from "./lesson-timer.mjs";
+import { createBrowserClassTimerSchedule, evaluateTimerPhases, recommendedTimerPhases, TIMER_SOUND_OPTIONS, WEEKDAYS } from "./class-timer-schedule.mjs";
 import {
   createTeacherMemoStore,
+  TEACHER_MEMO_COLORS,
   TEACHER_MEMO_MAX_CHARACTERS,
+  TEACHER_MEMO_SIZES,
+  TEACHER_MEMO_STYLES,
 } from "./teacher-memo.mjs";
 import {
   createStudentDisplayModeStore,
@@ -33,13 +38,44 @@ import {
   TODAYS_MISSION_FOCUS_MAX_CHARACTERS,
   TODAYS_MISSION_TITLE_MAX_CHARACTERS,
 } from "./todays-mission.mjs";
+import { createPB002JClasswideClient } from "./pb-002j-classwide-client.mjs";
+import { createPB002JClasswideController } from "./pb-002j-classwide-controller.mjs";
+import { createEvidenceFoundation, EVIDENCE_TYPES, PILOT_ACTIVITY, PILOT_TEACHER_EVIDENCE } from "./evidence-foundation.mjs";
+import { createEvidenceDriveSetup, DRIVE_SETUP_STATUS, PILOT_DRIVE_DESTINATION } from "./evidence-drive-setup.mjs";
+import { createEvidenceUploadClient } from "./evidence-upload-client.mjs";
+import { createEvidenceGovernanceDraft, EVIDENCE_GOVERNANCE_OPTIONS, EVIDENCE_GOVERNANCE_STATUS } from "./evidence-governance.mjs";
+import { createEvidenceGovernanceSimulation, GOVERNANCE_SIMULATION_STATUS } from "./evidence-governance-simulation.mjs";
+import { createGoogleConnectionPreview, GOOGLE_CONNECTION_PREVIEW_STATUS, GOOGLE_DRIVE_FILE_SCOPE } from "./evidence-google-connection-preview.mjs";
+import { assessGoogleOAuthReadiness, GOOGLE_OAUTH_ENDPOINTS } from "./evidence-google-oauth-readiness.mjs";
+import { createProductionIdentityClient, parseStudentLabels, productionIdentityConfiguration } from "./platform-production-identity.mjs";
+import { createBrowserMessageLibrary } from "./message-library.mjs";
+import { createBrowserClassSetupProfiles } from "./class-setup-profiles.mjs";
+import { CLASS_RESOURCE_STORAGE_KEY, createClassResourceSharing, RESOURCE_RELEASES, RESOURCE_TYPES } from "./class-resource-sharing.mjs?v=preview-20261004-7";
+import {
+  createWeeklyReflections,
+  REFLECTION_ACTIVITY_RATING_OPTIONS,
+  REFLECTION_BADGE_OPTIONS,
+  REFLECTION_HELP_OPTIONS,
+  REFLECTION_HELP_OTHER_OPTIONS,
+  REFLECTION_IMPROVEMENT_OPTIONS,
+  REFLECTION_PROGRESS_OPTIONS,
+  reflectionActivityWindowStart,
+  WEEKLY_REFLECTION_STORAGE_KEY,
+} from "./weekly-reflections.mjs";
+import { matchAutomaticVisual } from "./automatic-visuals.mjs";
+import { createVoiceMeterStore, rmsToVoiceLevel, voiceMeterState, VOICE_METER_LEVELS } from "./voice-meter.mjs?v=preview-20261004-1";
+import { createWhiteboardObject, duplicateWhiteboardObject, hitTestObjects, moveWhiteboardObject, objectBounds, resizeWhiteboardObject } from "./whiteboard-objects.mjs";
 
 export const ROUTES = Object.freeze({
   WELCOME: "/welcome",
+  PREVIEW_TEACHER: "/preview/teacher",
+  PREVIEW_CLASSROOM_DEMO: "/preview/classroom-demo",
+  PREVIEW_STUDENT: "/preview/student",
   TEACHER_LOGIN: "/teacher/login",
   TEACHER_CREATE: "/teacher/create",
   TEACHER_RECOVERY: "/teacher/recovery",
   TEACHER_DASHBOARD: "/teacher/dashboard",
+  TEACHER_CLASSES: "/teacher/classes",
   STUDENT_ENTRY: "/student/entry",
   STUDENT_ROSTER: "/student/roster",
   STUDENT_IDENTIFIER: "/student/identifier",
@@ -47,11 +83,45 @@ export const ROUTES = Object.freeze({
 });
 
 const root = document.querySelector("#platform-root");
+const BIRD_CHIRPING_SOUND_URL = new URL("./assets/sounds/bird-chirping-loswin23.mp3", window.location.href).href;
+const GUITAR_LOOP_SOUND_URL = new URL("./assets/sounds/guitar-loop-time-ending-idoberg.mp3", window.location.href).href;
+const CHOIR_TRANSITION_SOUND_URL = new URL("./assets/sounds/choir-heavenly-transition-floraphonic.mp3", window.location.href).href;
+const DRUM_LOOP_SOUND_URL = new URL("./assets/sounds/drum-loop-kamhunt.mp3", window.location.href).href;
+const TRAP_LOOP_DRUMS_SOUND_URL = new URL("./assets/sounds/trap-loop-drums-kamhunt.mp3", window.location.href).href;
+const SOFT_PIANO_SOUND_URL = new URL("./assets/sounds/soft-piano-royalty-free-music.mp3", window.location.href).href;
+const CARDINAL_SOUND_URL = new URL("./assets/sounds/cardinal-freesound-community.mp3", window.location.href).href;
 const session = createSessionStore(window.sessionStorage);
 const lessonTimer = createLessonTimer({ storage: window.sessionStorage });
+const classTimerSchedule = createBrowserClassTimerSchedule(window);
 const teacherMemo = createTeacherMemoStore({ storage: window.sessionStorage });
+const messageLibrary = createBrowserMessageLibrary(window);
+const pilotTeacherClasses = getClassesForTeacher("teacher-preview-1");
+const classSetupProfiles = createBrowserClassSetupProfiles(window, pilotTeacherClasses.map((item) => item.id));
+const classResourceSharing = createClassResourceSharing({ storage: window.localStorage });
+const weeklyReflections = createWeeklyReflections({ storage: window.localStorage });
+const voiceMeter = createVoiceMeterStore({ storage: window.sessionStorage });
 const todaysMission = createTodaysMissionStore({ storage: window.sessionStorage });
 const studentDisplayMode = createStudentDisplayModeStore({ storage: window.sessionStorage });
+const pb002jClasswide = createPB002JClasswideController({ client: createPB002JClasswideClient({ windowRef: window }) });
+const evidenceFoundation = createEvidenceFoundation({ storage: window.sessionStorage });
+const evidenceDriveSetup = createEvidenceDriveSetup({ storage: window.sessionStorage });
+const evidenceUploadClient = createEvidenceUploadClient({ brokerOrigin: window.location.port === "8784" ? window.location.origin : "http://127.0.0.1:8784" });
+const evidenceGovernance = createEvidenceGovernanceDraft({ storage: window.sessionStorage });
+const evidenceGovernanceSimulation = createEvidenceGovernanceSimulation({ storage: window.sessionStorage });
+const googleConnectionPreview = createGoogleConnectionPreview({ storage: window.sessionStorage });
+const productionIdentityConfig = productionIdentityConfiguration();
+const productionIdentity = createProductionIdentityClient({ enabled: productionIdentityConfig.enabled, origin: window.location.origin });
+let oneTimeClassroomCodes = null;
+let evidenceDraft = null;
+let evidenceNotice = "";
+let teacherEvidenceFilter = "All";
+let teacherEvidenceSelection = PILOT_TEACHER_EVIDENCE[0]?.id ?? "";
+let evidenceTeacherRuntimeKey = "";
+let teacherLiveEvidence = [];
+let teacherLiveEvidenceSelection = "";
+let teacherLiveEvidencePreviewUrl = "";
+let teacherLiveEvidenceNotice = "No live fictional submissions loaded yet.";
+let teacherLiveEvidenceFilters = { studentId: "All", activity: "All", evidenceType: "All" };
 const MISSIONS_FIRST_REMINDER = "Missions First! Read your directions before opening Builder or Workshop.";
 const MISSION_FOCUS_OPTIONS = Object.freeze([
   "Learn what today's mission is asking us to do.",
@@ -62,9 +132,77 @@ const MISSION_FOCUS_OPTIONS = Object.freeze([
 ]);
 const CUSTOM_MISSION_FOCUS = "custom";
 const LESSON_TIMER_DISPLAY_SESSION_KEY = "thinkamigbob.pb002b.lesson-timer-display.v1";
+const CLASSROOM_DEMO_SESSION_KEY = "thinkamigbob.classroom-demo.v1";
+const PRESENTATION_TIMER_VIEW_KEY = "thinkamigbob.presentation-timer-view.v1";
+const STUDENT_DISPLAY_VOICE_METER_SESSION_KEY = "thinkamigbob.student-display.voice-meter.v1";
+const WHITEBOARD_SESSION_KEY = "thinkamigbob.classroom-whiteboard.v1";
+const WHITEBOARD_OBJECT_SESSION_KEY = "thinkamigbob.classroom-whiteboard-objects.v1";
+const WHITEBOARD_VIEW_SESSION_KEY = "thinkamigbob.classroom-whiteboard-view.v1";
+const WHITEBOARD_LIBRARY_KEY = "thinkamigbob.classroom-whiteboard-library.v1";
+const WHITEBOARD_BOB_MEASUREMENT_COACH_KEY = "thinkamigbob.whiteboard-bob-measurement-coach.v1";
+const VOICE_METER_HISTORY_KEY = "thinkamigbob.voice-meter-history.v1";
+const VOICE_METER_ACTIVITY_KEY = "thinkamigbob.voice-meter-activity.v1";
+const VOICE_METER_STAR_GOAL_KEY = "thinkamigbob.voice-meter-star-goal.v1";
+const VOICE_METER_WEEKLY_STAR_GOAL_KEY = "thinkamigbob.voice-meter-weekly-star-goal.v1";
+const VOICE_METER_DISPLAY_MODE_KEY = "thinkamigbob.voice-meter-display-mode.v1";
+const VOICE_METER_ACTIVITIES = Object.freeze([
+  { key: "teacher-led", label: "Teacher-led instruction", icon: "👩‍🏫", target: 58 },
+  { key: "independent", label: "Independent seat work", icon: "🤫", target: 22 },
+  { key: "collaborative", label: "Collaborative activity", icon: "👥", target: 68 },
+]);
+const WHITEBOARD_EMOJI_STAMPS = Object.freeze([
+  { category: "Faces and feelings", emojis: [["😀", "Grinning"], ["😃", "Happy"], ["😊", "Smiling"], ["😂", "Laughing"], ["🤩", "Excited"], ["🥳", "Celebrating"], ["😍", "Love it"], ["🤔", "Thinking"], ["🧐", "Investigating"], ["😮", "Surprised"], ["😎", "Confident"], ["😅", "Phew"], ["😕", "Confused"], ["😢", "Sad"], ["😴", "Tired"], ["🤯", "Mind blown"]] },
+  { category: "Hands and people", emojis: [["👍", "Thumbs up"], ["👎", "Thumbs down"], ["👏", "Applause"], ["🙌", "Celebrate"], ["✋", "Raised hand"], ["👋", "Wave"], ["🤝", "Teamwork"], ["💪", "Strong"], ["🙏", "Thank you"], ["👀", "Look"], ["🧠", "Brain"], ["🗣️", "Speaking"], ["👩‍🔬", "Scientist"], ["👨‍🔬", "Scientist"], ["👩‍🏭", "Builder"], ["👨‍🏭", "Builder"]] },
+  { category: "STEM and school", emojis: [["🔬", "Microscope"], ["🔭", "Telescope"], ["🧪", "Test tube"], ["🧫", "Petri dish"], ["⚗️", "Lab flask"], ["🧬", "DNA"], ["🧲", "Magnet"], ["⚙️", "Gear"], ["🛠️", "Tools"], ["🔧", "Wrench"], ["🔩", "Bolt"], ["📐", "Triangle ruler"], ["📏", "Ruler"], ["✏️", "Pencil"], ["📚", "Books"], ["💡", "Idea"], ["🤖", "Robot"], ["🚀", "Rocket"], ["🛰️", "Satellite"], ["💻", "Computer"]] },
+  { category: "Nature and weather", emojis: [["☀️", "Sun"], ["🌤️", "Partly cloudy"], ["🌧️", "Rain"], ["⛈️", "Storm"], ["❄️", "Snow"], ["🌈", "Rainbow"], ["🔥", "Fire"], ["💧", "Water"], ["🌊", "Wave"], ["🌱", "Seedling"], ["🌳", "Tree"], ["🌻", "Sunflower"], ["🌎", "Earth"], ["🌙", "Moon"], ["⭐", "Star"]] },
+  { category: "Animals", emojis: [["🐶", "Dog"], ["🐱", "Cat"], ["🐭", "Mouse"], ["🐰", "Rabbit"], ["🦊", "Fox"], ["🐻", "Bear"], ["🐼", "Panda"], ["🦁", "Lion"], ["🐸", "Frog"], ["🐵", "Monkey"], ["🐔", "Chicken"], ["🐧", "Penguin"], ["🦉", "Owl"], ["🦋", "Butterfly"], ["🐝", "Bee"], ["🐢", "Turtle"], ["🐙", "Octopus"], ["🐠", "Fish"]] },
+  { category: "Food and objects", emojis: [["🍎", "Apple"], ["🍕", "Pizza"], ["🍪", "Cookie"], ["🧁", "Cupcake"], ["🥤", "Drink"], ["⚽", "Soccer ball"], ["🏀", "Basketball"], ["🎨", "Art"], ["🎵", "Music"], ["🎲", "Game die"], ["🧩", "Puzzle"], ["🎯", "Target"], ["🏆", "Trophy"], ["🎁", "Gift"], ["⏰", "Clock"], ["🔔", "Bell"]] },
+  { category: "Marks and symbols", emojis: [["✅", "Complete"], ["❌", "Incorrect"], ["⭐", "Star"], ["❤️", "Heart"], ["💛", "Yellow heart"], ["💚", "Green heart"], ["💙", "Blue heart"], ["💜", "Purple heart"], ["❗", "Important"], ["❓", "Question"], ["➡️", "Right arrow"], ["⬅️", "Left arrow"], ["⬆️", "Up arrow"], ["⬇️", "Down arrow"], ["➕", "Plus"], ["➖", "Minus"], ["💯", "One hundred"], ["✨", "Sparkles"]] },
+]);
 const knownRoutes = new Set(Object.values(ROUTES));
 let lessonTimerPresentationInterval = null;
 let lessonTimerDisplayTrigger = null;
+let stopwatchSeconds = 0;
+let stopwatchInterval = null;
+let namePickerRemovedStudentIds = new Set();
+let namePickerRotation = 0;
+let smartboardDrag = null;
+let lastTimerPhaseKey = null;
+let lastTimerStatus = null;
+let studentTimerPopout = null;
+let classroomPresentationWindow = null;
+const smartboardToolPopouts = new Map();
+let memoFormatRevision = Date.now();
+let memoSelectionRange = null;
+let memoTypingFormat = null;
+let pendingScrollTarget = "";
+let pendingOpenClassResourceEditor = false;
+let reflectionRecognition = null;
+let voiceMeterAudioContext = null;
+let voiceMeterStream = null;
+let voiceMeterAnimationFrame = null;
+let voiceMeterDisplayTrigger = null;
+let voiceMeterUsage = null;
+let teacherComparisonClassId = "";
+let whiteboardDisplayTrigger = null;
+let whiteboardUndoStack = [];
+let whiteboardRedoStack = [];
+let whiteboardDrawing = null;
+let whiteboardObjects = [];
+let whiteboardSelectedObjectId = "";
+let whiteboardClipboard = null;
+let whiteboardGridUnit = "plain";
+let whiteboardRulerUnit = "none";
+let whiteboardZoom = 100;
+let whiteboardRuler = { x: 40, y: 420, length: 600, angle: 0, sides: "both" };
+let whiteboardPendingDimension = null;
+let whiteboardDrawingTitle = "Workshop Drawing";
+let whiteboardControlsDock = "top";
+let whiteboardControlsHidden = false;
+let whiteboardLassoPoints = [];
+let whiteboardLassoBounds = null;
+let whiteboardSelectionDownload = "";
+let whiteboardContextPoint = null;
 
 function lessonTimerDisplayIsStoredOpen() {
   try {
@@ -72,6 +210,52 @@ function lessonTimerDisplayIsStoredOpen() {
   } catch {
     return false;
   }
+}
+
+function classroomDemoModeIsEnabled() {
+  try { return window.sessionStorage.getItem(CLASSROOM_DEMO_SESSION_KEY) === "enabled"; }
+  catch { return false; }
+}
+
+function setClassroomDemoMode(enabled) {
+  try {
+    if (enabled) window.sessionStorage.setItem(CLASSROOM_DEMO_SESSION_KEY, "enabled");
+    else window.sessionStorage.removeItem(CLASSROOM_DEMO_SESSION_KEY);
+  } catch {
+    // Demo content can still render for the current navigation.
+  }
+}
+
+function seedClassroomDemo() {
+  const classId = "class-preview-1";
+  const now = Date.now();
+  classSetupProfiles.select(classId);
+  todaysMission.save({
+    title: "Build and Test a Weight-Bearing Bridge",
+    focus: "Use evidence from testing to strengthen one part of your bridge design.",
+    builder: TODAYS_MISSION_AVAILABILITY.AVAILABLE,
+    workshop: TODAYS_MISSION_AVAILABILITY.AVAILABLE,
+  });
+  teacherMemo.save("Welcome engineers! Review your team plan, test carefully, and record one improvement before cleanup.", { color: "light-blue", size: "extra-large", style: "bold" });
+  classResourceSharing.replaceActive(classId, [
+    { id: "demo-mission-bridge", type: "Mission Activity", title: "Bridge Strength Challenge", url: "https://example.test/bridge-strength", release: "class-start" },
+    { id: "demo-builder", type: "Builder", title: "Digital Bridge Builder", url: "https://example.test/bridge-builder", release: "green" },
+    { id: "demo-side-path", type: "Side Path", title: "Why Triangles Make Structures Strong", url: "https://example.test/triangle-structures", release: "manual" },
+    { id: "demo-reflection", type: "Webpage", title: "Bridge Test Reflection", url: "https://example.test/bridge-reflection", release: "red" },
+  ]);
+  const schedule = classTimerSchedule.read();
+  classTimerSchedule.save({ ...schedule, enabled: false, durationMinutes: 52, pomodoroEnabled: true, phases: recommendedTimerPhases(52) });
+  lessonTimer.startScheduled(52, 31 * 60 + 24);
+  classSetupProfiles.save(classId, { schedule: classTimerSchedule.read(), memo: teacherMemo.read(), mission: todaysMission.read(), readiness: { mission: "new", timer: "saved", safeguards: "saved" } });
+  const whiteboardSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540"><rect width="100%" height="100%" fill="#f9fcfd"/><path d="M0 54H960M0 108H960M0 162H960M0 216H960M0 270H960M0 324H960M0 378H960M0 432H960M0 486H960M96 0V540M192 0V540M288 0V540M384 0V540M480 0V540M576 0V540M672 0V540M768 0V540M864 0V540" stroke="#d8e7ec"/><text x="40" y="55" font-family="Arial" font-size="30" font-weight="700" fill="#123346">Bridge Test: Team Design Review</text><path d="M160 390L300 230L440 390L580 230L720 390M160 390H720" fill="none" stroke="#16698e" stroke-width="14" stroke-linejoin="round"/><path d="M135 410H745" stroke="#2d7d5b" stroke-width="12"/><text x="235" y="465" font-family="Arial" font-size="24" fill="#2d7d5b">Add triangle braces before the second test</text></svg>`;
+  const boardImage = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(whiteboardSvg)}`;
+  writeWhiteboardLibrary([{ id: "demo-whiteboard", title: "Bridge Test Review", classId, scheduleType: "none", day: "", date: "", studentDisplay: true, gridUnit: "cm", rulerUnit: "metric", image: boardImage, displayImage: boardImage, objects: [], savedAt: now - 18 * 60 * 1000 }, ...readWhiteboardLibrary().filter((board) => board.id !== "demo-whiteboard")]);
+  const voiceHistory = [
+    { classId, usedAt: now - 24 * 60 * 60 * 1000, activityMode: "collaborative", durationSeconds: 2380, detectedSeconds: { "teacher-led": 720, independent: 510, collaborative: 1150 }, goalSeconds: 2380, loudSeconds: 265, average: 43, peak: 76 },
+    { classId, usedAt: now - 3 * 24 * 60 * 60 * 1000, activityMode: "teacher-led", durationSeconds: 2250, detectedSeconds: { "teacher-led": 1080, independent: 390, collaborative: 780 }, goalSeconds: 2250, loudSeconds: 510, average: 51, peak: 84 },
+    { classId: "class-preview-2", usedAt: now - 24 * 60 * 60 * 1000, activityMode: "collaborative", durationSeconds: 2310, detectedSeconds: { "teacher-led": 600, independent: 330, collaborative: 1380 }, goalSeconds: 2310, loudSeconds: 620, average: 58, peak: 89 },
+  ];
+  try { window.localStorage.setItem(VOICE_METER_HISTORY_KEY, JSON.stringify(voiceHistory)); } catch {}
 }
 
 function storeLessonTimerDisplayOpen(isOpen) {
@@ -84,6 +268,220 @@ function storeLessonTimerDisplayOpen(isOpen) {
   } catch {
     // The current page can still open and close the display without persistence.
   }
+}
+
+function studentDisplayVoiceMeterIsEnabled() {
+  try {
+    return window.sessionStorage.getItem(STUDENT_DISPLAY_VOICE_METER_SESSION_KEY) === "enabled";
+  } catch {
+    return false;
+  }
+}
+
+function storeStudentDisplayVoiceMeterEnabled(isEnabled) {
+  try {
+    if (isEnabled) window.sessionStorage.setItem(STUDENT_DISPLAY_VOICE_METER_SESSION_KEY, "enabled");
+    else window.sessionStorage.removeItem(STUDENT_DISPLAY_VOICE_METER_SESSION_KEY);
+  } catch {
+    // The option still works for the current rendered page without persistence.
+  }
+}
+
+function readWhiteboardLibrary() {
+  try {
+    const parsed = JSON.parse(window.localStorage.getItem(WHITEBOARD_LIBRARY_KEY) ?? "[]");
+    return Array.isArray(parsed) ? parsed.filter((board) => board?.id && board?.title && board?.image).slice(0, 12) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeWhiteboardLibrary(boards) {
+  try { window.localStorage.setItem(WHITEBOARD_LIBRARY_KEY, JSON.stringify(boards.slice(0, 12))); return true; }
+  catch { return false; }
+}
+
+function readVoiceMeterHistory() {
+  try {
+    const value = JSON.parse(window.localStorage.getItem(VOICE_METER_HISTORY_KEY) || "[]");
+    return Array.isArray(value) ? value.slice(0, 100) : [];
+  } catch { return []; }
+}
+
+function readVoiceMeterActivity() {
+  try {
+    const key = window.localStorage.getItem(VOICE_METER_ACTIVITY_KEY);
+    return VOICE_METER_ACTIVITIES.find((item) => item.key === key) ?? VOICE_METER_ACTIVITIES[0];
+  } catch { return VOICE_METER_ACTIVITIES[0]; }
+}
+
+function readVoiceMeterStarGoal() {
+  try { return Math.max(50, Math.min(100, Number(window.localStorage.getItem(VOICE_METER_STAR_GOAL_KEY)) || 80)); }
+  catch { return 80; }
+}
+
+function readVoiceMeterWeeklyStarGoal() {
+  try { return Math.max(1, Math.min(5, Number(window.localStorage.getItem(VOICE_METER_WEEKLY_STAR_GOAL_KEY)) || 3)); }
+  catch { return 3; }
+}
+
+function readVoiceMeterDisplayMode() {
+  try { return window.localStorage.getItem(VOICE_METER_DISPLAY_MODE_KEY) === "prediction" ? "prediction" : "basic"; }
+  catch { return "basic"; }
+}
+
+function predictedLearningType(level) {
+  if (level <= 22) return { icon: "🤫", label: "Independent work pattern" };
+  if (level <= 58) return { icon: "👩‍🏫", label: "Likely one-speaker instruction" };
+  return { icon: "👥", label: "Collaborative sound pattern" };
+}
+
+function soundGoalPercentage(items) {
+  const total = items.reduce((sum, item) => sum + (Number(item.goalSeconds) || Number(item.durationSeconds) || 0), 0);
+  const loud = items.reduce((sum, item) => sum + (Number(item.loudSeconds) || 0), 0);
+  return total ? Math.max(0, Math.min(100, Math.round((total - loud) / total * 100))) : null;
+}
+
+function startOfLocalWeek(value) {
+  const date = new Date(value);
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() - ((date.getDay() + 6) % 7));
+  return date.getTime();
+}
+
+function voiceActivityMinutes(history, classId) {
+  const totals = { "teacher-led": 0, independent: 0, collaborative: 0 };
+  history.filter((item) => item.classId === classId).forEach((item) => {
+    const detected = item.detectedSeconds;
+    if (detected && typeof detected === "object") Object.keys(totals).forEach((key) => { totals[key] += Number(detected[key]) || 0; });
+    else if (item.activityMode && Object.hasOwn(totals, item.activityMode)) totals[item.activityMode] += Number(item.durationSeconds) || 0;
+  });
+  return totals;
+}
+
+function voiceActivitySummary(history, classId, { editable = true } = {}) {
+  const classHistory = history.filter((item) => item.classId === classId);
+  const totals = voiceActivityMinutes(history, classId);
+  const latest = classHistory[0];
+  const starGoal = readVoiceMeterStarGoal();
+  const weeklyStarGoal = readVoiceMeterWeeklyStarGoal();
+  const today = Date.now();
+  const thisWeekStart = startOfLocalWeek(today);
+  const lastWeekStart = thisWeekStart - 7 * 24 * 60 * 60 * 1000;
+  const thisWeek = classHistory.filter((item) => Number(item.usedAt) >= thisWeekStart);
+  const lastWeek = classHistory.filter((item) => Number(item.usedAt) >= lastWeekStart && Number(item.usedAt) < thisWeekStart);
+  const latestDateKey = latest ? new Date(latest.usedAt).toLocaleDateString() : "";
+  const latestDay = latest ? classHistory.filter((item) => new Date(item.usedAt).toLocaleDateString() === latestDateKey) : [];
+  const lastUsedPercentage = soundGoalPercentage(latestDay);
+  const thisWeekPercentage = soundGoalPercentage(thisWeek);
+  const lastWeekPercentage = soundGoalPercentage(lastWeek);
+  const weeklyDifference = thisWeekPercentage != null && lastWeekPercentage != null ? thisWeekPercentage - lastWeekPercentage : null;
+  const days = new Map();
+  thisWeek.forEach((item) => { const key = new Date(item.usedAt).toLocaleDateString(); days.set(key, [...(days.get(key) || []), item]); });
+  const earnedWeekdays = new Set([...days.values()].filter((items) => (soundGoalPercentage(items) ?? 0) >= starGoal).map((items) => (new Date(items[0].usedAt).getDay() + 6) % 7).filter((index) => index < 5));
+  const stars = earnedWeekdays.size;
+  const goalAchieved = lastUsedPercentage != null && lastUsedPercentage >= starGoal;
+  const minutes = (seconds) => seconds ? `${Math.max(1, Math.round(seconds / 60))} min` : "0 min";
+  const resultLabel = lastUsedPercentage >= 90 ? "Excellent sound balance" : goalAchieved ? "Sound goal achieved" : lastUsedPercentage >= 65 ? "Almost there" : "Try adjusting the goal or microphone sensitivity";
+  const comparison = weeklyDifference == null ? "A comparison will appear after both weeks have data." : weeklyDifference >= 0 ? `This week is ${weeklyDifference}% higher than last week 🎉` : `This week is ${Math.abs(weeklyDifference)}% below last week. Let’s try for one more star tomorrow.`;
+  const weekdayStars = ["Mon", "Tue", "Wed", "Thu", "Fri"].map((day, index) => `<span data-earned="${earnedWeekdays.has(index)}"><b>${earnedWeekdays.has(index) ? "★" : "☆"}</b><small>${day}</small></span>`).join("");
+  const activityDetails = `<details class="platform-voice-activity-details"><summary>Activity minutes and sound patterns</summary><div class="platform-voice-history-summary"><div><span>👩‍🏫</span><strong>${minutes(totals["teacher-led"])}</strong><small>Likely teacher-led</small></div><div><span>🤫</span><strong>${minutes(totals.independent)}</strong><small>Independent</small></div><div><span>👥</span><strong>${minutes(totals.collaborative)}</strong><small>Collaborative</small></div></div><p>The meter estimates sound patterns; it does not identify individual speakers.</p></details>`;
+  if (!latest) return `<p>No voice-meter sessions have been saved yet.</p>${activityDetails}`;
+  return `<section class="platform-voice-motivation"><div class="platform-voice-today-result" data-result="${goalAchieved ? "achieved" : "progress"}"><small>Last monitored · ${escapeHtml(latestDateKey)}</small><strong>${lastUsedPercentage}%</strong><span>${goalAchieved ? "🙂" : "🌱"} ${resultLabel}</span></div><div class="platform-voice-weekly-progress"><div><strong>${stars} of ${weeklyStarGoal} goal days</strong><small>This week · ${thisWeekPercentage == null ? "No data" : `${thisWeekPercentage}% within goal`}</small></div><div class="platform-voice-weekday-stars" aria-label="${stars} daily sound-goal stars this week">${weekdayStars}</div><p>${comparison}</p></div></section>${activityDetails}${editable ? `<details class="platform-voice-goal-settings"><summary>Adjust Sound Goals</summary><label>Award a daily star at <input type="number" min="50" max="100" step="1" value="${starGoal}" data-voice-star-goal>% within goal</label><label>Weekly goal <input type="number" min="1" max="5" step="1" value="${weeklyStarGoal}" data-voice-weekly-star-goal> successful days</label><p>Activity thresholds are selected automatically. Microphone sensitivity remains available in the Voice Meter.</p></details>` : ""}`;
+}
+
+function recordVoiceMeterUse() {
+  if (!voiceMeterUsage?.count) { voiceMeterUsage = null; return; }
+  const state = session.read();
+  const classId = currentTeacherClass(state.teacherId)?.id;
+  if (!classId) { voiceMeterUsage = null; return; }
+  const history = readVoiceMeterHistory();
+  history.unshift({ classId, usedAt: Date.now(), activityMode: voiceMeterUsage.activityMode, durationSeconds: Math.max(1, Math.round((Date.now() - voiceMeterUsage.startedAt) / 1000)), detectedSeconds: voiceMeterUsage.detectedSeconds, goalSeconds: Math.round(voiceMeterUsage.goalMilliseconds / 1000), loudSeconds: Math.round(voiceMeterUsage.loudMilliseconds / 1000), average: Math.round(voiceMeterUsage.total / voiceMeterUsage.count), peak: voiceMeterUsage.peak });
+  try { window.localStorage.setItem(VOICE_METER_HISTORY_KEY, JSON.stringify(history.slice(0, 100))); } catch {}
+  voiceMeterUsage = null;
+}
+
+function beginVoiceMeterUsage(activity = readVoiceMeterActivity()) {
+  const now = Date.now();
+  voiceMeterUsage = { startedAt: now, lastSampleAt: now, previousLevel: 0, activityMode: activity.key, target: activity.target, total: 0, count: 0, peak: 0, goalMilliseconds: 0, loudMilliseconds: 0, detectedSeconds: { "teacher-led": 0, independent: 0, collaborative: 0 } };
+}
+
+function segmentActiveVoiceMeter(activity) {
+  if (!voiceMeterStream) return;
+  recordVoiceMeterUse();
+  beginVoiceMeterUsage(activity);
+}
+
+function currentClassPlanMarkup(classId, teacherId) {
+  const resourceState = classResourceSharing.read(classId);
+  const resources = resourceState.audienceRows.flatMap((row) => row.resources).filter(Boolean);
+  const uniqueResources = [...new Map(resources.map((item) => [item.id || `${item.type}-${item.title}`, item])).values()];
+  const access = [...new Set(uniqueResources.map((item) => item.type))];
+  const timer = lessonTimer.read();
+  const memo = teacherMemo.read();
+  const latestBoard = readWhiteboardLibrary().filter((board) => board.classId === classId || board.classId === "all").sort((a, b) => Number(b.savedAt || 0) - Number(a.savedAt || 0))[0];
+  const history = readVoiceMeterHistory();
+  const classes = getClassesForTeacher(teacherId);
+  const compareId = teacherComparisonClassId && teacherComparisonClassId !== classId ? teacherComparisonClassId : classes.find((item) => item.id !== classId)?.id || "";
+  const compareClass = classes.find((item) => item.id === compareId);
+  const voiceActivity = readVoiceMeterActivity();
+  const voiceDisplayMode = readVoiceMeterDisplayMode();
+  const voiceIsOn = Boolean(voiceMeterStream);
+  const liveVoiceBody = `<div class="platform-current-plan-live-voice" data-voice-display-mode="${voiceDisplayMode}"><div class="platform-live-voice-heading"><strong data-voice-prediction>${predictedLearningType(0).icon} ${predictedLearningType(0).label}</strong><small>Goal: ${escapeHtml(voiceActivity.label)}</small></div><p class="platform-live-voice-status" data-live-voice-status data-state="${voiceIsOn ? "on" : "off"}"><span aria-hidden="true"></span> Voice Meter is ${voiceIsOn ? "on and listening" : "off"}</p><div class="platform-voice-meter" data-voice-meter data-meter-state="green" style="--voice-meter-level: 0%; --voice-threshold: ${voiceActivity.target}%"><div class="platform-voice-meter-scale" aria-hidden="true"><span>Ready</span><span>Close</span><span>Too loud</span></div><div class="platform-voice-meter-track"><span class="platform-voice-meter-fill"></span><i class="platform-voice-threshold-marker" title="Expected threshold"></i></div><p><strong data-voice-meter-output>0</strong><span aria-hidden="true"> / 100</span></p></div><label>Meter view<select data-voice-meter-display-mode><option value="basic"${voiceDisplayMode === "basic" ? " selected" : ""}>Basic volume</option><option value="prediction"${voiceDisplayMode === "prediction" ? " selected" : ""}>Predicted learning type + threshold</option></select></label><div class="platform-live-voice-actions"><button type="button" data-action="voice-meter-start"${voiceIsOn ? " disabled" : ""}>Turn Voice Meter On</button><button type="button" data-action="voice-meter-stop"${voiceIsOn ? "" : " disabled"}>Turn Off</button><button type="button" data-action="open-voice-meter-display">Open Class View</button></div></div>`;
+  const soundGoalsReport = `<section class="platform-sound-goals-report" aria-labelledby="sound-goals-report-title"><div class="platform-sound-goals-report-heading"><div><p class="platform-command-label">Progress over time</p><h3 id="sound-goals-report-title">Classroom Sound Goals</h3><p>Review past sound-goal progress and celebrate improvement.</p></div><label>Compare with<select data-class-plan-comparison><option value="">Choose another class</option>${classes.filter((item) => item.id !== classId).map((item) => `<option value="${item.id}"${item.id === compareId ? " selected" : ""}>${escapeHtml(item.periodLabel)} — ${escapeHtml(item.displayName)}</option>`).join("")}</select></label></div>${voiceActivitySummary(history, classId)}${compareClass ? `<hr><strong>${escapeHtml(compareClass.displayName)}</strong>${voiceActivitySummary(history, compareId, { editable: false })}` : ""}</section>`;
+  const presentationToolControls = `<section class="platform-live-lesson-tools" aria-labelledby="live-lesson-tools-title"><div><p class="platform-command-label">Present and interact</p><h4 id="live-lesson-tools-title">Classroom Presentation Tools</h4><p>Open a tool without leaving the live lesson dashboard.</p></div><div class="platform-live-lesson-tool-buttons"><button type="button" data-action="open-timer-display">Classroom View</button><button type="button" data-action="open-classroom-presentation-window" aria-describedby="classroom-display-help">Open Classroom Display</button><button type="button" data-action="open-name-picker-display">Name Picker</button><button type="button" data-action="open-timer-popout">Floating Timer</button><button type="button" data-action="open-message-board-quick">Quick Message</button><button type="button" data-action="open-whiteboard">Whiteboard</button><button type="button" data-action="open-voice-meter-display">Voice Meter</button></div><p id="classroom-display-help" class="platform-live-lesson-tool-help">Classroom Display opens a separate student-facing window for a projector or smartboard.</p><p data-classroom-window-status role="status"></p></section>`;
+  const timerVisual = currentTimerVisualState(timer);
+  const timerPhase = timerVisual.active ? timerVisual.phase : null;
+  const timerBody = `<div class="platform-current-plan-timer-widget"><div class="platform-current-plan-timer-wheel" data-timer-ring data-active-phases="${timerPhase ? "true" : "false"}" style="${timerRingStyle(timerVisual)}"><output data-timer-remaining data-timer-phase-color="${timerPhase?.color ?? "default"}">${formatLessonTime(timer.remainingSeconds)}</output></div><div class="platform-current-plan-timer-details"><strong data-timer-phase-name>${escapeHtml(timerPhase?.name ?? "Class Timer")}</strong><span data-current-plan-timer>${escapeHtml(timer.status)} · ${formatLessonTime(timer.remainingSeconds)}</span><small data-current-plan-timer-mode>${classTimerSchedule.readEffective().pomodoroEnabled ? "Pomodoro phases are active." : "Standard class timer."}</small></div><div class="platform-current-plan-timer-controls" aria-label="Live timer controls"><button type="button" data-action="timer-subtract-minute">− 1 min</button><button type="button" data-action="timer-add-minute">+ 1 min</button><button type="button" data-action="timer-start-or-resume">Start</button><button type="button" data-action="timer-pause">Pause</button><button type="button" data-action="timer-end">End</button><button type="button" data-action="timer-reset">Reset</button></div></div>`;
+  const card = (key, title, body, className = "", actionLabel = "Edit", live = false) => `<article class="${className}" data-plan-card="${key}"${live ? ` data-live="true"` : ""}><button type="button" class="platform-current-plan-card-title" data-action="open-current-plan-editor" data-current-plan-editor="${key}">${title}<span aria-hidden="true">${actionLabel} ›</span></button>${body}</article>`;
+  return `<div id="teacher-live-lesson-dashboard" class="platform-current-class-plan-stack"><section class="platform-current-class-plan" aria-labelledby="current-class-plan-title"><div class="platform-current-class-plan-heading"><div><p class="platform-command-label">Live lesson dashboard</p><h3 id="current-class-plan-title">Live Lesson Dashboard</h3><p>See what is active, adjust the lesson, and control classroom presentation tools from one place.</p></div></div>${presentationToolControls}<div class="platform-current-plan-grid">${card("activities", "Assigned activities", `<span>${uniqueResources.length}</span><p>${uniqueResources.length ? uniqueResources.map((item) => escapeHtml(item.title)).join(" • ") : "No activities assigned yet."}</p>`, "platform-current-plan-textured", "Edit", uniqueResources.length > 0)}${card("access", "Students can work in", `<p>${access.length ? access.map(escapeHtml).join(" • ") : "No student resources are live."}</p>`, "platform-current-plan-textured", "Edit", access.length > 0)}${card("message", "Current message", `<p>${memo.text ? escapeHtml(memo.text) : "No message is displayed."}</p>`, "platform-current-plan-textured", "Edit", Boolean(memo.text))}${card("timer", "Timer", timerBody, "platform-current-plan-timer-card", "Edit", timer.status === LESSON_TIMER_STATES.RUNNING || timer.status === LESSON_TIMER_STATES.PAUSED)}${card("whiteboard", "Latest whiteboard", `${latestBoard ? `<img src="${escapeHtml(latestBoard.displayImage || latestBoard.image)}" alt="Thumbnail of ${escapeHtml(latestBoard.title)}"><p>${escapeHtml(latestBoard.title)} · ${new Date(latestBoard.savedAt).toLocaleDateString()}</p>` : `<p>No saved whiteboard history yet.</p>`}`, "platform-current-plan-whiteboard platform-current-plan-textured")}${card("voice", "Live Voice Meter", liveVoiceBody, "platform-current-plan-live-voice-card", "History", voiceIsOn)}</div><div class="platform-current-plan-modal" data-current-plan-modal hidden><div class="platform-current-plan-modal-backdrop" data-action="close-current-plan-editor"></div><section role="dialog" aria-modal="true" aria-labelledby="current-plan-editor-title"><header><h3 id="current-plan-editor-title">Quick edit</h3><button type="button" data-action="close-current-plan-editor" aria-label="Close quick editor">×</button></header><div data-current-plan-editor-content></div><button class="platform-return-current-plan" type="button" data-action="return-current-plan">Return to Today’s Class Plan</button></section></div></section>${soundGoalsReport}</div>`;
+}
+
+function currentClassPlanEditorMarkup(category, classId, teacherId) {
+  const resourceState = classResourceSharing.read(classId);
+  const resourceEntries = resourceState.audienceRows.flatMap((row) => row.resources.map((resource, index) => resource ? { resource, row, index } : null).filter(Boolean));
+  const memo = teacherMemo.read();
+  const timer = lessonTimer.read();
+  const boards = readWhiteboardLibrary().filter((board) => board.classId === classId || board.classId === "all").sort((a, b) => Number(b.savedAt || 0) - Number(a.savedAt || 0));
+  const history = readVoiceMeterHistory();
+  const classes = getClassesForTeacher(teacherId);
+  if (category === "activities") return `<p>Uncheck an activity to remove it from the live student tray.</p><div class="platform-current-plan-editor-list">${resourceEntries.length ? resourceEntries.map(({ resource, row, index }) => `<label><input type="checkbox" data-current-plan-resource-toggle data-resource-row-id="${escapeHtml(row.id)}" data-resource-index="${index}" checked><span><strong>${escapeHtml(resource.title)}</strong><small>${escapeHtml(resource.type)} · ${escapeHtml(row.audienceType === "whole-class" ? "Whole class" : row.audienceLabel || "Selected students")}</small></span></label>`).join("") : `<p>No activities are currently assigned.</p>`}</div><button type="button" data-action="current-plan-open-resources">Add or reorganize activities</button>`;
+  if (category === "access") return `<p>Student access is created automatically from the resources you assign.</p><div class="platform-current-plan-editor-list">${resourceEntries.length ? resourceEntries.map(({ resource, row }) => `<p><strong>${escapeHtml(resource.type)}</strong><br>${escapeHtml(resource.title)} · ${escapeHtml(row.audienceType === "whole-class" ? "Whole class" : row.audienceLabel || "Selected students")}</p>`).join("") : `<p>No student resources are live.</p>`}</div><button type="button" data-action="current-plan-open-resources">Change resource access</button>`;
+  if (category === "message") return `<label class="platform-current-plan-message">Message shown to students<textarea maxlength="${TEACHER_MEMO_MAX_CHARACTERS}" data-current-plan-message>${escapeHtml(memo.text)}</textarea></label><div class="platform-current-plan-editor-actions"><button type="button" data-action="save-current-plan-message">Save Message</button><button type="button" data-action="clear-current-plan-message">Clear Message</button><button type="button" data-action="open-message-board-quick">Formatting and saved messages</button></div><p data-current-plan-editor-status role="status"></p>`;
+  if (category === "timer") return `<p class="platform-current-plan-timer-large" data-current-plan-timer>${escapeHtml(timer.status)} · ${formatLessonTime(timer.remainingSeconds)}</p><div class="platform-current-plan-editor-actions"><button type="button" data-action="timer-start">Start</button><button type="button" data-action="timer-pause">Pause</button><button type="button" data-action="timer-resume">Resume</button><button type="button" data-action="timer-subtract-minute">− 1 minute</button><button type="button" data-action="timer-add-minute">+ 1 minute</button><button type="button" data-action="timer-reset">Reset</button></div><button type="button" data-action="open-today-timer-tools">Open full timer settings</button>`;
+  if (category === "whiteboard") return `${boards[0] ? `<img class="platform-current-plan-editor-board" src="${escapeHtml(boards[0].displayImage || boards[0].image)}" alt="Latest saved whiteboard"><p><strong>${escapeHtml(boards[0].title)}</strong> · saved ${new Date(boards[0].savedAt).toLocaleString()}</p>` : `<p>No saved whiteboard is available yet.</p>`}<button type="button" data-action="open-whiteboard">Open Whiteboard</button>`;
+  const classHistory = history.filter((item) => item.classId === classId).slice(0, 5);
+  return `<p>The meter estimates classroom sound patterns only. It cannot identify a speaker and never records audio.</p>${voiceActivitySummary(history, classId)}<div class="platform-current-plan-editor-list">${classHistory.length ? classHistory.map((item) => `<p><strong>${new Date(item.usedAt).toLocaleDateString()}</strong><br>${escapeHtml(VOICE_METER_ACTIVITIES.find((activity) => activity.key === item.activityMode)?.label || "Classroom sound session")} · ${Math.ceil(item.durationSeconds / 60)} min · ${(soundGoalPercentage([item]) ?? 0) >= readVoiceMeterStarGoal() ? "🙂 Goal achieved" : "Louder than expected"}</p>`).join("") : `<p>No voice-meter sessions have been saved yet.</p>`}</div><label>Compare with another class<select data-class-plan-comparison><option value="">Choose a class</option>${classes.filter((item) => item.id !== classId).map((item) => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.periodLabel)} — ${escapeHtml(item.displayName)}</option>`).join("")}</select></label>`;
+}
+
+function refreshCurrentClassPlan() {
+  const current = document.querySelector(".platform-current-class-plan-stack");
+  const state = session.read();
+  const classId = currentTeacherClass(state.teacherId)?.id;
+  if (current && classId) current.outerHTML = currentClassPlanMarkup(classId, state.teacherId);
+}
+
+function closeCurrentClassPlanEditor() {
+  const modal = document.querySelector("[data-current-plan-modal]");
+  if (modal) modal.hidden = true;
+}
+
+function whiteboardScheduleLabel(board) {
+  if (board.scheduleType === "date" && board.date) {
+    const [year, month, day] = board.date.split("-").map(Number);
+    const date = new Date(year, month - 1, day);
+    return Number.isNaN(date.getTime()) ? board.date : date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+  }
+  if (board.scheduleType === "weekly" && board.day && board.day !== "any") return `Every ${board.day}`;
+  return "No schedule";
+}
+
+function scheduledWhiteboardFor(classId, occurrence, now = new Date()) {
+  const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  return readWhiteboardLibrary().find((board) => board.studentDisplay === true
+    && (board.classId === "all" || board.classId === classId)
+    && ((board.scheduleType === "weekly" && board.day === occurrence.weekday)
+      || (board.scheduleType === "date" && board.date === localDate))) ?? null;
 }
 
 function currentRoute() {
@@ -108,6 +506,7 @@ function guardRoute(route, state) {
   if (state.role === PLATFORM_ROLES.TEACHER && isStudentRoute) return ROUTES.TEACHER_DASHBOARD;
   if (state.role === PLATFORM_ROLES.STUDENT && isTeacherRoute) return ROUTES.STUDENT_DASHBOARD;
   if (route === ROUTES.TEACHER_DASHBOARD && state.role !== PLATFORM_ROLES.TEACHER) return ROUTES.TEACHER_LOGIN;
+  if (route === ROUTES.TEACHER_CLASSES && state.role !== PLATFORM_ROLES.TEACHER) return ROUTES.TEACHER_LOGIN;
   if (route === ROUTES.STUDENT_DASHBOARD && state.role !== PLATFORM_ROLES.STUDENT) return ROUTES.STUDENT_ENTRY;
   if (route === ROUTES.STUDENT_ROSTER && !state.pendingClassId) return ROUTES.STUDENT_ENTRY;
   if (route === ROUTES.STUDENT_IDENTIFIER && (!state.pendingClassId || !state.pendingStudentId)) {
@@ -125,8 +524,349 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function shell(content, { title, eyebrow = "Platform Foundation", subtitle = "", signedIn = false, teacherContext = null } = {}) {
+function memoSegmentsMarkup(state) {
+  const segments = state.segments?.length ? state.segments : [{ text: state.text, color: state.color, size: state.size, style: state.style }];
+  return segments.map((segment) => `<span data-memo-color="${segment.color}" data-memo-size="${segment.size}" data-memo-style="${segment.style}">${escapeHtml(segment.text)}</span>`).join("");
+}
+
+function currentEvidenceActivity() {
+  return todaysMission.read().title || PILOT_ACTIVITY;
+}
+
+function currentTeacherClass(teacherId) {
+  const classes = getClassesForTeacher(teacherId);
+  const selected = classSetupProfiles.read().currentClassId;
+  return classes.find((item) => item.id === selected) ?? classes[0] ?? getClassForTeacher(teacherId);
+}
+
+function preserveCurrentClassSetup(classId) {
+  if (!classId) return;
+  const current = classSetupProfiles.profile(classId) ?? {};
+  classSetupProfiles.save(classId, { ...current, schedule: classTimerSchedule.read(), memo: teacherMemo.read(), mission: todaysMission.read() });
+}
+
+function classReadiness(classId) {
+  return { mission: "previous", timer: "saved", safeguards: "saved", ...(classSetupProfiles.profile(classId)?.readiness ?? {}) };
+}
+
+function automaticGoalsForClass(classId) {
+  const classRecord = getClassById(classId);
+  const resources = classResourceSharing.read(classId).audienceRows.flatMap((row) => row.resources);
+  const goals = [];
+  if (resources.some((item) => /design a space bedroom/i.test(item?.title))) goals.push("Build a Shelter");
+  resources.forEach((item) => {
+    if (item?.title && !/design a space bedroom/i.test(item.title)) goals.push(`Complete and reflect on ${item.title}`);
+  });
+  if (!goals.length && Number(classRecord?.grade || 5) === 5) goals.push("Build a Shelter");
+  return [...new Set(goals)].slice(0, 6);
+}
+
+function todaysGoalInputsMarkup(classId) {
+  const profile = classSetupProfiles.profile(classId) ?? {};
+  const automatic = automaticGoalsForClass(classId);
+  const goals = profile.todayGoalsMode === "custom" ? (profile.todayGoals ?? []) : automatic;
+  return `<div class="platform-quick-goals" data-quick-goals data-goals-mode="${profile.todayGoalsMode === "custom" ? "custom" : "automatic"}"><div><h4>Today’s Goals</h4><p>${profile.todayGoalsMode === "custom" ? "Teacher-edited goals" : "Suggested automatically from the class grade, mission goal, and selected activities"}</p></div><div data-quick-goal-list>${goals.length ? goals.map((goal, index) => `<label>Goal ${index + 1}<span><input name="todayGoal" maxlength="80" value="${escapeHtml(goal)}"><button type="button" data-action="delete-quick-goal" aria-label="Delete goal ${index + 1}">Delete</button></span></label>`).join("") : `<p data-no-quick-goals>No goal is currently assigned.</p>`}</div><button type="button" data-action="add-quick-goal">+ Add a Goal</button></div>`;
+}
+
+function blankClassSchedule() {
+  return { enabled: false, weekdays: [...WEEKDAYS], startTime: "08:00", durationMinutes: 45, timeZone: "America/New_York", yellowSound: "Bird Chirping", redSound: "Cardinal", endSound: "Choir — Heavenly Transition", pomodoroEnabled: false, phases: recommendedTimerPhases(45) };
+}
+
+function activateClassSetup(classId) {
+  const profile = classSetupProfiles.profile(classId);
+  classTimerSchedule.save(profile?.schedule ?? blankClassSchedule());
+  if (profile?.memo?.text) teacherMemo.save(profile.memo.text, profile.memo); else teacherMemo.clear();
+  if (profile?.mission?.title) todaysMission.save(profile.mission); else todaysMission.clear();
+  if (!profile) preserveCurrentClassSetup(classId);
+}
+
+function ensureClassSetupProfile(classId) {
+  if (classId && !classSetupProfiles.profile(classId)) preserveCurrentClassSetup(classId);
+}
+
+const TEACHER_WEBPAGE_CATALOG = Object.freeze([
+  { category: "Missions", title: "STEM Missions Home", detail: "Main starting page for the STEM Missions website.", url: "https://sites.google.com/ravennaschools.us/steminbobwarts/home-start" },
+  { category: "Grade Hubs", title: "Grade 3/4 Mission Hub", detail: "Activity library page for Grade 3 and Grade 4 classes.", url: "https://sites.google.com/ravennaschools.us/steminbobwarts/grade-34" },
+  { category: "Grade Hubs", title: "Grade 5/6 Mission Hub", detail: "Activity library page for Grade 5 and Grade 6 classes.", url: "https://sites.google.com/ravennaschools.us/steminbobwarts/grade-5" },
+  { category: "Tools", title: "STEM Builder", detail: "Open the THINKamigBOB design-and-build workspace.", url: "../index.html" },
+]);
+
+function classSetupSharingMarkup(teacherId, location) {
+  const classes = getClassesForTeacher(teacherId);
+  const current = currentTeacherClass(teacherId);
+  return `<section class="platform-class-setup-sharing" data-class-sharing-location="${location}" aria-labelledby="class-sharing-${location}">
+    <p class="platform-command-label">Reuse classroom settings</p>
+    <h3 id="class-sharing-${location}">Share Classroom Setup</h3>
+    <label>Current class<select data-current-teacher-class>${classes.map((item) => `<option value="${item.id}"${item.id === current?.id ? " selected" : ""}>${escapeHtml(item.periodLabel)} — ${escapeHtml(item.displayName)}</option>`).join("")}</select></label>
+    <fieldset><legend>Apply to</legend>${classes.filter((item) => item.id !== current?.id).map((item) => `<label><input type="checkbox" data-class-setup-target value="${item.id}"> ${escapeHtml(item.periodLabel)} — ${escapeHtml(item.displayName)}</label>`).join("")}<label><input type="checkbox" data-class-setup-all> All other classes</label></fieldset>
+    <fieldset><legend>Copy only</legend><label><input type="checkbox" data-class-setup-component="timer" checked> Timer schedule, Pomodoro phases, and sounds</label><label><input type="checkbox" data-class-setup-component="memo" checked> Teacher Memo and presentation formatting</label><label><input type="checkbox" data-class-setup-component="resources" checked> Today’s resource slots and audiences</label><label><input type="checkbox" data-class-setup-component="reflection" checked> What I Learned Today Requirement</label></fieldset>
+    ${weeklyReflectionTeacherMarkup(current?.id)}
+    <button type="button" data-action="apply-class-setup">Apply Selected Setup</button>
+    <p data-class-setup-status role="status" aria-live="polite">Nothing is copied until you confirm.</p>
+  </section>`;
+}
+
+function classResourceTeacherMarkup(classId) {
+  const state = classResourceSharing.read(classId);
+  const roster = getRosterForClass(classId);
+  const prepared = state.prepared ?? { title: "", type: "Mission Activity", url: "", release: "manual" };
+  const pickerOpen = ["Mission Activity", "Side Path", "Webpage"].includes(prepared.type);
+  const releaseLabels = { manual: "Push manually", "class-start": "At class start", purple: "Purple starter phase", green: "Green main activity", yellow: "Yellow five-minute warning", red: "Red cleanup or exit" };
+  const groupRows = state.audienceRows.filter((row) => ["teacher-group", "random-group"].includes(row.audienceType));
+  const groupedStudentIds = new Set(groupRows.flatMap((row) => row.audienceIds));
+  const groupStudentList = (row, assignedOnly = false) => roster.filter((student) => !assignedOnly || row.audienceIds.includes(student.id)).map((student) => `<label class="platform-group-student${row.audienceIds.includes(student.id) ? " is-assigned" : ""}" draggable="true" data-group-student-id="${escapeHtml(student.id)}"><input type="checkbox" data-resource-audience-student data-resource-row-id="${escapeHtml(row.id)}" value="${escapeHtml(student.id)}"${row.audienceIds.includes(student.id) ? " checked" : ""}> ${escapeHtml(student.displayName)}</label>`).join("");
+  const audienceRows = state.audienceRows.map((row, rowIndex) => {
+    const selectedNames = roster.filter((student) => row.audienceIds.includes(student.id)).map((student) => student.displayName);
+    const audienceSummary = row.audienceType === "whole-class" ? "Whole class" : selectedNames.length ? selectedNames.join(", ") : "Choose students";
+    const slots = `<div class="platform-class-resource-tray" aria-label="Activity slots for ${escapeHtml(audienceSummary)}">${Array.from({ length: row.slotCount }, (_, index) => { const item = row.resources[index]; const lastEmpty = !item && index === row.slotCount - 1; return `<article><button class="platform-resource-slot-button" type="button" data-action="edit-resource-slot" data-resource-row-id="${escapeHtml(row.id)}" data-resource-slot-index="${index}"><span class="platform-command-label">Slot ${index + 1}</span>${item ? `<strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.type)}</small>` : `<strong>Choose a resource</strong><small>Click this slot to add one</small>`}</button>${item ? `<label class="platform-active-resource-choice"><input type="checkbox" data-active-resource-toggle data-resource-row-id="${escapeHtml(row.id)}" data-resource-index="${index}" checked> Show to ${escapeHtml(audienceSummary)}</label>` : ""}${lastEmpty && row.slotCount > 4 ? `<button type="button" data-action="remove-resource-slot" data-resource-row-id="${escapeHtml(row.id)}">Delete Empty Slot</button>` : ""}</article>`; }).join("")}</div>`;
+    const groupName = ["teacher-group", "random-group"].includes(row.audienceType) ? `<label class="platform-group-name">Group name<input data-resource-group-name data-resource-row-id="${escapeHtml(row.id)}" value="${escapeHtml(row.audienceLabel)}" placeholder="Example: Blue Team"></label>` : "";
+    const picker = row.audienceType === "whole-class" ? "" : row.audienceType === "students"
+      ? `<fieldset class="platform-resource-student-picker"><legend>Choose individual students</legend>${groupStudentList(row)}</fieldset>`
+      : `<fieldset class="platform-resource-student-picker platform-group-dropzone${row.audienceType === "random-group" ? " is-random-group" : ""}" data-group-drop-row-id="${escapeHtml(row.id)}"><legend>${row.audienceType === "random-group" ? `Students randomly assigned to ${escapeHtml(row.audienceLabel)}` : `Choose students for ${escapeHtml(row.audienceLabel)}`}</legend><p>${row.audienceType === "random-group" ? "Only this group’s assigned students appear here. Drag students between group rows to adjust the random result." : "The full class roster appears here. Click names to add them, or drag a student here from another group."}</p>${groupStudentList(row, row.audienceType === "random-group")}</fieldset>`;
+    const assignmentControl = rowIndex === 0 ? `<p class="platform-primary-assignment-label"><strong>Main assignment:</strong> ${escapeHtml(row.audienceType === "whole-class" ? "Whole class" : row.audienceType === "students" ? "Individual students" : row.audienceType === "teacher-group" ? "Teacher-chosen groups" : "Random groups")}</p>` : `<label>Exception assignment method<select data-resource-audience-type data-resource-row-id="${escapeHtml(row.id)}"><option value="whole-class"${row.audienceType === "whole-class" ? " selected" : ""}>Whole class</option><option value="students"${row.audienceType === "students" ? " selected" : ""}>Individual students</option><option value="teacher-group"${row.audienceType === "teacher-group" ? " selected" : ""}>Teacher-chosen group</option><option value="random-group"${row.audienceType === "random-group" ? " selected" : ""}>Random group</option></select></label>`;
+    return `<section class="platform-resource-audience-row${row.audienceType === "random-group" ? " platform-random-group-row" : ""}" data-resource-audience-row="${escapeHtml(row.id)}"><div class="platform-resource-audience-heading"><div><p class="platform-command-label">${rowIndex === 0 ? "Main resource assignment" : row.audienceType === "random-group" ? "Randomly created exception group" : `Different assignment ${rowIndex}`}</p><h4>${escapeHtml(row.audienceType === "whole-class" ? "Whole class" : row.audienceLabel || audienceSummary)}</h4>${row.audienceType !== "whole-class" ? `<p>${escapeHtml(selectedNames.length ? selectedNames.join(", ") : "No students selected yet")}</p>` : ""}</div>${rowIndex ? `<button type="button" data-action="remove-resource-audience" data-resource-row-id="${escapeHtml(row.id)}">Remove This Assignment</button>` : ""}</div>${assignmentControl}${groupName}${picker}${slots}<button class="platform-add-resource-slot" type="button" data-action="add-resource-slot" data-resource-row-id="${escapeHtml(row.id)}">+ Add an Additional Slot</button></section>`;
+  }).join("");
+  const usesGroups = ["teacher-group", "random-group"].includes(state.assignmentMode) || groupRows.length > 0;
+  const groupTools = usesGroups ? `<section class="platform-resource-group-builder"><p class="platform-command-label">Group setup</p><h4>Create or Reuse Groups</h4><p>This area creates group rows. Student membership and resources are managed in the rows below.</p><div class="platform-random-group-controls"><label>Students per random group<input type="number" min="1" max="${Math.max(1, roster.length)}" value="3" data-random-group-size></label><button type="button" data-action="build-random-groups">Create Random Groups</button><button type="button" data-action="add-teacher-group">+ Create a Teacher-Chosen Group</button></div>${groupRows.length ? `<div class="platform-unassigned-students" data-group-drop-row-id="unassigned"><strong>Not assigned to a group</strong>${roster.filter((student) => !groupedStudentIds.has(student.id)).map((student) => `<span draggable="true" data-group-student-id="${escapeHtml(student.id)}">${escapeHtml(student.displayName)}</span>`).join("") || `<span>Everyone is assigned.</span>`}</div>` : ""}<div class="platform-group-preset-controls"><label>Name these group settings<input data-group-set-name maxlength="60" placeholder="Example: Workshop Teams"></label><button type="button" data-action="save-group-set">Save Group Settings</button>${state.savedGroupSets.length ? `<label>Reuse past group settings<select data-saved-group-set><option value="">Choose saved groups</option>${state.savedGroupSets.map((set) => `<option value="${escapeHtml(set.id)}">${escapeHtml(set.name)}</option>`).join("")}</select></label><button type="button" data-action="apply-group-set">Use Saved Groups</button>` : ""}</div></section>` : "";
+  const assignmentChooser = `<section class="platform-resource-assignment-chooser"><h4>How do you want today’s resources assigned?</h4><label>Main assignment method<select data-resource-plan-mode><option value="whole-class"${state.assignmentMode === "whole-class" ? " selected" : ""}>Whole class</option><option value="students"${state.assignmentMode === "students" ? " selected" : ""}>Individual students</option><option value="teacher-group"${state.assignmentMode === "teacher-group" ? " selected" : ""}>Teacher-chosen groups</option><option value="random-group"${state.assignmentMode === "random-group" ? " selected" : ""}>Random groups</option></select></label><label>Will any students need resources assigned a different way?<select data-resource-exceptions-enabled><option value="no"${state.exceptionsEnabled ? "" : " selected"}>No</option><option value="yes"${state.exceptionsEnabled ? " selected" : ""}>Yes</option></select></label>${state.exceptionsEnabled ? `<div class="platform-resource-exception-controls"><label>Different assignment method<select data-resource-exception-type>${[["whole-class", "Whole class"], ["students", "Individual students"], ["teacher-group", "Teacher-chosen group"], ["random-group", "Random group"]].filter(([value]) => value !== state.assignmentMode).map(([value, label]) => `<option value="${value}">${label}</option>`).join("")}</select></label><button type="button" data-action="add-resource-exception">+ Add Different Assignment</button></div>` : ""}</section>`;
+  return `<section id="teacher-todays-resources" class="platform-command-card platform-class-resource-sharing" data-class-resource-teacher aria-labelledby="class-resource-title">
+    <p class="platform-command-label">Today’s plan resources</p>
+    <h2 id="class-resource-title">Plan Today’s Resources</h2>
+    ${assignmentChooser}
+    ${groupTools}
+    ${audienceRows}
+    <a class="platform-button platform-button-secondary" href="#${ROUTES.TEACHER_CLASSES}" data-action="open-manage-classes-section" data-scroll-target="teacher-class-sharing">Share Resource Settings With Other Classes</a>
+    <details class="platform-class-resource-editor">
+      <summary hidden>Choose a resource</summary>
+      <h4>Choose a Resource for the Selected Slot</h4>
+      <p>Select a catalog activity or add another resource. Saving updates the slot you clicked.</p>
+    <form data-form="class-resource" novalidate>
+      <input type="hidden" name="rowId" value="whole-class"><input type="hidden" name="slot" value="0">
+      <label>Resource type<select name="type" data-class-resource-type>${RESOURCE_TYPES.map((type) => `<option${prepared.type === type ? " selected" : ""}>${type}</option>`).join("")}</select></label>
+      <section class="platform-resource-picker" data-resource-picker data-picker-mode="${prepared.type === "Side Path" ? "side-path" : "mission"}"${pickerOpen ? "" : " hidden"} aria-label="Activity library">
+        <div data-resource-picker-mission${prepared.type === "Mission Activity" ? "" : " hidden"}>
+          <p class="platform-command-label">Mission Activity library</p><h4>Choose a grade and weekly goal</h4>
+          <div class="platform-resource-grade-row" aria-label="Grade level"><button type="button" disabled>Grade 3 · catalog pending</button><button type="button" disabled>Grade 4 · catalog pending</button><button type="button" aria-pressed="true">Grade 5</button></div>
+          <div class="platform-resource-browser-list" aria-label="Grade 5 weekly goals">
+            <article class="platform-resource-browser-item" tabindex="0"><strong>Weekly Goal: Build a Shelter</strong><span>Hover or focus to see activities</span>
+              <div class="platform-resource-browser-children"><button type="button" data-action="select-catalog-resource" data-resource-type="Mission Activity" data-resource-title="Design a Space Bedroom" data-resource-url="https://docs.google.com/presentation/d/1GzkVODaIdAweiSCuFxJC3NOAQEE8GmwdMO7z05Inx64/edit?usp=drivesdk"><strong>Design a Space Bedroom</strong><span>Hover for the quick preparation view</span><span class="platform-resource-activity-detail"><b>Goal:</b> Design a usable shelter space.<br><b>Materials:</b> basic design supplies; paper planning or a teacher-approved model.</span></button></div>
+            </article>
+          </div>
+        </div>
+        <div data-resource-picker-side-path${prepared.type === "Side Path" ? "" : " hidden"}>
+          <p class="platform-command-label">Side Path library</p><h4>Choose a Side Path</h4><p>Hover or keyboard-focus a path to preview its verified activities.</p>
+          <div class="platform-resource-browser-list">${["Create", "Design", "Build", "Think", "Code"].map((topic) => `<article class="platform-resource-browser-item" tabindex="0"><strong>${topic}</strong><span>Hover or focus to view activities</span><div class="platform-resource-browser-children"><p>No verified ${topic} activities have been imported yet.</p></div></article>`).join("")}</div>
+        </div>
+        <div data-resource-picker-webpage${prepared.type === "Webpage" ? "" : " hidden"}>
+          <p class="platform-command-label">Teacher webpage library</p><h4>Choose the pages students may use</h4><p>Search or filter this private teacher list. Students see only the pages you select.</p>
+          <div class="platform-resource-webpage-tools">
+            <label>Find a page<input type="search" data-webpage-search placeholder="Search page names"></label>
+            <label>Page group<select data-webpage-category><option value="all">All page groups</option>${[...new Set(TEACHER_WEBPAGE_CATALOG.map((page) => page.category))].map((category) => `<option value="${escapeHtml(category.toLowerCase())}">${escapeHtml(category)}</option>`).join("")}</select></label>
+          </div>
+          <div class="platform-resource-webpage-list">
+            ${TEACHER_WEBPAGE_CATALOG.map((page, index) => `<article data-webpage-catalog-item data-webpage-category-value="${escapeHtml(page.category.toLowerCase())}" data-webpage-search-value="${escapeHtml(`${page.title} ${page.category} ${page.detail}`.toLowerCase())}"><label><input type="checkbox" data-webpage-selection value="${index}"${state.activeResources.some((resource) => resource.type === "Webpage" && resource.url === page.url) ? " checked" : ""}><span><small>${escapeHtml(page.category)}</small><strong>${escapeHtml(page.title)}</strong><span>${escapeHtml(page.detail)}</span></span></label></article>`).join("")}
+          </div>
+          <p data-webpage-empty hidden>No pages match that search. You can add the page address below.</p>
+          <div class="platform-resource-webpage-actions"><button type="button" data-action="show-selected-webpages">Show Selected Pages to Students</button><button type="button" data-action="use-custom-webpage">Add Another Webpage</button></div>
+          <p class="platform-resource-webpage-note">For another page from your website, choose <b>Add Another Webpage</b>, then enter its name and address in the fields below.</p>
+        </div>
+      </section>
+      <details class="platform-custom-resource-fields" data-custom-resource-fields><summary>Add a resource that is not listed</summary>
+        <label>Student-facing title<input name="title" maxlength="80" value="${escapeHtml(prepared.title)}" placeholder="Example: Bridge Design Builder"></label>
+        <label>Resource address<input name="url" type="url" value="${escapeHtml(prepared.url)}" placeholder="https://… or platform path"></label>
+        <p>The address is needed only for a custom page. Catalog pages already have their addresses saved.</p>
+      </details>
+      <label>Release<select name="release">${RESOURCE_RELEASES.map((release) => `<option value="${release}"${prepared.release === release ? " selected" : ""}>${releaseLabels[release]}</option>`).join("")}</select></label>
+      <div class="platform-class-resource-actions"><button type="button" data-action="prepare-class-resource">Save for Later</button><button type="button" data-action="push-class-resource">Show on Student Page</button></div>
+      <p data-class-resource-status role="status">${state.audienceRows.some((row) => row.resources.length) ? "Resource assignments are ready. Click any slot to add or change its resource." : state.prepared ? `Ready: ${escapeHtml(prepared.title)} · ${escapeHtml(releaseLabels[prepared.release])}` : "Click a slot above to begin."}</p>
+    </form>
+    <details class="platform-class-resource-saved"><summary>Saved for Later (${state.saved.length})</summary><div>${state.saved.length ? state.saved.map((item) => `<article><span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.type)}</small></span><button type="button" data-action="push-saved-resource" data-resource-id="${escapeHtml(item.id)}">Show Next</button><button type="button" data-action="remove-saved-resource" data-resource-id="${escapeHtml(item.id)}">Remove</button></article>`).join("") : `<p>No saved activities yet.</p>`}</div></details>
+    </details>
+    <button class="platform-return-current-plan" type="button" data-action="return-to-current-class-plan">Return to Today’s Class Plan</button>
+  </section>`;
+}
+
+function classResourceStudentMarkup(classId, studentId) {
+  const activeResources = classResourceSharing.resourcesForStudent(classId, studentId);
+  return `<section class="platform-student-shared-resource" aria-labelledby="student-shared-resource-title" data-class-resource-student>
+    <p class="platform-student-section-label">Teacher shared</p>
+    <h2 id="student-shared-resource-title">Today’s Activities</h2>
+    ${activeResources.length ? `<div class="platform-student-activity-tray">${activeResources.map((active) => { const automaticVisual = matchAutomaticVisual({ title: active.title, type: active.type }); return `<article><img class="platform-automatic-resource-visual" src="${escapeHtml(automaticVisual.src)}" alt="${escapeHtml(automaticVisual.alt)}"><p><strong>${escapeHtml(active.title)}</strong><small>${escapeHtml(active.type)}</small></p><a class="platform-button platform-button-primary" href="${escapeHtml(active.url)}" target="_blank" rel="noopener noreferrer"><span class="platform-rainbow-button-text">Open ${escapeHtml(active.title)}</span></a></article>`; }).join("")}</div><p>Choose the activity your teacher directed you to open.</p>` : `<p class="platform-student-empty-state">Your teacher has not shared an activity yet.</p><p>Keep Student Home open; activities pushed from a teacher tab on this same platform address will appear automatically.</p>`}
+  </section>`;
+}
+
+function weeklyReflectionTeacherMarkup(classId) {
+  const required = weeklyReflections.requirement(classId);
+  return `<section class="platform-classroom-setup platform-weekly-reflection-setup" aria-labelledby="weekly-reflection-setup-title">
+    <p class="platform-command-label">Weekly reflection</p>
+    <h3 id="weekly-reflection-setup-title">What I Learned Today Requirement</h3>
+    <p>Choose how many reflections each student should complete during the current Monday–Sunday week.</p>
+    <form data-form="weekly-reflection-requirement" novalidate>
+      <label>Responses required this week<select name="required">${[0, 1, 2, 3, 4, 5].map((count) => `<option value="${count}"${required === count ? " selected" : ""}>${count}</option>`).join("")}</select></label>
+      <button type="submit">Save Weekly Requirement</button>
+      <p data-weekly-reflection-teacher-status role="status">Current requirement: ${required} response${required === 1 ? "" : "s"} per student this week.</p>
+    </form>
+  </section>`;
+}
+
+function evidenceCaptureMarkup() {
+  const activity = escapeHtml(currentEvidenceActivity());
+  const items = evidenceFoundation.timeline();
+  const draft = evidenceDraft;
+  const inputAccept = draft?.type === EVIDENCE_TYPES.VIDEO ? "video/*" : draft?.type === EVIDENCE_TYPES.MORE ? "*/*" : "image/*";
+  const needsFile = draft && draft.type !== EVIDENCE_TYPES.REFLECTION;
+  return `
+    <div class="platform-evidence-workspace">
+      <div class="platform-evidence-context"><span>Current activity</span><strong>${activity}</strong><small>Added automatically to new evidence</small></div>
+      <div class="platform-evidence-actions" aria-label="Add evidence">
+        ${["Photo", "Screenshot", "Video", "Reflection", "More Evidence"].map((type) => `<button type="button" data-action="evidence-start" data-evidence-type="${type}">${type}</button>`).join("")}
+        <button class="platform-button platform-button-secondary" type="button" data-action="evidence-open-log">Open Evidence Log</button>
+      </div>
+      ${draft ? `<section class="platform-evidence-capture" aria-labelledby="evidence-capture-title">
+        <p class="platform-stem-work-label">Capture</p><h4 id="evidence-capture-title">Add ${escapeHtml(draft.type)}</h4>
+        ${needsFile ? `<label class="platform-evidence-file">Choose ${draft.type.toLowerCase()}<input data-evidence-file type="file" accept="${inputAccept}" ${draft.type === EVIDENCE_TYPES.PHOTO ? "capture=\"environment\"" : ""}></label>` : `<label for="evidence-reflection">What did you try, notice, or change?</label><textarea id="evidence-reflection" data-evidence-reflection maxlength="600" rows="4">${escapeHtml(draft.detail || "")}</textarea>`}
+        <div class="platform-evidence-preview" data-evidence-preview>
+          ${draft.previewUrl ? (draft.type === EVIDENCE_TYPES.VIDEO ? `<video src="${draft.previewUrl}" controls></video>` : draft.type === EVIDENCE_TYPES.MORE ? `<p><strong>${escapeHtml(draft.fileName)}</strong><br>${escapeHtml(draft.detail)}</p>` : `<img src="${draft.previewUrl}" alt="Preview of evidence ready to save">`) : `<p>${draft.detail ? escapeHtml(draft.detail) : "Your preview will appear here before anything is saved."}</p>`}
+        </div>
+        <div class="platform-actions"><button class="platform-button platform-button-primary" type="button" data-action="evidence-save">Save Evidence</button>${draft.hasSelection ? `<button class="platform-button platform-button-secondary" type="button" data-action="evidence-retake">Retake</button>` : ""}<button class="platform-button platform-button-secondary" type="button" data-action="evidence-cancel">Cancel</button></div>
+        <p class="platform-error" data-evidence-error role="alert" hidden></p>
+      </section>` : ""}
+      <p class="platform-evidence-notice" role="status" aria-live="polite">${escapeHtml(evidenceNotice)}</p>
+      <section class="platform-evidence-log" id="student-evidence-log" aria-labelledby="evidence-log-title">
+        <div><p class="platform-stem-work-label">Fictional pilot data</p><h4 id="evidence-log-title">Evidence Timeline</h4></div>
+        <ol>${items.map((item) => `<li><span class="platform-evidence-type">${escapeHtml(item.type)}</span><div><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.activity)} · ${escapeHtml(item.time)}</p><small>${escapeHtml(item.detail)}</small></div></li>`).join("")}</ol>
+      </section>
+      <p class="platform-evidence-boundary">Fictional pilot only. Photo and Screenshot use the teacher-owned Drive when the local pilot service is running; all other evidence remains in this browser session.</p>
+    </div>`;
+}
+
+function teacherEvidenceReviewMarkup() {
+  const visible = teacherEvidenceFilter === "All"
+    ? PILOT_TEACHER_EVIDENCE
+    : PILOT_TEACHER_EVIDENCE.filter((item) => item.type === teacherEvidenceFilter);
+  const selected = PILOT_TEACHER_EVIDENCE.find((item) => item.id === teacherEvidenceSelection);
+  return `
+    <div class="platform-teacher-evidence-review" data-teacher-evidence-review>
+      <div class="platform-teacher-evidence-heading">
+        <div><p class="platform-command-label">Fictional classroom preview</p><h3 id="teacher-evidence-review-title">Student Evidence</h3></div>
+        <label>Show evidence type
+          <select data-teacher-evidence-filter>
+            ${["All", ...Object.values(EVIDENCE_TYPES)].map((type) => `<option value="${type}"${teacherEvidenceFilter === type ? " selected" : ""}>${type}</option>`).join("")}
+          </select>
+        </label>
+      </div>
+      <p>Browse sample evidence without assigning grades, leaving comments, or recording whether a teacher viewed it.</p>
+      <div class="platform-teacher-evidence-layout">
+        <ul class="platform-teacher-evidence-list" aria-label="Fictional student evidence">
+          ${visible.length ? visible.map((item) => `<li><button type="button" data-action="teacher-evidence-open" data-evidence-id="${item.id}" aria-pressed="${item.id === teacherEvidenceSelection}"><span>${escapeHtml(item.student)} · ${escapeHtml(item.type)}</span><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(item.time)}</small></button></li>`).join("") : "<li><p>No fictional evidence matches this filter.</p></li>"}
+        </ul>
+        <section class="platform-teacher-evidence-detail" aria-labelledby="teacher-evidence-detail-title" tabindex="-1">
+          ${selected ? `<p class="platform-evidence-type">${escapeHtml(selected.type)}</p><h4 id="teacher-evidence-detail-title">${escapeHtml(selected.title)}</h4><p><strong>${escapeHtml(selected.student)}</strong> · ${escapeHtml(selected.activity)}</p><div class="platform-teacher-evidence-artifact" aria-label="Fictional evidence preview">${escapeHtml(selected.detail)}</div><small>${escapeHtml(selected.time)}</small>` : `<h4 id="teacher-evidence-detail-title">Choose fictional evidence</h4><p>Select an item to preview it.</p>`}
+        </section>
+      </div>
+      <p class="platform-evidence-boundary">Preview only. No real student accounts, files, Google Drive, grades, comments, automated messages, or teacher-review history are connected.</p>
+    </div>`;
+}
+
+function teacherLiveEvidenceMarkup() {
+  const choices = (field) => ["All", ...new Set(teacherLiveEvidence.map((item) => item[field]).filter(Boolean))];
+  const visible = teacherLiveEvidence.filter((item) => Object.entries(teacherLiveEvidenceFilters).every(([field, value]) => value === "All" || item[field] === value));
+  const selected = visible.find((item) => item.id === teacherLiveEvidenceSelection);
+  const displayType = (item) => item.evidenceType || "Photo";
+  const savedLabel = (item) => item.savedAt ? new Date(item.savedAt).toLocaleString() : "Saved in pilot Drive";
+  return `<div class="platform-live-evidence" data-live-evidence-inbox>
+    <div class="platform-actions"><button class="platform-button platform-button-secondary" type="button" data-action="evidence-teacher-refresh">Refresh Live Evidence</button></div>
+    <p role="status" aria-live="polite">${escapeHtml(teacherLiveEvidenceNotice)}</p>
+    ${teacherLiveEvidence.length ? `<div class="platform-live-evidence-filters" aria-label="Filter persistent fictional evidence">
+      ${[["studentId", "Student"], ["activity", "Activity"], ["evidenceType", "Evidence type"]].map(([field, label]) => `<label>${label}<select data-live-evidence-filter="${field}">${choices(field).map((value) => `<option value="${escapeHtml(value)}"${teacherLiveEvidenceFilters[field] === value ? " selected" : ""}>${escapeHtml(value)}</option>`).join("")}</select></label>`).join("")}
+    </div><div class="platform-teacher-evidence-layout"><ul class="platform-teacher-evidence-list" aria-label="Persistent fictional evidence">
+      ${visible.length ? visible.map((item) => `<li><button type="button" data-action="evidence-teacher-live-open" data-evidence-id="${escapeHtml(item.id)}" aria-pressed="${item.id === teacherLiveEvidenceSelection}"><span>${escapeHtml(item.studentId)} · ${escapeHtml(displayType(item))}</span><strong>${escapeHtml(displayType(item))} evidence</strong><small>${escapeHtml(item.activity)} · ${escapeHtml(savedLabel(item))}</small></button></li>`).join("") : "<li>No evidence matches these filters.</li>"}
+    </ul><section class="platform-teacher-evidence-detail" aria-label="Live fictional evidence preview">
+      ${selected ? `<p class="platform-evidence-type">Live Drive pilot</p><h4>${escapeHtml(displayType(selected))} evidence</h4><p>${escapeHtml(selected.studentId)} · ${escapeHtml(selected.activity)} · ${escapeHtml(savedLabel(selected))}</p><small class="platform-live-evidence-filename">Drive file: ${escapeHtml(selected.name)}</small>${teacherLiveEvidencePreviewUrl ? `<img class="platform-live-evidence-preview" src="${teacherLiveEvidencePreviewUrl}" alt="Fictional student visual evidence preview" tabindex="-1">` : `<p>Choose this item to load its protected visual preview.</p>`}` : `<p>Select a live submission to preview it.</p>`}
+    </section></div>` : ""}
+  </div>`;
+}
+
+function governanceSimulationMarkup({ policyReady }) {
+  const state = evidenceGovernanceSimulation.read();
+  const selected = teacherLiveEvidence.find((item) => item.id === teacherLiveEvidenceSelection) || PILOT_TEACHER_EVIDENCE.find((item) => item.id === teacherEvidenceSelection) || PILOT_TEACHER_EVIDENCE[0];
+  const evidenceId = selected?.id || "fictional-evidence-preview";
+  const evidenceLabel = selected?.name || selected?.title || "Fictional visual evidence";
+  const pending = state.status === GOVERNANCE_SIMULATION_STATUS.PENDING_ADMIN;
+  const finished = [GOVERNANCE_SIMULATION_STATUS.APPROVED_FOR_TRASH, GOVERNANCE_SIMULATION_STATUS.REJECTED, GOVERNANCE_SIMULATION_STATUS.CANCELED].includes(state.status);
+  const statusMessages = {
+    [GOVERNANCE_SIMULATION_STATUS.EMPTY]: policyReady ? "Ready to simulate a teacher request. No Drive file will change." : "Save the governance draft before starting a simulation.",
+    [GOVERNANCE_SIMULATION_STATUS.PENDING_ADMIN]: "Pending fictional administrator review. The evidence remains unchanged.",
+    [GOVERNANCE_SIMULATION_STATUS.APPROVED_FOR_TRASH]: "Approved for recoverable-trash simulation. No Drive file was moved or deleted.",
+    [GOVERNANCE_SIMULATION_STATUS.REJECTED]: "Request rejected. The evidence remains unchanged.",
+    [GOVERNANCE_SIMULATION_STATUS.CANCELED]: "Request canceled. The evidence remains unchanged.",
+  };
+  return `<div data-governance-simulation>
+    <p class="platform-command-label">Fictional approval workflow · no Drive changes</p>
+    <h3 id="governance-simulation-title">Governance Enforcement Simulation</h3>
+    <p>Practice the lowest-support approval path before production: teacher request, administrator decision, recoverable trash, and an audit history.</p>
+    <p class="platform-governance-selected"><strong>Selected fictional evidence:</strong> ${escapeHtml(evidenceLabel)}</p>
+    ${state.status === GOVERNANCE_SIMULATION_STATUS.EMPTY ? `<form data-form="governance-simulation-request" novalidate>
+      <input type="hidden" name="evidenceId" value="${escapeHtml(evidenceId)}"><input type="hidden" name="evidenceLabel" value="${escapeHtml(evidenceLabel)}">
+      <label>Reason for the request<textarea name="reason" maxlength="240" required placeholder="Example: Course ended and the approved retention period has passed"></textarea></label>
+      <label class="platform-evidence-drive-confirmation"><input type="checkbox" name="exportOffered" value="yes" required><span>Confirm that a teacher export was offered before this request.</span></label>
+      <button type="submit"${policyReady ? "" : " disabled"}>Submit Fictional Request</button>
+    </form>` : ""}
+    ${pending ? `<form data-form="governance-simulation-decision" novalidate>
+      <label>Fictional reviewer label<input name="reviewer" maxlength="80" placeholder="Example: District administrator" required></label>
+      <label>Decision note<textarea name="note" maxlength="240" required></textarea></label>
+      <div class="platform-actions"><button type="submit" name="decision" value="approve">Approve Recoverable Trash</button><button type="submit" name="decision" value="reject">Reject Request</button><button type="button" data-action="governance-simulation-cancel">Cancel Request</button></div>
+    </form>` : ""}
+    ${finished ? `<button type="button" data-action="governance-simulation-reset">Start Another Simulation</button>` : ""}
+    <p class="platform-error" data-governance-simulation-error role="alert" hidden></p>
+    <p class="platform-evidence-governance-status" data-state="${pending ? "pending" : finished ? "saved" : "draft-required"}" data-governance-simulation-status role="status" aria-live="polite">${statusMessages[state.status]}</p>
+    <h4>Simulation audit history</h4>
+    ${state.audit.length ? `<ol class="platform-governance-audit">${state.audit.map((item) => `<li><strong>${escapeHtml(item.action.replaceAll("_", " "))}</strong><span>${escapeHtml(item.detail)}</span><small>${escapeHtml(new Date(item.at).toLocaleString())}</small></li>`).join("")}</ol>` : "<p>No simulated governance events yet.</p>"}
+    <p class="platform-evidence-boundary"><strong>Production boundary:</strong> this workflow never deletes, trashes, moves, or exports a real Google Drive file.</p>
+  </div>`;
+}
+
+function googleConnectionPreviewMarkup() {
+  const state = googleConnectionPreview.read();
+  const productionReadiness = assessGoogleOAuthReadiness();
+  const consentOpen = state.status === GOOGLE_CONNECTION_PREVIEW_STATUS.CONSENT_PREVIEW;
+  const connected = state.status === GOOGLE_CONNECTION_PREVIEW_STATUS.CONNECTED_PREVIEW;
+  return `<div data-google-connection-preview>
+    <p class="platform-command-label">Production experience preview · teacher only</p>
+    <h3 id="google-connection-preview-title">Connect Teacher Google Drive</h3>
+    <p>This is the intended low-support subscription flow. It demonstrates what teachers will see after production OAuth is configured.</p>
+    <div class="platform-google-connection-summary">
+      <p><strong>Teacher:</strong> Signs in and approves once</p>
+      <p><strong>Students:</strong> No Google sign-in or Drive permission</p>
+      <p><strong>Access:</strong> Only files created or selected through THINKamigBOB</p>
+    </div>
+    ${!consentOpen && !connected ? `<button type="button" data-action="google-connection-preview-begin">Preview Connect Google Drive</button>` : ""}
+    ${consentOpen ? `<form data-form="google-connection-preview" novalidate>
+      <div class="platform-google-consent-preview" role="group" aria-labelledby="google-consent-preview-title">
+        <h4 id="google-consent-preview-title">Permission preview</h4>
+        <p>THINKamigBOB would request permission to create and manage only its own evidence files—not view the teacher’s entire Drive.</p>
+        <code>${GOOGLE_DRIVE_FILE_SCOPE}</code>
+      </div>
+      <label class="platform-evidence-drive-confirmation"><input type="checkbox" name="teacherConfirmed" value="yes"> I understand that the teacher—not students—authorizes this connection.</label>
+      <label class="platform-evidence-drive-confirmation"><input type="checkbox" name="studentBoundaryConfirmed" value="yes"> Students will join THINKamigBOB without Google accounts or Drive permissions.</label>
+      <div class="platform-actions"><button type="submit">Simulate Teacher Approval</button><button type="button" data-action="google-connection-preview-cancel">Cancel</button></div>
+    </form>` : ""}
+    ${connected ? `<div class="platform-google-connected-preview"><strong>Connection preview complete</strong><p>Future folder: ${escapeHtml(state.folderName)}</p><p>Narrow permission: <code>drive.file</code></p><button type="button" data-action="google-connection-preview-disconnect">Disconnect Preview</button></div>` : ""}
+    <p class="platform-error" data-google-connection-preview-error role="alert" hidden></p>
+    <p class="platform-evidence-drive-status" data-state="${connected ? "prepared" : "not-configured"}" role="status" aria-live="polite">${connected ? "Preview connected for this browser session. No Google account or Drive data was accessed." : consentOpen ? "Review the narrow teacher permission and student boundary." : "Not connected. Production Google OAuth credentials have not been configured."}</p>
+    <details class="platform-google-oauth-readiness">
+      <summary>Production connection readiness: ${productionReadiness.readyCount}/${productionReadiness.totalCount} gates complete</summary>
+      <ul>${productionReadiness.gates.map((gate) => `<li data-state="${gate.ready ? "ready" : "pending"}"><span aria-hidden="true">${gate.ready ? "✓" : "○"}</span>${escapeHtml(gate.label)}</li>`).join("")}</ul>
+      <p>The production service will use server endpoints for status, connection, callback, and disconnect. OAuth secrets and teacher refresh tokens must never enter browser code.</p>
+      <small>Connection start: <code>${GOOGLE_OAUTH_ENDPOINTS.start}</code></small>
+    </details>
+    <p class="platform-evidence-boundary">Preview only. No OAuth token, Google identity, school account, or Drive file is created or stored.</p>
+  </div>`;
+}
+
+function shell(content, { title, eyebrow = "Platform Foundation", subtitle = "", headingAction = "", signedIn = false, teacherContext = null } = {}) {
   document.title = `${title} | THINKamigBOB`;
+  const activeTeacherRoute = currentRoute();
   return `
     <header class="platform-header">
       <a class="platform-brand" href="#${ROUTES.WELCOME}" aria-label="THINKamigBOB Platform home">
@@ -134,22 +874,23 @@ function shell(content, { title, eyebrow = "Platform Foundation", subtitle = "",
         <span><strong>THINKamigBOB</strong><small>STEM Learning Platform</small></span>
       </a>
       ${teacherContext ? `
-        <div class="platform-teacher-orientation" aria-label="Current teacher and class">
-          <span><small>Teacher</small><strong>${escapeHtml(teacherContext.teacherName)}</strong></span>
-          <span><small>Current class</small><strong>${escapeHtml(teacherContext.className)}</strong></span>
-          <span><small>Current period</small><strong>${escapeHtml(teacherContext.periodLabel)}</strong></span>
-        </div>
-        <div class="platform-header-actions">
-          <button class="platform-button platform-button-quiet" type="button" data-action="reserved-nav" data-label="Settings">Settings</button>
-          <button class="platform-button platform-button-quiet" type="button" data-action="sign-out">Sign out</button>
-        </div>
+        <nav class="platform-teacher-menu" aria-label="Teacher tools">
+          <details class="platform-teacher-menu-category${activeTeacherRoute === ROUTES.TEACHER_DASHBOARD ? " is-active" : ""}"><summary>Today</summary><div class="platform-teacher-menu-panel"><strong class="platform-teacher-menu-heading">Teacher Command Center</strong><a href="#${ROUTES.TEACHER_DASHBOARD}">Run Today’s Class</a><a href="#${ROUTES.TEACHER_DASHBOARD}" data-action="open-teacher-dashboard-section" data-scroll-target="teacher-todays-resources">Today’s Resources</a><a href="#${ROUTES.TEACHER_DASHBOARD}" data-action="open-teacher-dashboard-section" data-scroll-target="teacher-live-lesson-dashboard">Live Lesson Dashboard</a></div></details>
+          <details class="platform-teacher-menu-category${activeTeacherRoute === ROUTES.TEACHER_CLASSES ? " is-active" : ""}"><summary>Classes</summary><div class="platform-teacher-menu-panel"><strong class="platform-teacher-menu-heading">Manage Classes</strong><a href="#${ROUTES.TEACHER_CLASSES}" data-action="open-manage-classes-section" data-scroll-target="teacher-class-schedule">Class Schedule</a><a href="#${ROUTES.TEACHER_CLASSES}" data-action="open-manage-classes-section" data-scroll-target="teacher-class-sharing">Share Setup &amp; Messages</a><a href="#${ROUTES.TEACHER_CLASSES}" data-action="open-manage-classes-section" data-scroll-target="teacher-create-classroom">Create Classroom &amp; Add Students</a><a href="#${ROUTES.TEACHER_CLASSES}" data-action="open-manage-classes-section" data-scroll-target="teacher-setup-tools">Connections &amp; Safeguards</a></div></details>
+          <details class="platform-teacher-menu-category"><summary>Evidence</summary><div class="platform-teacher-menu-panel"><a href="#${ROUTES.TEACHER_DASHBOARD}" data-action="open-teacher-dashboard-section" data-scroll-target="teacher-evidence-tools">Student Evidence</a></div></details>
+          <details class="platform-teacher-menu-category"><summary>Account</summary><div class="platform-teacher-menu-panel"><button type="button" data-action="reserved-nav" data-label="Settings">Settings</button><button type="button" data-action="sign-out">Sign Out</button></div></details>
+        </nav>
       ` : signedIn ? '<button class="platform-button platform-button-quiet" type="button" data-action="sign-out">Sign out</button>' : ""}
     </header>
+    ${teacherContext ? `<aside class="platform-teacher-context" aria-label="Current teacher and class"><span><small>Teacher</small><strong>${escapeHtml(teacherContext.teacherName)}</strong></span><span><small>Current class</small><strong>${escapeHtml(teacherContext.className)}</strong></span><span><small>Current period</small><strong>${escapeHtml(teacherContext.periodLabel)}</strong></span></aside>` : ""}
     <main id="platform-main" class="platform-main" tabindex="-1">
       <div class="platform-page-heading">
         <p class="platform-eyebrow">${escapeHtml(eyebrow)}</p>
         <h1>${escapeHtml(title)}</h1>
-        ${subtitle ? `<p class="platform-page-subtitle">${escapeHtml(subtitle)}</p>` : ""}
+        ${subtitle || headingAction ? `<div class="platform-page-heading-bottom">
+          ${subtitle ? `<p class="platform-page-subtitle">${escapeHtml(subtitle)}</p>` : ""}
+          ${headingAction}
+        </div>` : ""}
       </div>
       ${content}
     </main>
@@ -177,6 +918,7 @@ function welcomeView() {
           <h2>Teachers</h2>
           <p>Open the development login or review the future account-creation path.</p>
           <div class="platform-actions">
+            <a class="platform-button platform-button-primary" href="#${ROUTES.PREVIEW_TEACHER}">Open Teacher Preview — No Sign-In</a>
             <a class="platform-button platform-button-primary" href="#${ROUTES.TEACHER_LOGIN}">Teacher Login</a>
             <a class="platform-button platform-button-secondary" href="#${ROUTES.TEACHER_CREATE}">Create Teacher Account</a>
           </div>
@@ -185,7 +927,7 @@ function welcomeView() {
           <span class="platform-card-icon" aria-hidden="true">S</span>
           <h2>Students</h2>
           <p>Enter with a class code, select your roster name, and use your private identifier.</p>
-          <a class="platform-button platform-button-primary" href="#${ROUTES.STUDENT_ENTRY}">Student Entry</a>
+          <div class="platform-actions"><a class="platform-button platform-button-primary" href="#${ROUTES.PREVIEW_STUDENT}">Open Student Preview — No Codes</a><a class="platform-button platform-button-secondary" href="#${ROUTES.STUDENT_ENTRY}">Student Entry</a></div>
         </article>
       </div>
     </section>
@@ -196,7 +938,19 @@ function teacherLoginView() {
   const access = `<details><summary>Show development test access</summary><dl><dt>Email</dt><dd><code>${escapeHtml(DEVELOPMENT_FIXTURE_ACCESS.teacherEmail)}</code></dd><dt>Password</dt><dd><code>${escapeHtml(DEVELOPMENT_FIXTURE_ACCESS.teacherPassword)}</code></dd></dl></details>`;
   return shell(`
     <div class="platform-form-layout">
+      <section class="platform-panel platform-production-entry" aria-labelledby="teacher-production-entry-title">
+        <p class="platform-context-label">Production sign-in foundation</p>
+        <h2 id="teacher-production-entry-title">Continue with Google</h2>
+        <p>Teachers will sign in with Google. Drive access is requested separately only when a teacher chooses to connect Evidence.</p>
+        <div data-production-google-signin></div>
+        ${productionIdentityConfig.googleEnabled ? "" : '<button class="platform-button platform-button-primary" type="button" disabled aria-describedby="teacher-production-entry-status">Continue with Google</button>'}
+        <p id="teacher-production-entry-status" class="platform-entry-status">${productionIdentityConfig.googleEnabled ? "Ready for secure Google sign-in." : "Setup required. No Google sign-in request will run in this local pilot."}</p>
+      </section>
       <form class="platform-panel platform-form" data-form="teacher-login" novalidate>
+        <p class="platform-context-label">Local fictional pilot</p>
+        <a class="platform-button platform-button-primary platform-preview-entry-button" href="#${ROUTES.PREVIEW_TEACHER}">Open Teacher Preview — No Sign-In</a>
+        <p class="platform-entry-status">Uses fictional local preview data only. No Google account or password is needed.</p>
+        <hr>
         <div class="platform-field">
           <label for="teacher-email">Email</label>
           <input id="teacher-email" name="email" type="email" autocomplete="username" required>
@@ -247,7 +1001,27 @@ function studentEntryView() {
   const access = `<details><summary>Show development class code</summary><p><code>${escapeHtml(DEVELOPMENT_FIXTURE_ACCESS.classCode)}</code></p></details>`;
   return shell(`
     <div class="platform-form-layout">
+      <form class="platform-panel platform-production-entry" data-form="production-student-entry" aria-labelledby="student-production-entry-title" novalidate>
+        <p class="platform-context-label">Production classroom entry foundation</p>
+        <h2 id="student-production-entry-title">Enter your classroom</h2>
+        <p>Students will use a class code and their individual student code. Students will not sign in to Google.</p>
+        <div class="platform-field">
+          <label for="production-class-code">Class Code</label>
+          <input id="production-class-code" name="classCode" type="text"${productionIdentityConfig.enabled ? "" : " disabled"} autocomplete="off" autocapitalize="characters" placeholder="Provided by teacher" required>
+        </div>
+        <div class="platform-field">
+          <label for="production-student-code">Student Code</label>
+          <input id="production-student-code" name="studentCode" type="password"${productionIdentityConfig.enabled ? "" : " disabled"} autocomplete="off" placeholder="Private student code" required>
+        </div>
+        <p class="platform-error" data-error role="alert" hidden></p>
+        <button class="platform-button platform-button-primary" type="submit"${productionIdentityConfig.enabled ? "" : " disabled"}>Open Student Dashboard</button>
+        <p class="platform-entry-status">${productionIdentityConfig.enabled ? "Ready for your teacher-provided codes." : "Setup required. Continue with the fictional pilot entry beside this preview."}</p>
+      </form>
       <form class="platform-panel platform-form" data-form="student-entry" novalidate>
+        <p class="platform-context-label">Local fictional pilot</p>
+        <button class="platform-button platform-button-primary platform-preview-entry-button" type="button" data-action="open-student-preview">Open Student Preview — No Codes</button>
+        <p class="platform-entry-status">Opens the fictional Ada Rivera preview in Preview STEM Class.</p>
+        <hr>
         <p>Ask your teacher for your class code.</p>
         <div class="platform-field">
           <label for="class-code">Class Code</label>
@@ -260,6 +1034,31 @@ function studentEntryView() {
       ${fixtureNotice(access)}
     </div>
   `, { title: "Student Entry", eyebrow: "Step 1 of 3" });
+}
+
+function classroomSetupMarkup() {
+  const classroom = oneTimeClassroomCodes;
+  return `<section id="teacher-create-classroom" class="platform-command-card platform-classroom-setup" aria-labelledby="classroom-setup-title" data-classroom-setup>
+    <p class="platform-command-label">Production classroom foundation</p>
+    <h3 id="classroom-setup-title">Create a Classroom</h3>
+    <p>Enter one student label per line. Students use the generated codes without Google accounts.</p>
+    <form data-form="production-classroom-setup" novalidate>
+      <label for="production-classroom-name">Class name</label>
+      <input id="production-classroom-name" name="name" maxlength="100"${productionIdentityConfig.enabled ? "" : " disabled"} required placeholder="Example: STEM Lab — Period 2">
+      <label for="production-student-labels">Student labels <small>1–40; one per line</small></label>
+      <textarea id="production-student-labels" name="studentLabels" rows="7"${productionIdentityConfig.enabled ? "" : " disabled"} required placeholder="Student 01&#10;Student 02&#10;Student 03"></textarea>
+      <button type="submit"${productionIdentityConfig.enabled ? "" : " disabled"}>Create Class &amp; Codes</button>
+      <p class="platform-error" data-error role="alert" hidden></p>
+      <p class="platform-entry-status" role="status" aria-live="polite">${productionIdentityConfig.enabled ? "Ready. Codes will be shown once after the class is created." : "Setup preview only. Production identity stays off on localhost and no classroom will be created."}</p>
+    </form>
+    ${classroom ? `<section class="platform-code-sheet" aria-labelledby="classroom-code-sheet-title">
+      <p class="platform-code-warning">Print this sheet now. Student codes are shown once and are not saved in the browser.</p>
+      <h4 id="classroom-code-sheet-title">${escapeHtml(classroom.name)}</h4>
+      <p class="platform-class-code"><span>Class code</span><strong>${escapeHtml(classroom.classCode)}</strong></p>
+      <table><thead><tr><th>Student</th><th>Private student code</th></tr></thead><tbody>${classroom.students.map((student) => `<tr><td>${escapeHtml(student.displayLabel)}</td><td><code>${escapeHtml(student.studentCode)}</code></td></tr>`).join("")}</tbody></table>
+      <div class="platform-actions platform-code-sheet-actions"><button type="button" data-action="print-classroom-codes">Print Code Sheet</button><button type="button" data-action="close-classroom-codes">Close &amp; Hide Codes</button></div>
+    </section>` : ""}
+  </section>`;
 }
 
 function studentRosterView(state) {
@@ -304,19 +1103,283 @@ function studentIdentifierView(state) {
   `, { title: "Private Identifier", eyebrow: "Step 3 of 3" });
 }
 
+function teacherSetupMarkup() {
+  const driveSetupState = evidenceDriveSetup.read();
+  const driveSetupPrepared = driveSetupState.status === DRIVE_SETUP_STATUS.PREPARED;
+  const governanceState = evidenceGovernance.read();
+  const governanceSaved = governanceState.status === EVIDENCE_GOVERNANCE_STATUS.DRAFT_SAVED;
+  const governanceOptions = (field, placeholder) => `<option value="">${placeholder}</option>${EVIDENCE_GOVERNANCE_OPTIONS[field].map((value) => `<option value="${escapeHtml(value)}"${governanceState[field] === value ? " selected" : ""}>${escapeHtml(value)}</option>`).join("")}`;
+  return `
+    <section class="platform-command-card platform-evidence-drive-setup" aria-labelledby="evidence-drive-setup-title">
+      <p class="platform-command-label">Drive readiness · fictional pilot</p>
+      <h3 id="evidence-drive-setup-title">Pilot Drive Connection</h3>
+      <p>The fictional Apps Script pilot is connected. This form prepares a future production school connection; it does not authorize a real teacher account.</p>
+      <dl class="platform-evidence-drive-destination">
+        <div><dt>Pilot folder</dt><dd><a href="${PILOT_DRIVE_DESTINATION.folderUrl}" target="_blank" rel="noopener noreferrer">${escapeHtml(PILOT_DRIVE_DESTINATION.folderName)}</a></dd></div>
+        <div><dt>Account</dt><dd>${escapeHtml(PILOT_DRIVE_DESTINATION.accountLabel)}</dd></div>
+        <div><dt>Connection</dt><dd>Persistent fictional review validated</dd></div>
+      </dl>
+      <form data-form="evidence-drive-setup" novalidate>
+        <label for="evidence-drive-folder-name">Teacher-owned destination folder name</label>
+        <input id="evidence-drive-folder-name" name="folderName" maxlength="80" value="${escapeHtml(driveSetupState.folderName)}" required>
+        <label class="platform-evidence-drive-confirmation"><input type="checkbox" name="privacyConfirmed" value="yes"${driveSetupPrepared ? " checked" : ""}> Keep student uploads private to authorized classroom staff; students must never browse other students’ files.</label>
+        <button type="submit">Prepare Future School Connection</button>
+        <p class="platform-error" data-evidence-drive-error role="alert" hidden></p>
+        <p class="platform-evidence-drive-status" data-evidence-drive-status data-state="${driveSetupPrepared ? "prepared" : "not-configured"}" role="status" aria-live="polite">${driveSetupPrepared ? `Future setup prepared for “${escapeHtml(driveSetupState.folderName)}.” Production administrator OAuth is still required.` : "Fictional pilot connected. Production school Google OAuth is not configured."}</p>
+      </form>
+      <ul class="platform-evidence-drive-gates" aria-label="Requirements before real uploads">
+        <li>Teacher-authorized Apps Script pilot endpoint is deployed</li>
+        <li>Active upload secret remains outside student-facing source code</li>
+        <li>Server-side upload broker so student devices receive no teacher credentials</li>
+        <li>Retention, deletion, audit, and recovery rules</li>
+      </ul>
+    </section>
+    <section class="platform-command-card platform-google-connection-preview" aria-labelledby="google-connection-preview-title">
+      ${googleConnectionPreviewMarkup()}
+    </section>
+    <section class="platform-command-card platform-evidence-governance" aria-labelledby="evidence-governance-title">
+      <p class="platform-command-label">Evidence governance · policy foundation</p>
+      <h3 id="evidence-governance-title">Evidence Governance Draft</h3>
+      <p>Document proposed safeguards before any real account connection. This draft does not delete, move, export, or change any Drive file.</p>
+      <form data-form="evidence-governance" novalidate>
+        <label>Retention rule<select name="retention" required>${governanceOptions("retention", "Choose a retention rule")}</select></label>
+        <label>Deletion authority<select name="deletionAuthority" required>${governanceOptions("deletionAuthority", "Choose who may approve deletion")}</select></label>
+        <label>Recovery safeguard<select name="recovery" required>${governanceOptions("recovery", "Choose a recovery safeguard")}</select></label>
+        <label>Export safeguard<select name="exportRule" required>${governanceOptions("exportRule", "Choose an export safeguard")}</select></label>
+        <button type="submit">Save Governance Draft</button>
+        <p class="platform-error" data-evidence-governance-error role="alert" hidden></p>
+        <p class="platform-evidence-governance-status" data-evidence-governance-status data-state="${governanceSaved ? "saved" : "draft-required"}" role="status" aria-live="polite">${governanceSaved ? "Governance draft saved for this browser session. It is not an enforced policy." : "Draft required. School and legal approval are still required before real evidence use."}</p>
+      </form>
+    </section>
+    <section class="platform-command-card platform-governance-simulation" aria-labelledby="governance-simulation-title">
+      ${governanceSimulationMarkup({ policyReady: governanceSaved })}
+    </section>`;
+}
+
+function classTimerScheduleMarkup(classId = "class-preview-1", { showBackToToday = true } = {}) {
+  const schedule = classTimerSchedule.read();
+  const library = messageLibrary.read();
+  const timeZones = ["America/New_York", "America/Chicago", "America/Denver", "America/Phoenix", "America/Los_Angeles", "America/Anchorage", "Pacific/Honolulu"];
+  const soundOptions = (selected) => TIMER_SOUND_OPTIONS.map((sound) => `<option value="${sound}"${selected === sound ? " selected" : ""}>${sound}</option>`).join("");
+  return `<section id="teacher-class-schedule" class="platform-classroom-setup platform-class-timer-schedule" aria-labelledby="class-timer-schedule-title">
+    <p class="platform-command-label">Automatic class timer</p>
+    <h3 id="class-timer-schedule-title">Class Schedule</h3>
+    <p>Start the class timer from the scheduled time, even if the dashboard opens after class begins.</p>
+    <form data-form="class-timer-schedule" novalidate>
+      <label class="platform-evidence-drive-confirmation"><input type="checkbox" name="enabled" value="yes"${schedule.enabled ? " checked" : ""}> Automatically run the timer on scheduled school days.</label>
+      <fieldset><legend>Weekdays</legend>${WEEKDAYS.map((day) => `<label><input type="checkbox" name="weekdays" value="${day}"${schedule.weekdays.includes(day) ? " checked" : ""}> ${day}</label>`).join("")}</fieldset>
+      <label>Class start time<input type="time" name="startTime" value="${schedule.startTime}" required></label>
+      <label>Class duration in minutes<input type="number" name="durationMinutes" min="${MIN_LESSON_MINUTES}" max="${MAX_LESSON_MINUTES}" step="1" value="${schedule.durationMinutes}" required></label>
+      <label>Time zone<select name="timeZone">${timeZones.map((zone) => `<option value="${zone}"${schedule.timeZone === zone ? " selected" : ""}>${zone.replaceAll("_", " ")}</option>`).join("")}</select></label>
+      <label class="platform-evidence-drive-confirmation"><input type="checkbox" name="pomodoroEnabled" value="yes"${schedule.pomodoroEnabled ? " checked" : ""}> Use three color-coded activity phases.</label>
+      <fieldset class="platform-class-timer-phases"><legend>Activity phases</legend>
+        ${schedule.phases.map((phase, index) => `<div data-phase-color="${phase.color}"><span>${phase.color}</span><label>Phase name<input name="phaseName" maxlength="40" value="${escapeHtml(phase.name)}" required></label><label>Starts at minute<input type="number" name="phaseStart" data-phase-start="${phase.key}" min="0" max="${Math.max(0, schedule.durationMinutes - 1)}" step="1" value="${phase.startMinute}"${index === 0 ? " readonly" : ""} required></label></div>`).join("")}
+      </fieldset>
+      <button class="platform-button platform-button-secondary" type="button" data-action="timer-recommend-phases">Use Recommended Phase Times</button>
+      <fieldset class="platform-timer-sound-settings"><legend>Timer sounds</legend>
+        <div><label>When yellow begins<select name="yellowSound">${soundOptions(schedule.yellowSound)}</select><input type="file" name="yellowSoundFile" accept="audio/*" aria-label="Upload a custom yellow phase sound"><small>${schedule.yellowCustomAudio ? "Custom sound saved in this browser." : "Optional custom audio, 750 KB maximum."}</small></label><button type="button" data-action="timer-test-sound" data-sound-field="yellowSound">Test</button></div>
+        <div><label>When red begins<select name="redSound">${soundOptions(schedule.redSound)}</select><input type="file" name="redSoundFile" accept="audio/*" aria-label="Upload a custom red phase sound"><small>${schedule.redCustomAudio ? "Custom sound saved in this browser." : "Optional custom audio, 750 KB maximum."}</small></label><button type="button" data-action="timer-test-sound" data-sound-field="redSound">Test</button></div>
+        <div><label>When the timer ends<select name="endSound">${soundOptions(schedule.endSound)}</select><input type="file" name="endSoundFile" accept="audio/*" aria-label="Upload a custom timer completion sound"><small>${schedule.endCustomAudio ? "Custom sound saved in this browser." : "Optional custom audio, 750 KB maximum."}</small></label><button type="button" data-action="timer-test-sound" data-sound-field="endSound">Test</button></div>
+      </fieldset>
+      <fieldset id="teacher-shared-message-library" class="platform-message-schedule"><legend>Shared Message Library</legend>
+        <p>Create reusable messages, then choose which message starts with this class timer on each weekday.</p>
+        <section class="platform-class-message-creator" aria-labelledby="class-message-creator-title">
+          <h4 id="class-message-creator-title">Create and Save a Message</h4>
+          <p>Messages saved here also appear in the Today-page Saved Message Library.</p>
+          <label>Message title<input type="text" maxlength="60" data-class-message-title placeholder="Example: Monday warm-up"></label>
+          <label>Message text<textarea maxlength="240" data-class-message-text placeholder="Type the message students should see."></textarea></label>
+          <div class="platform-class-message-formatting">
+            <label>Text color<select data-class-message-color>${TEACHER_MEMO_COLORS.map((value) => `<option value="${value}">${value.replaceAll("-", " ")}</option>`).join("")}</select></label>
+            <label>Text size<select data-class-message-size>${TEACHER_MEMO_SIZES.map((value) => `<option value="${value}"${value === "extra-large" ? " selected" : ""}>${value.replaceAll("-", " ")}</option>`).join("")}</select></label>
+            <label>Text style<select data-class-message-style>${TEACHER_MEMO_STYLES.map((value) => `<option value="${value}"${value === "bold" ? " selected" : ""}>${value.replaceAll("-", " + ")}</option>`).join("")}</select></label>
+          </div>
+          <button type="button" data-action="save-class-message">Save Message to Shared Library</button>
+          <p data-class-message-status role="status" aria-live="polite">${library.messages.length} shared message${library.messages.length === 1 ? "" : "s"} available.</p>
+        </section>
+        <details class="platform-class-message-library"><summary>View Shared Message Library (${library.messages.length})</summary><div>${library.messages.length ? library.messages.map((message) => `<article><span><strong>${escapeHtml(message.title)}</strong><small>${escapeHtml(message.text)}</small></span><button type="button" data-action="delete-saved-message" data-message-id="${message.id}">Delete</button></article>`).join("") : `<p>No saved messages yet. Create one above or on the Today page.</p>`}</div></details>
+        ${WEEKDAYS.map((day) => `<label>${day}<select data-message-assignment="${day}"><option value="">No automatic message</option>${library.messages.map((message) => `<option value="${message.id}"${library.assignments[`${classId}|${day}`] === message.id ? " selected" : ""}>${escapeHtml(message.title)}</option>`).join("")}</select></label>`).join("")}
+        <button type="button" data-action="save-message-assignments" data-class-id="${escapeHtml(classId)}">Save Message Schedule</button>
+      </fieldset>
+      <button type="submit">Save Class Schedule</button>
+      ${showBackToToday ? `<a class="platform-button platform-button-secondary" href="#${ROUTES.TEACHER_DASHBOARD}">Back to Today</a>` : ""}
+      <p class="platform-error" data-class-timer-schedule-error role="alert" hidden></p>
+      <p class="platform-evidence-drive-status" data-class-timer-schedule-status role="status" aria-live="polite">${schedule.enabled ? `Scheduled for ${schedule.weekdays.join(", ")} at ${schedule.startTime} for ${schedule.durationMinutes} minutes.` : "Automatic timer is off. Manual timer controls remain available."}</p>
+    </form>
+  </section>`;
+}
+
+function applyScheduledClassTimer(classId = "class-preview-1") {
+  const occurrence = classTimerSchedule.activeOccurrence();
+  if (!occurrence.active || classTimerSchedule.wasApplied(occurrence.occurrence)) return occurrence;
+  const current = lessonTimer.read();
+  if (current.status === LESSON_TIMER_STATES.RUNNING || current.status === LESSON_TIMER_STATES.PAUSED) {
+    classTimerSchedule.markApplied(occurrence.occurrence);
+    return { ...occurrence, active: false, reason: "manual-timer-active" };
+  }
+  const result = lessonTimer.startScheduled(occurrence.durationMinutes, occurrence.remainingSeconds);
+  if (result.ok) {
+    const assigned = messageLibrary.assigned(classId, occurrence.weekday);
+    if (assigned) teacherMemo.save(assigned.text, assigned);
+    const board = scheduledWhiteboardFor(classId, occurrence);
+    if (board?.displayImage || board?.image) {
+      const memo = teacherMemo.read();
+      teacherMemo.save(memo.text || board.title, { ...memo, image: board.displayImage || board.image });
+    }
+    classTimerSchedule.markApplied(occurrence.occurrence);
+  }
+  return occurrence;
+}
+
+function timerRingStyle(scheduleState) {
+  if (!scheduleState?.active || !scheduleState.phase) return "--timer-elapsed:0%;--timer-main-start:20%;--timer-warning-start:70%;--timer-red-start:80%;";
+  return `--timer-elapsed:${scheduleState.elapsedPercent}%;--timer-main-start:${scheduleState.mainStartPercent}%;--timer-warning-start:${scheduleState.warningStartPercent}%;--timer-red-start:${scheduleState.redStartPercent}%;`;
+}
+
+function presentationTimerViewMode() {
+  const today = new Date().toISOString().slice(0, 10);
+  try {
+    const stored = JSON.parse(window.localStorage.getItem(PRESENTATION_TIMER_VIEW_KEY) ?? "null");
+    if (stored?.date === today && ["regular", "pomodoro"].includes(stored.mode)) return stored.mode;
+  } catch {
+    // Fall back to the saved class setting when temporary display preferences are unavailable.
+  }
+  return classTimerSchedule.readEffective().pomodoroEnabled ? "pomodoro" : "regular";
+}
+
+function setPresentationTimerViewMode(mode) {
+  if (!["regular", "pomodoro"].includes(mode)) return;
+  try {
+    window.localStorage.setItem(PRESENTATION_TIMER_VIEW_KEY, JSON.stringify({ date: new Date().toISOString().slice(0, 10), mode }));
+  } catch {
+    // The view still changes for this render even when browser storage is unavailable.
+  }
+  syncLessonTimerPresentation();
+}
+
+function presentationTimerVisualState(timerState) {
+  if (presentationTimerViewMode() === "regular") return { active: false, phase: null, fiveMinuteWarning: false, elapsedPercent: 0, mainStartPercent: 20, warningStartPercent: 70, redStartPercent: 80 };
+  const schedule = { ...classTimerSchedule.readEffective(), pomodoroEnabled: true };
+  const phaseState = evaluateTimerPhases(schedule, Math.max(0, timerState.durationSeconds - timerState.remainingSeconds));
+  return { ...phaseState, active: true, manual: true };
+}
+
+function syncPresentationTimerViewControls(documentRef = document) {
+  const mode = presentationTimerViewMode();
+  const visual = presentationTimerVisualState(lessonTimer.read());
+  documentRef.querySelectorAll("[data-timer-view-mode]").forEach((button) => {
+    const selected = button.dataset.timerViewMode === mode;
+    button.setAttribute("aria-pressed", String(selected));
+  });
+  documentRef.querySelectorAll('[data-smartboard-tool="timer"]').forEach((tool) => {
+    tool.dataset.timerView = mode;
+    tool.style.setProperty("--timer-elapsed", `${visual.elapsedPercent ?? 0}%`);
+    tool.style.setProperty("--timer-main-start", `${visual.mainStartPercent ?? 20}%`);
+    tool.style.setProperty("--timer-warning-start", `${visual.warningStartPercent ?? 70}%`);
+    tool.style.setProperty("--timer-red-start", `${visual.redStartPercent ?? 80}%`);
+  });
+  documentRef.querySelectorAll("[data-timer-view-status]").forEach((status) => {
+    status.textContent = mode === "pomodoro" ? "Showing today’s Pomodoro wheel." : "Showing today’s solid-color timer.";
+  });
+}
+
+function currentTimerVisualState(timerState, scheduledState = classTimerSchedule.activeOccurrence()) {
+  if (scheduledState.active) return scheduledState;
+  if (timerState.status !== LESSON_TIMER_STATES.RUNNING && timerState.status !== LESSON_TIMER_STATES.PAUSED) return scheduledState;
+  const phaseState = evaluateTimerPhases(classTimerSchedule.readEffective(), timerState.durationSeconds - timerState.remainingSeconds);
+  return phaseState.phase ? { ...phaseState, active: true, manual: true } : scheduledState;
+}
+
+function smartboardToolSwitcherMarkup() {
+  return `<nav class="platform-floating-tool-switcher" aria-label="Open another presentation tool"><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="timer">Timer</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="stopwatch">Stopwatch</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="message">Message</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="voice">Voice</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="names">Names</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="whiteboard">Whiteboard</button></nav>`;
+}
+
+function namePickerMarkup(roster) {
+  const students = roster.map((student) => `<li data-name-picker-student="${escapeHtml(student.id)}"><span>${escapeHtml(student.displayName)}</span><button type="button" data-action="name-picker-toggle-student" data-student-id="${escapeHtml(student.id)}">Remove</button></li>`).join("");
+  return `<aside class="platform-smartboard-tool platform-name-picker-tool" data-smartboard-tool="names" hidden style="left: 24%; top: 8%; width: min(28rem, 82vw);"><header data-smartboard-drag-handle><strong>Name Picker</strong><button type="button" data-action="close-smartboard-tool" aria-label="Close Name Picker">×</button></header><div class="platform-name-picker-wheel-wrap"><div class="platform-name-picker-pointer" aria-hidden="true"></div><div class="platform-name-picker-wheel" data-name-picker-wheel style="--name-picker-rotation: 0deg"><output data-name-picker-result>Ready</output></div></div><p data-name-picker-count>${roster.length} students on the wheel</p><div class="platform-name-picker-actions"><button type="button" data-action="name-picker-spin">Spin the Wheel</button><button type="button" data-action="name-picker-readd-all">Re-add Everyone</button></div><label class="platform-name-picker-auto-remove"><input type="checkbox" data-name-picker-auto-remove> Remove the selected student after each spin</label><details><summary>Remove or re-add students</summary><ul class="platform-name-picker-roster">${students}</ul></details><p data-name-picker-status role="status">All students are available.</p>${smartboardToolSwitcherMarkup()}<span class="platform-smartboard-resize-handle" data-smartboard-resize-handle aria-label="Resize Name Picker"></span></aside>`;
+}
+
+function updateNamePickerView(documentRef = document) {
+  documentRef.querySelectorAll('[data-smartboard-tool="names"]').forEach((tool) => {
+    const rows = [...tool.querySelectorAll("[data-name-picker-student]")];
+    const available = rows.filter((row) => !namePickerRemovedStudentIds.has(row.dataset.namePickerStudent));
+    rows.forEach((row) => {
+      const removed = namePickerRemovedStudentIds.has(row.dataset.namePickerStudent);
+      row.dataset.removed = String(removed);
+      const button = row.querySelector('[data-action="name-picker-toggle-student"]');
+      if (button) button.textContent = removed ? "Re-add" : "Remove";
+    });
+    const count = tool.querySelector("[data-name-picker-count]");
+    if (count) count.textContent = `${available.length} ${available.length === 1 ? "student" : "students"} on the wheel`;
+    const spin = tool.querySelector('[data-action="name-picker-spin"]');
+    if (spin) spin.disabled = available.length === 0;
+    const wheel = tool.querySelector("[data-name-picker-wheel]");
+    if (wheel) wheel.dataset.availableCount = String(available.length);
+  });
+}
+
+function syncNamePickerViews() {
+  updateNamePickerView(document);
+  if (classroomPresentationWindow && !classroomPresentationWindow.closed) updateNamePickerView(classroomPresentationWindow.document);
+}
+
+function handleNamePickerAction(action, documentRef = document) {
+  if (!action?.dataset.action?.startsWith("name-picker-")) return false;
+  const tool = action.closest('[data-smartboard-tool="names"]');
+  if (!tool) return true;
+  if (action.dataset.action === "name-picker-toggle-student") {
+    const id = action.dataset.studentId;
+    if (namePickerRemovedStudentIds.has(id)) namePickerRemovedStudentIds.delete(id);
+    else namePickerRemovedStudentIds.add(id);
+    tool.querySelector("[data-name-picker-status]").textContent = namePickerRemovedStudentIds.has(id) ? "Student removed from the wheel." : "Student re-added to the wheel.";
+    syncNamePickerViews();
+  }
+  if (action.dataset.action === "name-picker-readd-all") {
+    namePickerRemovedStudentIds.clear();
+    tool.querySelector("[data-name-picker-status]").textContent = "Everyone has been re-added.";
+    syncNamePickerViews();
+  }
+  if (action.dataset.action === "name-picker-spin") {
+    const available = [...tool.querySelectorAll("[data-name-picker-student]")].filter((row) => !namePickerRemovedStudentIds.has(row.dataset.namePickerStudent));
+    if (!available.length) return true;
+    const selected = available[Math.floor(Math.random() * available.length)];
+    const name = selected.querySelector("span")?.textContent || "Selected student";
+    const wheel = tool.querySelector("[data-name-picker-wheel]");
+    namePickerRotation += 1440 + Math.floor(Math.random() * 360);
+    if (wheel) { wheel.style.setProperty("--name-picker-rotation", `${namePickerRotation}deg`); wheel.dataset.spinning = "true"; }
+    action.disabled = true;
+    tool.querySelector("[data-name-picker-status]").textContent = "The wheel is spinning…";
+    documentRef.defaultView?.setTimeout(() => {
+      if (wheel) wheel.dataset.spinning = "false";
+      const output = tool.querySelector("[data-name-picker-result]");
+      if (output) output.textContent = name;
+      tool.querySelector("[data-name-picker-status]").textContent = `${name} was selected.`;
+      if (tool.querySelector("[data-name-picker-auto-remove]")?.checked) namePickerRemovedStudentIds.add(selected.dataset.namePickerStudent);
+      syncNamePickerViews();
+    }, 1050);
+  }
+  return true;
+}
+
 function teacherDashboardView(state) {
   const teacher = getTeacherById(state.teacherId);
-  const classRecord = getClassForTeacher(state.teacherId);
+  const classRecord = currentTeacherClass(state.teacherId);
+  const classRoster = classRecord ? getRosterForClass(classRecord.id) : [];
+  ensureClassSetupProfile(classRecord?.id);
   const teacherName = teacher?.displayName ?? "Preview Teacher";
   const className = classRecord?.displayName ?? "Class not selected";
   const periodLabel = classRecord?.periodLabel ?? "Period not selected";
+  const scheduledTimer = applyScheduledClassTimer(classRecord?.id);
   const timerState = lessonTimer.read();
+  const timerVisualState = currentTimerVisualState(timerState, scheduledTimer);
+  const effectiveTimerSchedule = classTimerSchedule.readEffective();
   const timerMinutes = Math.max(1, Math.round(timerState.durationSeconds / 60));
   const memoState = teacherMemo.read();
+  const savedMessages = messageLibrary.read().messages;
   const memoText = escapeHtml(memoState.text);
   const hasMemo = Boolean(memoState.text);
   const missionState = todaysMission.read();
   const hasMission = Boolean(missionState.title);
+  const missionVisual = matchAutomaticVisual({ title: missionState.title, detail: missionState.focus, type: "Mission" });
   const hasMessageContent = hasMemo || hasMission;
   const selectedDisplayMode = studentDisplayMode.read({ hasMemo: hasMessageContent });
   const showStudentTimer = selectedDisplayMode !== STUDENT_DISPLAY_MODES.MESSAGE;
@@ -328,92 +1391,78 @@ function teacherDashboardView(state) {
     : showStudentMessage ? "platform-student-display-message-only" : "platform-student-display-timer-only";
   const builderAvailable = missionState.builder === TODAYS_MISSION_AVAILABILITY.AVAILABLE;
   const workshopAvailable = missionState.workshop === TODAYS_MISSION_AVAILABILITY.AVAILABLE;
-  const selectedFocusOption = MISSION_FOCUS_OPTIONS.includes(missionState.focus)
-    ? missionState.focus
-    : missionState.focus ? CUSTOM_MISSION_FOCUS : "";
-  const customFocusVisible = selectedFocusOption === CUSTOM_MISSION_FOCUS;
+  const readiness = classReadiness(classRecord?.id);
+  const planReady = hasMission || readiness.mission === "none";
+  const timerReady = readiness.timer !== "off";
+  const selectedVoiceLevel = voiceMeter.read();
+  const selectedVoiceActivity = readVoiceMeterActivity();
+  const selectedVoiceSensitivity = voiceMeter.readSensitivity();
+  const savedWhiteboards = readWhiteboardLibrary();
+  const floatingWhiteboard = savedWhiteboards[0];
   return shell(`
-    <div class="platform-command-layout">
-      <nav class="platform-teacher-nav" aria-label="Teacher navigation">
-        <a href="#${ROUTES.TEACHER_DASHBOARD}" aria-current="page">Today</a>
-        ${["Classes", "Students", "Missions", "Reports", "Settings"].map((item) => `
-          <button type="button" data-action="reserved-nav" data-label="${item}">${item}<small>Future build</small></button>
-        `).join("")}
-        <p id="teacher-nav-status" class="platform-nav-status" role="status" aria-live="polite">Reserved areas are labeled for future builds.</p>
-      </nav>
-
+    <div class="platform-command-layout platform-command-layout-no-sidebar">
+      ${classroomDemoModeIsEnabled() ? `<aside class="platform-classroom-demo-banner"><div><p class="platform-command-label">Populated mock view</p><strong>Fictional classroom-use data is active</strong><span>Explore the dashboard as if this class has been using the platform.</span></div><a class="platform-button platform-button-secondary" href="#${ROUTES.PREVIEW_TEACHER}">Return to Regular Preview</a></aside>` : ""}
       <section class="platform-today-board" aria-label="Today">
-        <div class="platform-today-primary-grid">
-          <section class="platform-command-card platform-command-card-mission">
-            <p class="platform-command-label">Class focus</p>
-            <h3>Today's Mission</h3>
-            <form class="platform-todays-mission-form" data-form="todays-mission" novalidate>
-              <label for="todays-mission-title">Mission title or Goal</label>
-              <input id="todays-mission-title" name="title" type="text" maxlength="${TODAYS_MISSION_TITLE_MAX_CHARACTERS}" value="${escapeHtml(missionState.title)}" aria-describedby="todays-mission-title-count">
-              <small id="todays-mission-title-count"><span data-todays-mission-title-count>${missionState.title.length}</span>/${TODAYS_MISSION_TITLE_MAX_CHARACTERS}</small>
-              <label for="todays-mission-focus-choice">Short classroom focus</label>
-              <select id="todays-mission-focus-choice" name="focusChoice" data-mission-focus-choice>
-                <option value=""${selectedFocusOption ? "" : " selected"}>Choose a classroom focus</option>
-                ${MISSION_FOCUS_OPTIONS.map((option) => `<option value="${escapeHtml(option)}"${selectedFocusOption === option ? " selected" : ""}>${escapeHtml(option)}</option>`).join("")}
-                <option value="${CUSTOM_MISSION_FOCUS}"${customFocusVisible ? " selected" : ""}>Customize your own</option>
-              </select>
-              <div class="platform-todays-mission-custom-focus" data-mission-custom-focus${customFocusVisible ? "" : " hidden"}>
-                <label for="todays-mission-focus">Customize your classroom focus</label>
-                <textarea id="todays-mission-focus" name="focus" maxlength="${TODAYS_MISSION_FOCUS_MAX_CHARACTERS}" aria-describedby="todays-mission-focus-count">${customFocusVisible ? escapeHtml(missionState.focus) : ""}</textarea>
-                <small id="todays-mission-focus-count"><span data-todays-mission-focus-count>${customFocusVisible ? missionState.focus.length : 0}</span>/${TODAYS_MISSION_FOCUS_MAX_CHARACTERS}</small>
-              </div>
-              <fieldset>
-                <legend>Builder today</legend>
-                <label><input type="radio" name="builder" value="${TODAYS_MISSION_AVAILABILITY.AVAILABLE}"${builderAvailable ? " checked" : ""}> Available today</label>
-                <label><input type="radio" name="builder" value="${TODAYS_MISSION_AVAILABILITY.NOT_PART}"${hasMission && !builderAvailable ? " checked" : ""}> Not part of today's mission</label>
-              </fieldset>
-              <fieldset>
-                <legend>Workshop today</legend>
-                <label><input type="radio" name="workshop" value="${TODAYS_MISSION_AVAILABILITY.AVAILABLE}"${workshopAvailable ? " checked" : ""}> Available today</label>
-                <label><input type="radio" name="workshop" value="${TODAYS_MISSION_AVAILABILITY.NOT_PART}"${hasMission && !workshopAvailable ? " checked" : ""}> Not part of today's mission</label>
-              </fieldset>
-              <p class="platform-missions-first-reminder">${MISSIONS_FIRST_REMINDER}</p>
-              <div class="platform-todays-mission-actions">
-                <button type="submit">Save Today's Mission</button>
-                <button type="button" data-action="clear-todays-mission"${hasMission ? "" : " disabled"}>Clear Today's Mission</button>
-              </div>
-              <p class="platform-error platform-todays-mission-error" data-todays-mission-error role="alert" hidden></p>
-              <p class="platform-todays-mission-status" data-todays-mission-status data-state="${hasMission ? "saved" : "empty"}" role="status" aria-live="polite">${hasMission ? "Today's Mission saved for refresh and Student Display." : "No Today's Mission has been prepared for this browser session."}</p>
-            </form>
-            <div class="platform-todays-mission-confirmation" data-todays-mission-confirmation role="alertdialog" aria-modal="true" aria-labelledby="todays-mission-clear-title" aria-describedby="todays-mission-clear-description" hidden>
-              <div class="platform-todays-mission-confirmation-panel">
-                <h4 id="todays-mission-clear-title">Clear Today’s Mission?</h4>
-                <p id="todays-mission-clear-description">This will remove the saved current-session mission announcement.</p>
-                <div class="platform-todays-mission-confirmation-actions">
-                  <button type="button" data-action="keep-todays-mission">Keep Mission</button>
-                  <button type="button" data-action="confirm-clear-todays-mission">Clear Mission</button>
-                </div>
-              </div>
+        <section class="platform-teacher-overview" aria-labelledby="teacher-overview-title">
+          <div>
+            <p class="platform-command-label">Teacher workspace</p>
+            <h2 id="teacher-overview-title">Run today’s class</h2>
+            <p>Plan the mission, manage the room, and review student evidence from one place.</p>
+          </div>
+          <div class="platform-teacher-overview-status" aria-label="Lesson readiness">
+            <p class="platform-lesson-readiness-label">Lesson readiness</p>
+            <div class="platform-lesson-readiness-items">
+              ${planReady ? `<span data-ready="true"><i aria-hidden="true">✓</i> Plan ready</span>` : `<button type="button" data-action="open-class-readiness" data-readiness-focus="mission"><i aria-hidden="true">!</i> Set today’s plan</button>`}
+              ${hasMemo ? `<span data-ready="true"><i aria-hidden="true">✓</i> Message ready</span>` : `<button type="button" data-action="open-message-board-quick"><i aria-hidden="true">!</i> Add a message</button>`}
+              ${timerReady ? `<span data-ready="true"><i aria-hidden="true">✓</i> Timer ready</span>` : `<button type="button" data-action="open-class-schedule-quick"><i aria-hidden="true">!</i> Set the timer</button>`}
             </div>
-            <div class="platform-todays-mission-saved"${hasMission ? "" : " hidden"} data-todays-mission-saved>
-              <p class="platform-command-label">Current mission announcement</p>
-              <h4 data-todays-mission-saved-title>${escapeHtml(missionState.title)}</h4>
-              <p data-todays-mission-saved-focus>${escapeHtml(missionState.focus)}</p>
-              <ul>
-                <li data-todays-mission-saved-builder>Builder: ${builderAvailable ? "Available today" : "Not part of today's mission"}</li>
-                <li data-todays-mission-saved-workshop>Workshop: ${workshopAvailable ? "Available today" : "Not part of today's mission"}</li>
-              </ul>
-            </div>
+            <button class="platform-start-classroom-display" type="button" data-action="open-classroom-presentation-window" aria-describedby="classroom-display-help">Start Classroom Display</button>
+          </div>
+          <form class="platform-class-readiness-panel" data-form="class-readiness" hidden>
+            <div><p class="platform-command-label">Quick class setup</p><h3>Settings for ${escapeHtml(className)}</h3><p>These choices stay with this class when you move to another period and return later.</p></div>
+            <label>Today’s plan<select name="mission" data-readiness-setting="mission"><option value="previous"${readiness.mission === "previous" ? " selected" : ""}>Continue current settings</option><option value="new"${readiness.mission === "new" ? " selected" : ""}>Start a new mission</option><option value="none"${readiness.mission === "none" ? " selected" : ""}>No mission needed today</option></select></label>
+            ${todaysGoalInputsMarkup(classRecord?.id)}
+            <div class="platform-actions"><button type="button" data-action="save-class-readiness">Save Today’s Plan Setting</button><button type="button" data-action="close-class-readiness">Cancel</button></div>
+            <button class="platform-return-current-plan" type="button" data-action="return-to-current-class-plan">Return to Today’s Class Plan</button>
+          </form>
+          <section class="platform-message-board-quick-panel" data-message-board-quick-panel hidden>
+            <div class="platform-message-board-quick-heading"><div><p class="platform-command-label">Quick class communication</p><h3>Message Board for ${escapeHtml(className)}</h3></div><button type="button" data-action="close-message-board-quick">Close Message Board</button></div>
+            <div data-message-board-quick-host></div>
+            <button class="platform-return-current-plan" type="button" data-action="return-to-current-class-plan">Return to Today’s Class Plan</button>
           </section>
-          <section class="platform-command-card platform-command-card-timer">
+          <section class="platform-message-board-quick-panel" data-class-schedule-quick-panel hidden>
+            <div class="platform-message-board-quick-heading"><div><p class="platform-command-label">Quick class setup</p><h3>Schedule for ${escapeHtml(className)}</h3></div><button type="button" data-action="close-class-schedule-quick">Close Class Schedule</button></div>
+            <div data-class-schedule-quick-host></div>
+            <a class="platform-button platform-button-secondary" href="#${ROUTES.TEACHER_CLASSES}" data-action="open-manage-classes-section" data-scroll-target="teacher-class-sharing">Choose What to Share With Other Classes</a>
+            <button class="platform-return-current-plan" type="button" data-action="return-to-current-class-plan">Return to Today’s Class Plan</button>
+          </section>
+          ${currentClassPlanMarkup(classRecord?.id, state.teacherId)}
+        </section>
+        <div data-class-schedule-storage hidden>${classTimerScheduleMarkup(classRecord?.id, { showBackToToday: false })}</div>
+        <div class="platform-today-primary-grid" id="teacher-today-tools">
+          <div class="platform-workspace-heading" id="teacher-classroom-tools" hidden>
+            <p class="platform-command-label">Today’s classroom</p>
+            <h2>Presentation Tools</h2>
+            <div class="platform-workspace-heading-action-row">
+              <p>These are the controls you are most likely to use during class.</p>
+              <div class="platform-workspace-heading-actions">
+                <button type="button" data-action="open-message-board-quick">Quick Message Board</button>
+                <button type="button" data-action="open-whiteboard">Open Whiteboard</button>
+                <button type="button" data-action="open-classroom-presentation-window">Open Classroom Display</button>
+              </div>
+              <p data-classroom-window-status role="status"></p>
+            </div>
+          </div>
+          ${classResourceTeacherMarkup(classRecord?.id)}
+          <section id="teacher-timer-card" class="platform-command-card platform-command-card-timer" hidden>
             <p class="platform-command-label">Class timing</p>
-            <h3>Today's Engineering Time</h3>
+            <h3>Today’s Class Timer</h3>
+            <p class="platform-current-timer-phase">Current phase: <strong data-timer-phase-name>${escapeHtml(timerVisualState.phase?.name ?? "Today's Engineering Time")}</strong></p>
+            <p class="platform-class-timer-auto-status">${scheduledTimer.active ? "Running from today’s saved class schedule." : "Manual controls are ready; an active saved schedule will start automatically."}</p>
+            <p class="platform-timer-warning" data-timer-warning role="status" aria-live="polite"${timerVisualState.fiveMinuteWarning ? "" : " hidden"}>Five minutes until cleanup or the ending activity.</p>
             <div class="platform-lesson-timer" aria-label="Lesson Timer">
-              <output class="platform-timer-remaining" data-timer-remaining aria-live="off">${formatLessonTime(timerState.remainingSeconds)}</output>
+              <output class="platform-timer-remaining" data-timer-remaining data-timer-phase-color="${timerVisualState.phase?.color ?? "default"}" aria-live="off">${formatLessonTime(timerState.remainingSeconds)}</output>
               <p class="platform-timer-state">Timer state: <strong data-timer-state>${escapeHtml(timerState.status)}</strong></p>
-              <form class="platform-timer-duration" data-form="lesson-timer-duration" novalidate>
-                <label for="lesson-duration">Lesson duration in minutes</label>
-                <div>
-                  <input id="lesson-duration" name="duration" type="number" inputmode="numeric" min="${MIN_LESSON_MINUTES}" max="${MAX_LESSON_MINUTES}" step="1" value="${timerMinutes}" data-timer-duration>
-                  <button type="submit" data-timer-set>Set duration</button>
-                </div>
-                <p class="platform-error platform-timer-error" data-timer-error role="alert" hidden></p>
-              </form>
               <div class="platform-timer-controls" aria-label="Teacher Lesson Timer controls">
                 <button type="button" data-action="timer-start">Start</button>
                 <button type="button" data-action="timer-pause">Pause</button>
@@ -425,18 +1474,96 @@ function teacherDashboardView(state) {
                 <button type="button" data-action="timer-subtract-minute">Subtract 1 minute</button>
                 <button type="button" data-action="timer-add-minute">Add 1 minute</button>
               </div>
+              <details class="platform-alternate-timers">
+                <summary>Start a Different Timer</summary>
+                <p>Open one choice below. Starting it will replace the current class countdown.</p>
+                <details name="teacher-quick-timer"><summary>Instant Timer</summary><div>${[1, 3, 5, 10, 15].map((minutes) => `<button type="button" data-action="instant-timer" data-instant-minutes="${minutes}">${minutes} min</button>`).join("")}</div></details>
+                <details name="teacher-quick-timer"><summary>Stopwatch</summary><output data-stopwatch-output>${formatLessonTime(stopwatchSeconds)}</output><div><button type="button" data-action="stopwatch-start">Start</button><button type="button" data-action="stopwatch-pause">Pause</button><button type="button" data-action="stopwatch-reset">Reset</button></div></details>
+                <details name="teacher-quick-timer"><summary>Custom Countdown</summary><form class="platform-timer-duration" data-form="lesson-timer-duration" novalidate><label for="lesson-duration">Minutes</label><div><input id="lesson-duration" name="duration" type="number" inputmode="numeric" min="${MIN_LESSON_MINUTES}" max="${MAX_LESSON_MINUTES}" step="1" value="${timerMinutes}" data-timer-duration><button type="submit" data-timer-set>Set Countdown</button></div><p class="platform-error platform-timer-error" data-timer-error role="alert" hidden></p></form><button type="button" data-action="timer-start">Start Countdown</button></details>
+              </details>
+              <details class="platform-timer-display-settings">
+                <summary>Display and Settings</summary>
+              <div class="platform-timer-schedule-links">
+                <a class="platform-button platform-button-secondary" href="#${ROUTES.TEACHER_CLASSES}" data-action="open-manage-classes-section" data-scroll-target="teacher-class-schedule">Change Schedule — Pomodoro intervals and timer sounds</a>
+                <details>
+                  <summary>Change for Today</summary>
+                  <form data-form="timer-today-override" novalidate>
+                    <label>Today’s duration<input type="number" name="durationMinutes" min="16" max="${MAX_LESSON_MINUTES}" value="${effectiveTimerSchedule.durationMinutes}" required></label>
+                    ${effectiveTimerSchedule.phases.slice(1).map((phase) => `<label>${escapeHtml(phase.name)} starts at minute<input type="number" name="phaseStart" min="1" max="${effectiveTimerSchedule.durationMinutes - 1}" value="${phase.startMinute}" required></label>`).join("")}
+                    <button type="submit">Apply for Today Only</button>
+                    <p class="platform-error" data-timer-today-error role="alert" hidden></p>
+                  </form>
+                </details>
+              </div>
+              <div class="platform-timer-display-actions" aria-labelledby="timer-display-actions-title">
+                <h4 id="timer-display-actions-title">Show students the timer</h4>
+                <p>Open a compact timer window to place beside lesson materials or on a second display.</p>
+                <button type="button" data-action="open-timer-popout">Open Separate Student Timer Window</button>
+                <details>
+                  <summary>Full-screen Presentation</summary>
+                  <p class="platform-student-display-guidance">Show the timer, message, or both. Add the Voice Meter when needed. Each tool can also be opened as a movable window from the vertical tool rail.</p>
+                  <div class="platform-student-display-mode-controls" role="group" aria-label="Student Display content">
+                    <button type="button" data-action="select-presentation-mode" data-presentation-mode="${STUDENT_DISPLAY_MODES.COMBINED}" aria-pressed="${selectedDisplayMode === STUDENT_DISPLAY_MODES.COMBINED}">Timer + Message</button>
+                    <button type="button" data-action="select-presentation-mode" data-presentation-mode="${STUDENT_DISPLAY_MODES.MESSAGE}" aria-pressed="${selectedDisplayMode === STUDENT_DISPLAY_MODES.MESSAGE}"${hasMessageContent ? "" : " disabled"}>Message only</button>
+                    <button type="button" data-action="select-presentation-mode" data-presentation-mode="${STUDENT_DISPLAY_MODES.TIMER}" aria-pressed="${selectedDisplayMode === STUDENT_DISPLAY_MODES.TIMER}">Timer only</button>
+                  </div>
+                  <label class="platform-student-display-addon"><input type="checkbox" data-student-display-voice-meter${studentDisplayVoiceMeterIsEnabled() ? " checked" : ""}> Add the live Voice Meter to this display</label>
+                  <p class="platform-student-display-addon-note">The browser will request microphone access when the display opens. Audio is analyzed live and is never recorded.</p>
+                  <button class="platform-student-display-button" type="button" data-action="open-timer-display">Open Full-Screen Student Display</button>
+                  <button type="button" data-action="open-voice-meter-display">Voice Meter Only — Full Screen</button>
+                </details>
+              </div>
+              </details>
+              <button class="platform-return-current-plan" type="button" data-action="return-to-current-class-plan">Return to Today’s Class Plan</button>
             </div>
           </section>
-          <section class="platform-command-card platform-command-card-memo">
+          <section class="platform-command-card platform-command-card-voice-meter" aria-labelledby="voice-meter-title" hidden>
+            <p class="platform-command-label">Classroom sound</p>
+            <h3 id="voice-meter-title">Classroom Voice Meter</h3>
+            <label for="voice-meter-activity">Classroom activity</label>
+            <select id="voice-meter-activity" data-voice-meter-activity>
+              ${VOICE_METER_ACTIVITIES.map((activity) => `<option value="${activity.key}"${selectedVoiceActivity.key === activity.key ? " selected" : ""}>${activity.icon} ${activity.label}</option>`).join("")}
+            </select>
+            <p class="platform-voice-meter-guidance">Teacher-led mode estimates one sustained dominant voice. It cannot identify the teacher or save anyone’s voice.</p>
+            <label for="voice-meter-target">Expected voice level</label>
+            <select id="voice-meter-target" data-voice-meter-target>
+              ${VOICE_METER_LEVELS.map((level) => `<option value="${level.key}"${selectedVoiceLevel.key === level.key ? " selected" : ""}>${level.icon} ${level.label}</option>`).join("")}
+            </select>
+            <label class="platform-voice-sensitivity" for="voice-meter-sensitivity">Microphone sensitivity <output data-voice-sensitivity-value>${selectedVoiceSensitivity}%</output><input id="voice-meter-sensitivity" type="range" min="50" max="150" step="5" value="${selectedVoiceSensitivity}" data-voice-sensitivity><span><small>Less reactive</small><small>More reactive</small></span></label>
+            <div class="platform-voice-meter" data-voice-meter data-meter-state="green" style="--voice-meter-level: 0%">
+              <div class="platform-voice-meter-scale" aria-hidden="true"><span>Ready</span><span>Close</span><span>Too loud</span></div>
+              <div class="platform-voice-meter-track"><span class="platform-voice-meter-fill"></span></div>
+              <p><strong data-voice-meter-output>0</strong><span aria-hidden="true"> / 100</span></p>
+            </div>
+            <div class="platform-voice-meter-actions">
+              <button type="button" data-action="voice-meter-start">Start Voice Meter</button>
+              <button type="button" data-action="voice-meter-stop" disabled>Stop Voice Meter</button>
+              <button type="button" data-action="open-voice-meter-display">Open Large Class Voice Meter</button>
+            </div>
+            <p data-voice-meter-status role="status">Choose the expected level, then start the meter.</p>
+            <p class="platform-voice-meter-privacy">Audio is analyzed live in this browser and is never recorded or saved.</p>
+            <button class="platform-return-current-plan" type="button" data-action="return-to-current-class-plan">Return to Today’s Class Plan</button>
+          </section>
+          <div data-message-board-home hidden>
+          <section id="teacher-message-board" class="platform-command-card platform-command-card-memo">
             <p class="platform-command-label">Class communication</p>
             <h3>Teacher Memo</h3>
             <form class="platform-teacher-memo-form" data-form="teacher-memo" novalidate>
-              <label for="teacher-memo">Class-wide message or agenda</label>
-              <textarea id="teacher-memo" name="memo" maxlength="${TEACHER_MEMO_MAX_CHARACTERS}" aria-describedby="teacher-memo-guidance teacher-memo-count" data-teacher-memo>${memoText}</textarea>
+              <label for="teacher-memo-editor">Class-wide message or agenda</label>
+              <div class="platform-teacher-memo-toolbar" role="toolbar" aria-label="Format selected memo text">
+                <select data-memo-format="color" aria-label="Selected text color">${TEACHER_MEMO_COLORS.map((value) => `<option value="${value}"${memoState.color === value ? " selected" : ""}>${value.replaceAll("-", " ")}</option>`).join("")}</select>
+                <select data-memo-format="size" aria-label="Selected text size">${TEACHER_MEMO_SIZES.map((value) => `<option value="${value}"${memoState.size === value ? " selected" : ""}>${value.replaceAll("-", " ")}</option>`).join("")}</select>
+                <select data-memo-format="style" aria-label="Selected text style">${TEACHER_MEMO_STYLES.map((value) => `<option value="${value}"${memoState.style === value ? " selected" : ""}>${value.replaceAll("-", " + ")}</option>`).join("")}</select>
+                <button type="button" data-action="apply-memo-format">Apply to Selected Text</button>
+              </div>
+              <div id="teacher-memo-editor" class="platform-teacher-memo-editor" contenteditable="true" role="textbox" aria-multiline="true" aria-describedby="teacher-memo-guidance teacher-memo-count" data-teacher-memo-editor>${memoSegmentsMarkup(memoState)}</div>
+              <textarea name="memo" data-teacher-memo hidden>${memoText}</textarea>
               <div class="platform-teacher-memo-meta">
                 <small id="teacher-memo-guidance">Plain text for the whole class.</small>
                 <small id="teacher-memo-count"><span data-teacher-memo-count>${memoState.text.length}</span>/${TEACHER_MEMO_MAX_CHARACTERS}</small>
               </div>
+              <label>Optional image<input type="file" accept="image/*" data-memo-image-file></label>
+              <input type="hidden" name="memoImage" value="${escapeHtml(memoState.image)}">
               <div class="platform-teacher-memo-actions">
                 <button type="submit">Save Memo</button>
                 <button type="button" data-action="clear-teacher-memo"${memoState.text ? "" : " disabled"}>Clear Memo</button>
@@ -446,65 +1573,204 @@ function teacherDashboardView(state) {
             </form>
             <div class="platform-teacher-memo-saved">
               <p class="platform-command-label">Current class message</p>
-              <p data-teacher-memo-saved>${memoText || "No class message saved."}</p>
+              <p data-teacher-memo-saved>${memoState.text ? memoSegmentsMarkup(memoState) : "No class message saved."}</p>
+              ${memoState.image ? `<img class="platform-memo-image-preview" src="${escapeHtml(memoState.image)}" alt="Teacher-added memo visual">` : ""}
             </div>
-          </section>
-          <section class="platform-command-card platform-student-display-controls" aria-labelledby="student-display-controls-title">
-            <p class="platform-command-label">Classroom presentation</p>
-            <h3 id="student-display-controls-title">Student Display</h3>
-            <p class="platform-student-display-guidance">Choose what students see without clearing the saved memo.</p>
-            <div class="platform-student-display-mode-controls" role="group" aria-label="Student Display content">
-              <p>Student Display content</p>
-              <button type="button" data-action="select-presentation-mode" data-presentation-mode="${STUDENT_DISPLAY_MODES.COMBINED}" aria-pressed="${selectedDisplayMode === STUDENT_DISPLAY_MODES.COMBINED}">Timer + Message</button>
-              <button type="button" data-action="select-presentation-mode" data-presentation-mode="${STUDENT_DISPLAY_MODES.MESSAGE}" aria-pressed="${selectedDisplayMode === STUDENT_DISPLAY_MODES.MESSAGE}"${hasMessageContent ? "" : " disabled"}>Message only</button>
-              <button type="button" data-action="select-presentation-mode" data-presentation-mode="${STUDENT_DISPLAY_MODES.TIMER}" aria-pressed="${selectedDisplayMode === STUDENT_DISPLAY_MODES.TIMER}">Timer only</button>
+            <div class="platform-message-library" aria-labelledby="message-library-title">
+              <h4 id="message-library-title">Saved Message Library</h4>
+              <label>Message title<input type="text" maxlength="60" data-message-library-title placeholder="Example: Monday warm-up"></label>
+              <button type="button" data-action="save-message-to-library"${hasMemo ? "" : " disabled"}>Save Current Message for Later</button>
+              <p data-message-library-status role="status" aria-live="polite">${savedMessages.length} of 20 messages saved in this browser.</p>
+              <div class="platform-message-library-list">${savedMessages.length ? savedMessages.map((message) => `<article><strong>${escapeHtml(message.title)}</strong><p>${escapeHtml(message.text)}</p><div><button type="button" data-action="use-saved-message" data-message-id="${message.id}">Use Today</button><button type="button" data-action="delete-saved-message" data-message-id="${message.id}">Delete</button></div></article>`).join("") : "<p>No saved messages yet.</p>"}</div>
             </div>
-            <button class="platform-student-display-button" type="button" data-action="open-timer-display">Open Student Display</button>
+            <button class="platform-return-current-plan" type="button" data-action="return-to-current-class-plan">Return to Today’s Class Plan</button>
           </section>
-        </div>
-
-        <p class="platform-rhythm-title">Wins • Blockers • Next Steps</p>
-        <div class="platform-class-rhythm" aria-label="Wins, Blockers, and Next Steps">
-          <section class="platform-rhythm-card platform-rhythm-wins">
-            <h3><span aria-hidden="true">🏆</span> Wins</h3>
-            <p>Future classroom accomplishments will appear here.</p>
-          </section>
-          <section class="platform-rhythm-card platform-rhythm-blockers">
-            <h3><span aria-hidden="true">🚧</span> Blockers</h3>
-            <p>Future classroom challenges will appear here.</p>
-          </section>
-          <section class="platform-rhythm-card platform-rhythm-next">
-            <h3><span aria-hidden="true">➡️</span> Next Steps</h3>
-            <p>Future class direction will appear here.</p>
-          </section>
-        </div>
-
-        <section class="platform-teacher-feed" aria-labelledby="teacher-feed-title">
-          <div>
-            <p class="platform-command-label">Reserved event area</p>
-            <h3 id="teacher-feed-title">Teacher Feed</h3>
           </div>
-          <p>Future classroom events will appear here.</p>
-        </section>
+          <section id="teacher-evidence-tools" class="platform-optional-dashboard-section" data-optional-dashboard-section hidden>
+          <div class="platform-workspace-heading">
+            <p class="platform-command-label">Student work</p>
+            <h2>Launch and review evidence</h2>
+            <p>Start an evidence activity, then review protected visual submissions.</p>
+            <button type="button" data-action="close-optional-dashboard-section">Close Evidence Tools</button>
+            <button class="platform-return-current-plan" type="button" data-action="return-to-current-class-plan">Return to Today’s Class Plan</button>
+          </div>
+          <section id="teacher-evidence-launch" class="platform-command-card platform-evidence-launch-card" aria-labelledby="evidence-launch-title">
+            <p class="platform-command-label">Evidence 2.0 pilot foundation</p>
+            <h3 id="evidence-launch-title">Launch Evidence to Students</h3>
+            <p>Publish <strong>${escapeHtml(currentEvidenceActivity())}</strong> to the local fictional pilot. The runtime key authorizes this launch but is never saved by the browser.</p>
+            <label for="evidence-teacher-runtime-key">Local pilot teacher key</label>
+            <input id="evidence-teacher-runtime-key" type="password" autocomplete="off" data-evidence-teacher-key placeholder="Paste the memory-only key">
+            <button type="button" data-action="evidence-teacher-launch">Launch Fictional Evidence Pilot</button>
+            <p data-evidence-launch-status role="status" aria-live="polite">Start the local evidence pilot service, then launch. No real student accounts are connected.</p>
+            <h4>Live Evidence Inbox</h4>
+    <p>Refresh to retrieve protected fictional visual evidence from the configured teacher-owned Drive folder.</p>
+            ${teacherLiveEvidenceMarkup()}
+          </section>
+          <section class="platform-command-card platform-teacher-evidence-card" aria-labelledby="teacher-evidence-review-title">
+            ${teacherEvidenceReviewMarkup()}
+          </section>
+          </section>
+        </div>
       </section>
     </div>
     <section id="platform-student-timer-display" class="platform-student-timer-display ${studentDisplayClass}" role="dialog" aria-modal="true" aria-labelledby="${showStudentTimer ? "student-timer-title" : "student-message-title"}" tabindex="-1" hidden>
       <p class="platform-student-display-brand">THINKamigBOB</p>
       <div class="platform-student-engineering-time" data-student-engineering-time${showStudentTimer ? "" : " hidden"}>
-        <h2 id="student-timer-title">Today's Engineering Time</h2>
-        <output data-timer-remaining>${formatLessonTime(timerState.remainingSeconds)}</output>
+        <h2 id="student-timer-title" data-timer-phase-name>${escapeHtml(timerVisualState.phase?.name ?? "Today's Engineering Time")}</h2>
+        <div class="platform-student-round-timer" data-timer-ring data-active-phases="${timerVisualState.phase ? "true" : "false"}" style="${timerRingStyle(timerVisualState)}">
+          <output data-timer-remaining data-timer-phase-color="${timerVisualState.phase?.color ?? "default"}">${formatLessonTime(timerState.remainingSeconds)}</output>
+        </div>
+        <p class="platform-timer-warning" data-timer-warning role="status" aria-live="polite"${timerVisualState.fiveMinuteWarning ? "" : " hidden"}>Five minutes until cleanup or the ending activity.</p>
       </div>
-      <div class="platform-student-memo" data-student-memo${showStudentMemo ? "" : " hidden"}>
+      <aside class="platform-student-voice-meter" data-student-voice-meter data-voice-meter data-meter-state="green" style="--voice-meter-level: 0%" aria-label="Classroom voice level" hidden>
+        <p>${selectedVoiceLevel.icon} ${escapeHtml(selectedVoiceLevel.label)}</p>
+        <div class="platform-voice-meter-track"><span class="platform-voice-meter-fill"></span></div>
+        <output data-voice-meter-output>0</output>
+      </aside>
+      <div class="platform-student-display-image-slot" data-student-image-slot hidden></div>
+      <div class="platform-student-memo" data-student-memo data-memo-color="${memoState.color}" data-memo-size="${memoState.size}" data-memo-style="${memoState.style}"${showStudentMemo ? "" : " hidden"}>
         <h3 id="student-message-title">Class Message</h3>
-        <p data-student-memo-text>${memoText}</p>
+        <p data-student-memo-text>${memoSegmentsMarkup(memoState)}</p>
+        ${memoState.image ? `<img class="platform-student-memo-image" src="${escapeHtml(memoState.image)}" alt="Teacher-added class message visual">` : ""}
       </div>
       <div class="platform-student-mission" data-student-mission${showStudentMission ? "" : " hidden"}>
         <h3 id="student-mission-title">Today's Mission</h3>
+        <img class="platform-automatic-mission-visual" src="${escapeHtml(missionVisual.src)}" alt="${escapeHtml(missionVisual.alt)}">
         <h4 data-student-mission-title>${escapeHtml(missionState.title)}</h4>
-        <p data-student-mission-focus>${escapeHtml(missionState.focus)}</p>
+        <p data-student-mission-focus${missionState.focus === missionState.title ? " hidden" : ""}>${escapeHtml(missionState.focus)}</p>
         <p data-student-mission-builder>Builder: ${builderAvailable ? "Available today" : "Not part of today's mission"}</p>
         <p data-student-mission-workshop>Workshop: ${workshopAvailable ? "Available today" : "Not part of today's mission"}</p>
         <p class="platform-missions-first-reminder">${MISSIONS_FIRST_REMINDER}</p>
+      </div>
+      <aside class="platform-smartboard-tool" data-smartboard-tool="timer" data-timer-view="${presentationTimerViewMode()}" hidden style="left: 3%; top: 12%;"><header data-smartboard-drag-handle><strong>Timer</strong><button type="button" data-action="close-smartboard-tool" aria-label="Close Timer tool">×</button></header><div class="platform-timer-view-choice" role="group" aria-label="Timer face for today"><button type="button" data-action="timer-view-mode" data-timer-view-mode="regular" aria-pressed="${presentationTimerViewMode() === "regular"}">Solid Color</button><button type="button" data-action="timer-view-mode" data-timer-view-mode="pomodoro" aria-pressed="${presentationTimerViewMode() === "pomodoro"}">Pomodoro Wheel</button></div><small data-timer-view-status>${presentationTimerViewMode() === "pomodoro" ? "Showing today’s Pomodoro wheel." : "Showing today’s solid-color timer."}</small><div class="platform-floating-timer-face"><output class="platform-smartboard-timer" data-timer-remaining>${formatLessonTime(timerState.remainingSeconds)}</output></div><div class="platform-floating-timer-controls"><button type="button" data-action="timer-subtract-minute">− 1 min</button><button type="button" data-action="timer-add-minute">+ 1 min</button><button type="button" data-action="timer-pause">Pause</button><button type="button" data-action="timer-end">Stop</button><button type="button" data-action="timer-start-or-resume">Start</button><button type="button" data-action="timer-reset">Reset</button></div>${smartboardToolSwitcherMarkup()}<span class="platform-smartboard-resize-handle" data-smartboard-resize-handle aria-label="Resize Timer window"></span></aside>
+      <aside class="platform-smartboard-tool" data-smartboard-tool="message" hidden style="right: 3%; top: 12%;"><header data-smartboard-drag-handle><strong>Quick Message</strong><button type="button" data-action="close-smartboard-tool" aria-label="Close Message tool">×</button></header><div class="platform-smartboard-message" data-student-memo-text>${memoState.text ? memoSegmentsMarkup(memoState) : "No message is ready yet."}</div>${smartboardToolSwitcherMarkup()}<span class="platform-smartboard-resize-handle" data-smartboard-resize-handle aria-label="Resize Message window"></span></aside>
+      <aside class="platform-smartboard-tool" data-smartboard-tool="stopwatch" hidden style="left: 35%; top: 18%;"><header data-smartboard-drag-handle><strong>Stopwatch</strong><button type="button" data-action="close-smartboard-tool" aria-label="Close Stopwatch tool">×</button></header><output class="platform-smartboard-timer" data-stopwatch-output>${formatLessonTime(stopwatchSeconds)}</output><div><button type="button" data-action="stopwatch-start">Start</button><button type="button" data-action="stopwatch-pause">Pause</button><button type="button" data-action="stopwatch-reset">Reset</button></div>${smartboardToolSwitcherMarkup()}<span class="platform-smartboard-resize-handle" data-smartboard-resize-handle aria-label="Resize Stopwatch window"></span></aside>
+      <aside class="platform-smartboard-tool platform-smartboard-voice-tool" data-smartboard-tool="voice" hidden style="right: 16%; top: 18%;"><header data-smartboard-drag-handle><strong>Voice Meter</strong><button type="button" data-action="close-smartboard-tool" aria-label="Close Voice Meter tool">×</button></header><p data-large-voice-level-label>${selectedVoiceLevel.icon} ${escapeHtml(selectedVoiceLevel.label)}</p><div class="platform-voice-meter" data-voice-meter data-meter-state="green" style="--voice-meter-level: 0%"><div class="platform-voice-meter-track"><span class="platform-voice-meter-fill"></span></div><output data-voice-meter-output>0</output></div><div><button type="button" data-action="voice-meter-start">Start</button><button type="button" data-action="voice-meter-stop" disabled>Pause</button><button type="button" data-action="open-voice-meter-display">Full Screen</button></div>${smartboardToolSwitcherMarkup()}<span class="platform-smartboard-resize-handle" data-smartboard-resize-handle aria-label="Resize Voice Meter window"></span></aside>
+      ${namePickerMarkup(classRoster)}
+      <aside class="platform-smartboard-tool platform-floating-whiteboard" data-smartboard-tool="whiteboard" hidden style="left: 8%; top: 8%; width: min(46rem, 82vw); height: min(34rem, 72vh);"><header data-smartboard-drag-handle><strong>Whiteboard</strong><button type="button" data-action="close-smartboard-tool" aria-label="Close Whiteboard window">×</button></header><div class="platform-floating-whiteboard-board">${floatingWhiteboard ? `<img src="${escapeHtml(floatingWhiteboard.displayImage || floatingWhiteboard.image)}" alt="Latest whiteboard: ${escapeHtml(floatingWhiteboard.title)}">` : `<p>Your whiteboard will appear here. Open the full board to draw.</p>`}</div><div class="platform-floating-whiteboard-functions"><button type="button" data-action="open-whiteboard">Open Full Whiteboard and Tools</button></div>${smartboardToolSwitcherMarkup()}<span class="platform-smartboard-resize-handle" data-smartboard-resize-handle aria-label="Resize Whiteboard window"></span></aside>
+      <nav class="platform-smartboard-tool-tray" aria-label="Smartboard presentation tools"><strong>Tools</strong><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="timer">Timer</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="stopwatch">Stopwatch</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="message">Message</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="voice">Voice Meter</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="names">Name Picker</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="whiteboard">Whiteboard</button><button type="button" class="platform-smartboard-reset-tools" data-action="reset-smartboard-tools">Reset Positions</button></nav>
+    </section>
+    <section id="platform-large-voice-meter-display" class="platform-large-voice-meter-display" data-voice-display-mode="${readVoiceMeterDisplayMode()}" role="dialog" aria-modal="true" aria-labelledby="large-voice-meter-title" tabindex="-1" hidden>
+      <p class="platform-student-display-brand">THINKamigBOB</p>
+      <h2 id="large-voice-meter-title">Classroom Voice Meter</h2>
+      <p class="platform-large-voice-target" data-large-voice-level-label>${selectedVoiceLevel.icon} ${escapeHtml(selectedVoiceLevel.label)}</p>
+      <p class="platform-large-voice-prediction" data-voice-prediction>🤫 Independent work pattern</p>
+      <label class="platform-large-voice-selector">Meter view<select data-voice-meter-display-mode><option value="basic"${readVoiceMeterDisplayMode() === "basic" ? " selected" : ""}>Basic volume</option><option value="prediction"${readVoiceMeterDisplayMode() === "prediction" ? " selected" : ""}>Predicted learning type + threshold</option></select></label>
+      <label class="platform-large-voice-selector">Change expected voice level
+        <select data-voice-meter-target aria-label="Expected voice level on large display">
+          ${VOICE_METER_LEVELS.map((level) => `<option value="${level.key}"${selectedVoiceLevel.key === level.key ? " selected" : ""}>${level.icon} ${level.label}</option>`).join("")}
+        </select>
+      </label>
+      <label class="platform-large-voice-selector platform-voice-sensitivity">Microphone sensitivity <output data-voice-sensitivity-value>${selectedVoiceSensitivity}%</output><input type="range" min="50" max="150" step="5" value="${selectedVoiceSensitivity}" data-voice-sensitivity><span><small>Less reactive</small><small>More reactive</small></span></label>
+      <div class="platform-large-voice-meter" data-voice-meter data-meter-state="green" style="--voice-meter-level: 0%; --voice-threshold: ${selectedVoiceActivity.target}%">
+        <div class="platform-large-voice-scale" aria-hidden="true"><span>Ready</span><span>Getting loud</span><span>Too loud</span></div>
+        <div class="platform-voice-meter-track"><span class="platform-voice-meter-fill"></span><i class="platform-voice-threshold-marker" title="Expected threshold"></i></div>
+        <output data-voice-meter-output aria-label="Current classroom voice level">0</output>
+      </div>
+      <div class="platform-large-voice-controls" aria-label="Large Voice Meter controls">
+        <button type="button" data-action="voice-meter-start">Start Voice Meter</button>
+        <button type="button" data-action="voice-meter-stop" data-meter-stop-message="Voice Meter paused. Press Start Voice Meter to resume." disabled>Pause Voice Meter</button>
+        <button type="button" data-action="close-voice-meter-display">Close Class Voice Meter</button>
+      </div>
+    </section>
+    <section id="platform-classroom-whiteboard" class="platform-classroom-whiteboard" role="dialog" aria-modal="true" aria-labelledby="classroom-whiteboard-title" tabindex="-1" hidden>
+      <header class="platform-whiteboard-header">
+        <div><p class="platform-command-label">Classroom tool</p><h2 id="classroom-whiteboard-title">Whiteboard</h2></div>
+        <div class="platform-whiteboard-header-actions"><label>Menu position<select data-whiteboard-controls-dock><option value="top">Top</option><option value="left">Left side</option><option value="right">Right side</option><option value="bottom">Bottom</option></select></label><button type="button" data-action="whiteboard-toggle-controls" aria-expanded="true">Hide Board Menus</button><button type="button" data-action="whiteboard-present">Present Board</button><button type="button" data-action="close-whiteboard">Close Whiteboard</button></div>
+      </header>
+      <button class="platform-whiteboard-exit-presentation" type="button" data-action="whiteboard-exit-presentation" hidden>Exit Presentation</button>
+      <nav class="platform-whiteboard-quick-actions" aria-label="Whiteboard quick actions">
+        <button type="button" data-action="whiteboard-tool-select" title="Select and move"><span aria-hidden="true">➤</span><small>Select</small></button>
+        <button type="button" data-action="whiteboard-undo" title="Undo"><span aria-hidden="true">↶</span><small>Undo</small></button>
+        <button type="button" data-action="whiteboard-redo" title="Redo"><span aria-hidden="true">↷</span><small>Redo</small></button>
+        <button type="button" data-action="whiteboard-copy" title="Copy — Ctrl+C or Command+C"><span aria-hidden="true">⧉</span><small>Copy</small></button>
+        <button type="button" data-action="whiteboard-cut" title="Cut — Ctrl+X or Command+X"><span aria-hidden="true">✂</span><small>Cut</small></button>
+        <button type="button" data-action="whiteboard-paste" title="Paste — Ctrl+V or Command+V"><span aria-hidden="true">▣</span><small>Paste</small></button>
+        <button type="button" data-action="whiteboard-duplicate" title="Duplicate — Ctrl+D or Command+D"><span aria-hidden="true">⧉+</span><small>Duplicate</small></button>
+        <button type="button" data-action="whiteboard-delete-object" title="Delete — Backspace or Delete"><span aria-hidden="true">⌫</span><small>Delete</small></button>
+        <button type="button" data-action="whiteboard-keyboard-help" title="Show keyboard and Chromebook shortcuts"><span aria-hidden="true">?</span><small>Help</small></button>
+      </nav>
+      <div class="platform-whiteboard-controls" data-whiteboard-controls>
+      <div class="platform-whiteboard-library" aria-label="Saved whiteboards">
+        <label>Board name<input type="text" data-whiteboard-title maxlength="60" placeholder="Example: Monday warm-up"></label>
+        <label>Class<select data-whiteboard-class><option value="all">All classes</option>${pilotTeacherClasses.map((item) => `<option value="${escapeHtml(item.id)}"${item.id === classRecord?.id ? " selected" : ""}>${escapeHtml(item.displayName)}</option>`).join("")}</select></label>
+        <label>Schedule<select data-whiteboard-schedule-type><option value="none">No schedule</option><option value="weekly">Repeats weekly</option><option value="date">Specific date</option></select></label>
+        <label data-whiteboard-weekday-label hidden>Day<select data-whiteboard-day>${WEEKDAYS.map((day) => `<option value="${day}">${day}</option>`).join("")}</select></label>
+        <label data-whiteboard-date-label hidden>Date<input type="date" data-whiteboard-date></label>
+        <label class="platform-whiteboard-display-option"><input type="checkbox" data-whiteboard-student-display> Automatically show this board on the Student Display when its schedule begins</label>
+        <button type="button" data-action="whiteboard-save-named">Save Board</button>
+        <label>Saved boards<select data-whiteboard-saved><option value="">Choose a saved board</option>${savedWhiteboards.map((board) => `<option value="${escapeHtml(board.id)}">${escapeHtml(board.title)} · ${escapeHtml(whiteboardScheduleLabel(board))}${board.studentDisplay ? " · Student Display" : ""}</option>`).join("")}</select></label>
+        <button type="button" data-action="whiteboard-load">Load</button>
+        <button type="button" data-action="whiteboard-delete">Delete</button>
+      </div>
+      <div class="platform-whiteboard-toolbar" role="toolbar" aria-label="Whiteboard drawing tools">
+        <label>Graph paper<select data-whiteboard-grid><option value="plain">Plain white</option><option value="inch">Inches</option><option value="cm">Centimeters</option><option value="mm">Millimeters</option></select></label>
+        <label>Ruler<select data-whiteboard-ruler><option value="none">No ruler</option><option value="english">English ruler — inches</option><option value="metric">Metric ruler — centimeters</option></select></label>
+        <label>Ruler markings<select data-whiteboard-ruler-sides><option value="both">Both sides</option><option value="top">One side</option></select></label>
+        <label class="platform-whiteboard-compare-unit" data-whiteboard-compare-unit><span>“This is the same as…” unit</span><select data-whiteboard-dimension-compare disabled aria-label="Choose another unit for the selected measurement"><option value="mm">Millimeters</option><option value="cm">Centimeters</option><option value="m">Meters</option><option value="in">Inches</option><option value="ft">Feet</option><option value="yd">Yards</option></select></label>
+        <label>Zoom<input type="range" data-whiteboard-zoom min="50" max="300" step="25" value="100"><output data-whiteboard-zoom-output>100%</output></label>
+        <label>Tool<select data-whiteboard-tool><option value="select">Select and move</option><option value="lasso-select">Lasso select for image</option><option value="emoji-stamp">Emoji stamp</option><option value="pull-3d">Pull selected 2D shape into 3D</option><option value="laser-dimension">Laser measure — select 2 points</option><option value="ruler-adjust">Move, rotate, or extend ruler</option><option value="pen">Pen</option><option value="calligraphy">Calligraphy pen</option><option value="brush">Brush strokes</option><option value="highlighter">Highlighter</option><option value="fill">Paint can — fill shape</option><option value="eraser">Eraser object</option><option value="line">Line</option><option value="arrow">Arrow</option><option value="rectangle">Rectangle</option><option value="ellipse">Circle or oval</option><option value="triangle">Triangle</option><optgroup label="3D shapes"><option value="cube">Cube</option><option value="rectangular-prism">Rectangular prism</option><option value="cylinder">Cylinder</option><option value="cone">Cone</option><option value="pyramid">Pyramid</option><option value="sphere">Sphere</option></optgroup></select></label>
+        <span class="platform-whiteboard-lasso-actions" data-whiteboard-lasso-actions hidden><strong>Selected image actions</strong><button type="button" data-action="whiteboard-remove-selection-background">Remove Selection Background</button><button type="button" data-action="whiteboard-download-selection">Download Selection PNG</button></span>
+        <label>Color<input type="color" data-whiteboard-color value="#12384d"></label>
+        <label data-whiteboard-emoji-label hidden>Emoji<select data-whiteboard-emoji aria-label="Choose an emoji stamp">${WHITEBOARD_EMOJI_STAMPS.map((group) => `<optgroup label="${escapeHtml(group.category)}">${group.emojis.map(([emoji, name]) => `<option value="${emoji}">${emoji} ${escapeHtml(name)}</option>`).join("")}</optgroup>`).join("")}</select></label>
+        <label>Line size<input type="range" data-whiteboard-size min="2" max="32" value="6"><output data-whiteboard-size-output>6</output></label>
+        <label class="platform-whiteboard-text-label">Text<input type="text" data-whiteboard-text maxlength="120" placeholder="Type text for the board"></label>
+        <label>Text background<select data-whiteboard-text-background><option value="transparent">Transparent</option><option value="white">White</option><option value="black">Black</option><option value="highlight-yellow">Yellow highlighter</option><option value="highlight-green">Green highlighter</option><option value="highlight-pink">Pink highlighter</option><option value="highlight-blue">Blue highlighter</option></select></label>
+        <button type="button" data-action="whiteboard-add-text">Add Text</button>
+        <button type="button" data-action="whiteboard-apply-text-background">Apply Text Background</button>
+        <label>Image<input type="file" data-whiteboard-image accept="image/*"></label>
+        <span class="platform-whiteboard-object-actions" role="group" aria-label="Selected object actions">
+          <button type="button" data-action="whiteboard-copy">Copy</button><button type="button" data-action="whiteboard-paste">Paste</button><button type="button" data-action="whiteboard-duplicate">Duplicate</button><span class="platform-whiteboard-push-help-wrap"><button type="button" data-action="whiteboard-push-2d">Push Back to 2D</button><span class="platform-whiteboard-push-help" data-whiteboard-push-help role="status" hidden>Select the 3D shape, then use this button to return it to its original 2D shape.</span></span><button type="button" data-action="whiteboard-rotate-left">Rotate left</button><button type="button" data-action="whiteboard-rotate-right">Rotate right</button><button type="button" data-action="whiteboard-delete-object">Delete selected</button>
+        </span>
+        <button type="button" data-action="whiteboard-undo" disabled>Undo</button>
+        <button type="button" data-action="whiteboard-redo" disabled>Redo</button>
+        <button type="button" data-action="whiteboard-export">Export PNG</button>
+        <button type="button" data-action="whiteboard-clear">Clear</button>
+      </div>
+      </div>
+      <div class="platform-whiteboard-surface"><canvas data-whiteboard-canvas tabindex="0" aria-label="Teacher classroom whiteboard drawing surface"></canvas></div>
+      <p class="platform-whiteboard-status" data-whiteboard-status role="status" aria-live="polite">Drawings are saved in this browser session.</p>
+      <div class="platform-whiteboard-context-menu" data-whiteboard-context-menu role="menu" hidden><button type="button" role="menuitem" data-action="whiteboard-copy-image">Copy Image</button><button type="button" role="menuitem" data-action="whiteboard-cut-image">Cut Image</button><button type="button" role="menuitem" data-action="whiteboard-paste-image">Paste Image</button><button type="button" role="menuitem" data-action="whiteboard-close-context-menu">Cancel</button></div>
+      <aside class="platform-whiteboard-keyboard-help" data-whiteboard-keyboard-help role="dialog" aria-modal="true" aria-labelledby="whiteboard-keyboard-help-title" hidden>
+        <div>
+          <h3 id="whiteboard-keyboard-help-title">Whiteboard keyboard help</h3>
+          <p>First click an object so its blue selection box and corner handles appear. Then use one of these commands.</p>
+          <p><strong>Students:</strong> use the Chromebook <kbd>Ctrl</kbd> commands. <strong>Teachers:</strong> use <kbd>Ctrl</kbd> on Chromebook or Windows, or <kbd>Command</kbd> on Mac.</p>
+          <dl>
+            <div><dt>Copy</dt><dd><kbd>Ctrl</kbd> + <kbd>C</kbd> on student Chromebooks, teacher Chromebooks, or Windows<br><kbd>Command</kbd> + <kbd>C</kbd> on Mac</dd></div>
+            <div><dt>Paste</dt><dd><kbd>Ctrl</kbd> + <kbd>V</kbd> or <kbd>Command</kbd> + <kbd>V</kbd></dd></div>
+            <div><dt>Cut</dt><dd><kbd>Ctrl</kbd> + <kbd>X</kbd> or <kbd>Command</kbd> + <kbd>X</kbd></dd></div>
+            <div><dt>Duplicate</dt><dd><kbd>Ctrl</kbd> + <kbd>D</kbd> or <kbd>Command</kbd> + <kbd>D</kbd></dd></div>
+            <div><dt>Delete</dt><dd><kbd>Backspace</kbd> or <kbd>Delete</kbd></dd></div>
+          </dl>
+          <p>The Copy, Paste, Cut, Duplicate, Delete, Undo, and Redo buttons above the board do the same jobs without a keyboard.</p>
+          <button type="button" data-action="whiteboard-close-keyboard-help">Close Help</button>
+        </div>
+      </aside>
+      <aside class="platform-whiteboard-bob-coach" data-whiteboard-bob-coach data-state="intro" aria-live="polite" hidden>
+        <img src="../assets/images/characters/thinker-bob-master.png" alt="Bob">
+        <div class="platform-whiteboard-bob-coach-copy" data-whiteboard-bob-intro>
+          <strong>Bob asks:</strong>
+          <p>Do you want to compare this measurement to other measurements in the real world?</p>
+          <div><button type="button" data-action="whiteboard-bob-directions">Yes—show me how</button><button type="button" data-action="whiteboard-bob-collapse">Not right now</button></div>
+        </div>
+        <div class="platform-whiteboard-bob-coach-copy" data-whiteboard-bob-directions hidden>
+          <strong>Compare measurements with Bob</strong>
+          <ol><li>Select the red measurement line or its label.</li><li>Open the <strong class="platform-whiteboard-compare-name">“This is the same as…” unit</strong> menu above the board.</li><li>Choose millimeters, centimeters, meters, inches, feet, or yards.</li><li>The comparison beneath the measurement updates automatically.</li></ol>
+          <button type="button" data-action="whiteboard-bob-collapse">Got it</button>
+        </div>
+        <button class="platform-whiteboard-bob-mini" type="button" data-action="whiteboard-bob-open" aria-label="Open Bob's measurement comparison directions"><img src="../assets/images/characters/thinker-bob-master.png" alt=""><span>Compare measurements</span></button>
+      </aside>
+      <div class="platform-whiteboard-clear-confirmation" data-whiteboard-clear-confirmation role="alertdialog" aria-modal="true" aria-labelledby="whiteboard-clear-title" hidden>
+        <div><h3 id="whiteboard-clear-title">Clear the entire whiteboard?</h3><p>This removes the current browser-session board.</p><button type="button" data-action="whiteboard-keep">Keep Board</button><button type="button" data-action="whiteboard-confirm-clear">Clear Board</button></div>
+      </div>
+      <div class="platform-whiteboard-question" data-whiteboard-dimension-question role="dialog" aria-modal="true" aria-labelledby="whiteboard-dimension-question-title" hidden>
+        <div><h3 id="whiteboard-dimension-question-title">Label this CAD measurement</h3><p>The two points are ready. Add the information students need.</p><p class="platform-whiteboard-measurement-tip" data-whiteboard-measurement-tip role="status" hidden></p>
+          <label>What are you measuring?<select data-whiteboard-dimension-label><option value="Length">Length</option><option value="Width">Width</option><option value="Height">Height</option><option value="Diameter">Diameter</option><option value="Radius">Radius</option><option value="Spacing">Spacing</option><option value="custom">Add my own answer</option></select></label>
+          <label data-whiteboard-dimension-custom-label hidden>Your label<input type="text" data-whiteboard-dimension-custom maxlength="50" placeholder="Example: Bridge span"></label>
+          <label>Measurement unit<select data-whiteboard-dimension-unit><option value="in">Inches</option><option value="cm">Centimeters</option><option value="mm">Millimeters</option></select></label>
+          <div><button type="button" data-action="whiteboard-dimension-cancel">Cancel</button><button type="button" data-action="whiteboard-dimension-save">Add CAD Dimension</button></div>
+        </div>
       </div>
     </section>
   `, {
@@ -516,9 +1782,62 @@ function teacherDashboardView(state) {
   });
 }
 
+function teacherClassesView(state) {
+  const teacher = getTeacherById(state.teacherId);
+  const classRecord = currentTeacherClass(state.teacherId);
+  ensureClassSetupProfile(classRecord?.id);
+  const teacherName = teacher?.displayName ?? "Preview Teacher";
+  const className = classRecord?.displayName ?? "Class not selected";
+  const periodLabel = classRecord?.periodLabel ?? "Period not selected";
+  return shell(`
+    <div class="platform-command-layout platform-command-layout-no-sidebar platform-class-management-layout">
+      <main class="platform-class-management" aria-labelledby="class-management-title">
+        <section class="platform-teacher-overview platform-class-management-intro">
+          <div>
+            <p class="platform-command-label">Classroom access</p>
+            <h2 id="class-management-title">Manage Classes</h2>
+            <p>Create a classroom and prepare private student entry codes. Codes are shown once and should be handled as private classroom information.</p>
+          </div>
+        </section>
+        ${classTimerScheduleMarkup(classRecord?.id)}
+        <div id="teacher-class-sharing" tabindex="-1">${classSetupSharingMarkup(state.teacherId, "manage")}</div>
+        ${classroomSetupMarkup()}
+        <section class="platform-workspace-heading" id="teacher-setup-tools">
+          <p class="platform-command-label">Class and evidence administration</p>
+          <h2>Connections and safeguards</h2>
+          <p>Manage Drive connection and evidence policies alongside classroom setup.</p>
+        </section>
+        <div class="platform-today-primary-grid platform-class-management-setup">
+          ${teacherSetupMarkup()}
+        </div>
+      </main>
+    </div>
+  `, {
+    title: "Manage Classes",
+    eyebrow: "Teacher workspace",
+    subtitle: "Classroom setup and student access.",
+    signedIn: true,
+    teacherContext: { teacherName, className, periodLabel },
+  });
+}
+
 function studentDashboardView(state) {
   const student = getStudentById(state.studentId);
   const classRecord = getClassById(state.classId);
+  const classResourceState = classResourceSharing.read(state.classId);
+  const activeClassResources = classResourceState.activeResources;
+  const reflectionStatus = weeklyReflections.status(state.classId, state.studentId);
+  const activityWindowStart = reflectionActivityWindowStart(new Date());
+  const sharedResourceActivities = (classResourceState.history ?? [])
+    .filter((entry) => Number(entry.sharedAt) >= activityWindowStart && Number(entry.sharedAt) <= Date.now())
+    .map((entry) => entry.title);
+  const teacherActivities = [...new Set([
+    ...weeklyReflections.activities(state.classId).map((entry) => entry.title),
+    ...sharedResourceActivities,
+    ...activeClassResources.map((resource) => resource.title),
+    todaysMission.read().title,
+  ].filter(Boolean))];
+  const reflectionOptions = (options) => `<option value="">Choose one</option>${options.map((option) => `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`).join("")}`;
   const studentName = escapeHtml(student?.displayName ?? "Student");
   const className = escapeHtml(classRecord?.displayName ?? "Class not selected");
   return shell(`
@@ -539,11 +1858,14 @@ function studentDashboardView(state) {
       <section class="platform-student-goal" aria-labelledby="current-goal-title">
         <p class="platform-student-section-label">Today</p>
         <h2 id="current-goal-title">Current Goal</h2>
-        <p class="platform-student-empty-state">No current goal is available yet.</p>
-        <p>A classroom goal will appear when an approved goal source is connected.</p>
+        <div data-pb002j-current-goal>
+          <p class="platform-student-empty-state">Checking current class availability…</p>
+        </div>
       </section>
 
-      <section class="platform-school-start-launcher" aria-labelledby="school-start-launcher-title">
+      ${classResourceStudentMarkup(state.classId, state.studentId)}
+
+      <section class="platform-school-start-launcher" aria-labelledby="school-start-launcher-title"${activeClassResources.length ? " hidden" : ""}>
         <p class="platform-student-section-label">Start here</p>
         <h2 id="school-start-launcher-title">Classroom Launches</h2>
         <div class="platform-school-start-launch-grid">
@@ -572,18 +1894,40 @@ function studentDashboardView(state) {
         </div>
       </section>
 
-      <section class="platform-student-reflection" aria-labelledby="reflection-check-title">
+      <section class="platform-student-reflection" data-reflection-state="${reflectionStatus.state}" aria-labelledby="reflection-check-title">
         <p class="platform-student-section-label">Reflection</p>
         <h2 id="reflection-check-title">What I Learned Today</h2>
-        <p class="platform-student-status">Check unavailable.</p>
-        <p>Submission status is not connected in PB-003A.</p>
+        <p class="platform-student-status" data-weekly-reflection-status>${reflectionStatus.remaining === 0 ? `Complete — ${reflectionStatus.completed} of ${reflectionStatus.required} finished this week.` : `${reflectionStatus.remaining} response${reflectionStatus.remaining === 1 ? "" : "s"} still needed this week.`}</p>
+        <form data-form="weekly-reflection" novalidate${reflectionStatus.remaining === 0 ? " hidden" : ""}>
+          <label for="weekly-reflection-activity">Activity Worked On Today</label>
+          <select id="weekly-reflection-activity" name="activityChoice" required>
+            <option value="">Choose an activity</option>
+            ${teacherActivities.map((activity) => `<option value="${escapeHtml(activity)}">${escapeHtml(activity)}</option>`).join("")}
+            <option value="__other__">Other activity — type my own</option>
+          </select>
+          <label data-reflection-other-activity hidden>Type the activity name<input name="activityOther" maxlength="120"></label>
+          <label for="weekly-reflection-progress">Mission Progress</label>
+          <select id="weekly-reflection-progress" name="progress" required>${reflectionOptions(REFLECTION_PROGRESS_OPTIONS)}</select>
+          <label for="weekly-reflection-response">Tell what you built, tested, created, discovered, or improved.</label>
+          <textarea id="weekly-reflection-response" name="explanation" minlength="10" maxlength="500" required></textarea>
+          <button class="platform-reflection-speech-button" type="button" data-action="reflection-dictate" aria-pressed="false">🎙 Speak Answer</button>
+          <button class="platform-reflection-speech-stop" type="button" data-action="reflection-dictate-stop" hidden>■ Stop Speaking</button>
+          <p class="platform-reflection-speech-status" data-reflection-speech-status role="status">You can type or use Speak Answer.</p>
+          <label>Did You Improve Your Idea Today by working to make it better?<select name="improved" required>${reflectionOptions(REFLECTION_IMPROVEMENT_OPTIONS)}</select></label>
+          <label>🏅 Which Badge Did You Earn Today?<select name="badge" required>${reflectionOptions(REFLECTION_BADGE_OPTIONS)}</select></label>
+          <label>🆘 Do You Need Help Next Class?<select name="help" required>${reflectionOptions(REFLECTION_HELP_OPTIONS)}</select></label>
+          <label>Could You Help Another Student With Today's Activity?<select name="helpOther" required>${reflectionOptions(REFLECTION_HELP_OTHER_OPTIONS)}</select></label>
+          <label>⭐ How Did This Activity Go Today?<select name="rating" required>${reflectionOptions(REFLECTION_ACTIVITY_RATING_OPTIONS)}</select></label>
+          <button type="submit">Submit Reflection</button>
+          <p class="platform-error" data-weekly-reflection-error role="alert" hidden></p>
+        </form>
       </section>
 
       <section class="platform-student-paths" aria-labelledby="choose-path-title">
         <div class="platform-student-section-heading">
           <p class="platform-student-section-label">Next actions</p>
           <h2 id="choose-path-title">Choose Your Path</h2>
-          <p><strong>Continue</strong> returns to work already started. <strong>Start</strong> begins a mission made available to you. Mission availability is not connected in PB-003B.</p>
+          <p><strong>Continue</strong> returns to work already started. <strong>Start</strong> begins a mission made available to you through the approved class-wide prototype.</p>
         </div>
         <div class="platform-mission-choice-layout">
           <section class="platform-mission-choice-section platform-mission-choice-continue" aria-labelledby="mission-continue-title">
@@ -596,8 +1940,10 @@ function studentDashboardView(state) {
             <p class="platform-mission-choice-label">Start something available</p>
             <h3 id="available-missions-title">Available Missions</h3>
             <div class="platform-mission-card-container" aria-labelledby="available-missions-title">
-              <p class="platform-student-empty-state">No new missions are available right now.</p>
-              <p>Teacher-authorized missions will appear when an approved assignment source is connected.</p>
+              <div data-pb002j-available-missions>
+                <p class="platform-student-empty-state">No new missions are available right now.</p>
+                <p>Checking teacher-confirmed availability…</p>
+              </div>
             </div>
           </section>
           <section class="platform-mission-choice-section platform-mission-choice-side-paths" aria-labelledby="side-paths-title">
@@ -613,7 +1959,7 @@ function studentDashboardView(state) {
         <div class="platform-student-section-heading">
           <p class="platform-student-section-label">Your engineering journey</p>
           <h2 id="stem-work-title">My STEM Work</h2>
-          <p>Engineering work grows through ideas, plans, builds, tests, revisions, and explanations. Current, Recent, and Previous organize one journey without judging the work. Project and evidence information is not connected in PB-003C.</p>
+          <p>Engineering work grows through ideas, plans, builds, tests, revisions, and explanations. Current, Recent, and Previous organize one journey without judging the work. Evidence capture is available here as a browser-only pilot.</p>
         </div>
         <div class="platform-stem-work-layout">
           <section class="platform-stem-work-section platform-stem-work-current" aria-labelledby="current-work-title">
@@ -651,17 +1997,11 @@ function studentDashboardView(state) {
               </section>
             </div>
           </section>
-          <section class="platform-stem-work-section platform-evidence-connections" aria-labelledby="evidence-connections-title">
+          <section class="platform-stem-work-section platform-evidence-connections" aria-labelledby="evidence-connections-title" data-evidence-foundation>
             <p class="platform-stem-work-label">Project evidence</p>
             <h3 id="evidence-connections-title">Evidence Connections</h3>
-            <p class="platform-student-empty-state">Evidence cannot be checked right now.</p>
-            <p>Evidence may eventually show that engineering work exists or changed. It is not automatically reflection, proof of learning, a grade, teacher-reviewed, public, or complete.</p>
-            <ul class="platform-evidence-source-list" aria-label="Future evidence sources">
-              <li><span>Builder</span><strong>Coming Later</strong></li>
-              <li><span>Workshop</span><strong>Coming Later</strong></li>
-              <li><span>Google Slides</span><strong>Coming Later</strong></li>
-              <li><span>Google Vids</span><strong>Coming Later</strong></li>
-            </ul>
+            <p>Capture evidence while the work is fresh. You will always preview it before saving.</p>
+            ${evidenceCaptureMarkup()}
           </section>
         </div>
       </section>
@@ -675,6 +2015,7 @@ function viewForRoute(route, state) {
     case ROUTES.TEACHER_CREATE: return teacherCreateView();
     case ROUTES.TEACHER_RECOVERY: return teacherRecoveryView();
     case ROUTES.TEACHER_DASHBOARD: return teacherDashboardView(state);
+    case ROUTES.TEACHER_CLASSES: return teacherClassesView(state);
     case ROUTES.STUDENT_ENTRY: return studentEntryView();
     case ROUTES.STUDENT_ROSTER: return studentRosterView(state);
     case ROUTES.STUDENT_IDENTIFIER: return studentIdentifierView(state);
@@ -691,17 +2032,272 @@ function showFormError(form, message) {
   error.focus?.();
 }
 
+function playTimerSound(sound, customAudio = "") {
+  if (!sound || sound === "None") return;
+  if (sound === "Bird Chirping") {
+    try {
+      const player = new Audio(BIRD_CHIRPING_SOUND_URL);
+      player.volume = 0.75;
+      void player.play();
+    } catch { /* Visual transitions remain available without browser audio. */ }
+    return;
+  }
+  if (sound === "Cardinal") {
+    try {
+      const player = new Audio(CARDINAL_SOUND_URL);
+      player.volume = 0.75;
+      void player.play();
+    } catch { /* Visual transitions remain available without browser audio. */ }
+    return;
+  }
+  if (sound === "Guitar Loop — Time Ending") {
+    try {
+      const player = new Audio(GUITAR_LOOP_SOUND_URL);
+      player.volume = 0.75;
+      void player.play();
+    } catch { /* Visual transitions remain available without browser audio. */ }
+    return;
+  }
+  if (sound === "Choir — Heavenly Transition") {
+    try {
+      const player = new Audio(CHOIR_TRANSITION_SOUND_URL);
+      player.volume = 0.75;
+      void player.play();
+    } catch { /* Visual transitions remain available without browser audio. */ }
+    return;
+  }
+  if (sound === "Drum Loop") {
+    try {
+      const player = new Audio(DRUM_LOOP_SOUND_URL);
+      player.volume = 0.75;
+      void player.play();
+    } catch { /* Visual transitions remain available without browser audio. */ }
+    return;
+  }
+  if (sound === "Trap Loop Drums") {
+    try {
+      const player = new Audio(TRAP_LOOP_DRUMS_SOUND_URL);
+      player.volume = 0.75;
+      void player.play();
+    } catch { /* Visual transitions remain available without browser audio. */ }
+    return;
+  }
+  if (sound === "Soft Piano") {
+    try {
+      const player = new Audio(SOFT_PIANO_SOUND_URL);
+      player.volume = 0.75;
+      void player.play();
+    } catch { /* Visual transitions remain available without browser audio. */ }
+    return;
+  }
+  if (sound === "Custom Upload" && customAudio) {
+    try {
+      const player = new Audio(customAudio);
+      player.volume = 0.85;
+      void player.play();
+    } catch { /* Visual transitions remain available without browser audio. */ }
+    return;
+  }
+}
+
+function openStudentTimerPopout() {
+  if (studentTimerPopout && !studentTimerPopout.closed) {
+    studentTimerPopout.focus();
+    syncStudentTimerPopout();
+    return;
+  }
+  studentTimerPopout = window.open("", "thinkamigbob-student-timer", "popup=yes,width=460,height=540,resizable=yes");
+  if (!studentTimerPopout) return;
+  studentTimerPopout.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Student Timer · THINKamigBOB</title><style>
+    *{box-sizing:border-box}html{color-scheme:dark;background:#142936}body{min-height:100vh;margin:0;display:grid;place-items:center;padding:clamp(8px,2.5vmin,18px);color:#fff;background:radial-gradient(circle at 50% 40%,#1f5268 0,#142936 68%);font-family:Arial,sans-serif;text-align:center;overflow:hidden}
+    main{display:grid;justify-items:center;gap:clamp(5px,2vmin,14px);width:100%}p,h1{margin:0}.brand{color:#b9dce8;font-size:clamp(.72rem,2vmin,.9rem);font-weight:800;letter-spacing:.08em}.phase{font-size:clamp(1rem,4.5vmin,2.2rem)}
+    .ring{position:relative;display:grid;width:min(84vw,66vh);aspect-ratio:1;place-items:center;border-radius:50%;background:#24779a;box-shadow:0 1rem 3rem #0008}
+    .ring[data-active-phases="true"]{background:conic-gradient(from -90deg,#454f55 0 var(--timer-elapsed),transparent var(--timer-elapsed) 100%),conic-gradient(from -90deg,#7651a8 0 var(--timer-main-start),#2d7d5b var(--timer-main-start) var(--timer-warning-start),#d4a017 var(--timer-warning-start) var(--timer-red-start),#b94a45 var(--timer-red-start) 100%)}
+    .ring:before{position:absolute;inset:12%;border:2px solid #ffffff40;border-radius:50%;background:#142936;content:""}.time{position:relative;z-index:1;color:#fff;font-size:clamp(3rem,14vmin,8rem);font-weight:800;font-variant-numeric:tabular-nums}.warning{padding:.5rem .7rem;border:2px solid #c28b12;border-radius:.55rem;background:#704500d1;font-size:clamp(.75rem,2.5vmin,1rem);font-weight:800}.warning[hidden]{display:none}.resize-hint{color:#b9dce8;font-size:clamp(.65rem,1.8vmin,.8rem);font-weight:700}
+  </style></head><body><main><p class="brand">THINKamigBOB</p><h1 class="phase">Today's Engineering Time</h1><div class="ring" data-active-phases="false"><output class="time">00:00</output></div><p class="warning" hidden>Five minutes until cleanup or the ending activity.</p><p class="resize-hint">Drag any corner of this window to resize the timer.</p></main></body></html>`);
+  studentTimerPopout.document.close();
+  syncStudentTimerPopout();
+}
+
+function syncStudentTimerPopout() {
+  if (!studentTimerPopout || studentTimerPopout.closed) return;
+  const state = lessonTimer.read();
+  const scheduled = currentTimerVisualState(state);
+  const phase = scheduled.active ? scheduled.phase : null;
+  const documentRef = studentTimerPopout.document;
+  const phaseName = documentRef.querySelector(".phase");
+  const time = documentRef.querySelector(".time");
+  const warning = documentRef.querySelector(".warning");
+  const ring = documentRef.querySelector(".ring");
+  if (phaseName) phaseName.textContent = phase?.name ?? "Today's Engineering Time";
+  if (time) time.textContent = formatLessonTime(state.remainingSeconds);
+  if (warning) warning.hidden = !scheduled.fiveMinuteWarning;
+  if (ring) {
+    ring.dataset.activePhases = phase ? "true" : "false";
+    ring.style.setProperty("--timer-elapsed", `${scheduled.elapsedPercent ?? 0}%`);
+    ring.style.setProperty("--timer-main-start", `${scheduled.mainStartPercent ?? 20}%`);
+    ring.style.setProperty("--timer-warning-start", `${scheduled.warningStartPercent ?? 70}%`);
+    ring.style.setProperty("--timer-red-start", `${scheduled.redStartPercent ?? 80}%`);
+  }
+}
+
+function syncClassroomPresentationWindow() {
+  if (!classroomPresentationWindow || classroomPresentationWindow.closed) return;
+  const documentRef = classroomPresentationWindow.document;
+  const timer = lessonTimer.read();
+  const visual = presentationTimerVisualState(timer);
+  documentRef.querySelectorAll("[data-timer-remaining]").forEach((output) => { output.textContent = formatLessonTime(timer.remainingSeconds); });
+  documentRef.querySelectorAll("[data-timer-phase-name]").forEach((label) => { label.textContent = visual.phase?.name ?? "Today's Engineering Time"; });
+  documentRef.querySelectorAll("[data-timer-state]").forEach((label) => { label.textContent = timer.status; });
+  documentRef.querySelectorAll("[data-timer-ring]").forEach((ring) => {
+    ring.dataset.activePhases = visual.phase ? "true" : "false";
+    ring.style.setProperty("--timer-elapsed", `${visual.elapsedPercent ?? 0}%`);
+    ring.style.setProperty("--timer-main-start", `${visual.mainStartPercent ?? 20}%`);
+    ring.style.setProperty("--timer-warning-start", `${visual.warningStartPercent ?? 70}%`);
+    ring.style.setProperty("--timer-red-start", `${visual.redStartPercent ?? 80}%`);
+  });
+  documentRef.querySelectorAll("[data-timer-warning]").forEach((warning) => { warning.hidden = !visual.fiveMinuteWarning; });
+  documentRef.querySelectorAll("[data-student-memo-text]").forEach((element) => { element.innerHTML = teacherMemo.read().text ? memoSegmentsMarkup(teacherMemo.read()) : "No message is ready yet."; });
+  const mission = todaysMission.read();
+  documentRef.querySelectorAll("[data-student-mission-title]").forEach((element) => { element.textContent = mission.title; });
+  documentRef.querySelectorAll("[data-student-mission-focus]").forEach((element) => { element.textContent = mission.focus; });
+  const liveVoice = Number(document.querySelector("[data-voice-meter-output]")?.textContent ?? 0);
+  const activity = readVoiceMeterActivity();
+  const prediction = predictedLearningType(liveVoice);
+  documentRef.querySelectorAll("[data-voice-meter]").forEach((meter) => { meter.style.setProperty("--voice-meter-level", `${liveVoice}%`); meter.style.setProperty("--voice-threshold", `${activity.target}%`); meter.dataset.meterState = voiceMeterState(liveVoice, activity.target); meter.querySelector("[data-voice-meter-output]")?.replaceChildren(String(liveVoice)); });
+  documentRef.querySelectorAll("[data-voice-prediction]").forEach((label) => { label.textContent = `${prediction.icon} ${prediction.label}`; });
+  documentRef.querySelectorAll("[data-voice-display-mode]").forEach((element) => { element.dataset.voiceDisplayMode = readVoiceMeterDisplayMode(); });
+  syncPresentationTimerViewControls(documentRef);
+}
+
+function openClassroomPresentationWindow() {
+  if (classroomPresentationWindow && !classroomPresentationWindow.closed) {
+    classroomPresentationWindow.focus();
+    syncClassroomPresentationWindow();
+    return;
+  }
+  syncStudentDisplayPresentation();
+  const source = document.querySelector("#platform-student-timer-display");
+  if (!source) return;
+  const clone = source.cloneNode(true);
+  clone.hidden = false;
+  clone.id = "platform-second-window-display";
+  const stylesheetLinks = [...document.querySelectorAll('link[rel="stylesheet"]')]
+    .map((link) => link.href)
+    .filter(Boolean)
+    .map((href) => `<link rel="stylesheet" href="${escapeHtml(href)}">`)
+    .join("");
+  classroomPresentationWindow = window.open("", "thinkamigbob-classroom-view", "popup=yes,width=1200,height=760,resizable=yes");
+  const status = document.querySelector("[data-classroom-window-status]");
+  if (!classroomPresentationWindow) { if (status) status.textContent = "The Classroom Display was blocked. Allow pop-ups for this platform, then try again."; return; }
+  classroomPresentationWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Classroom View · THINKamigBOB</title>${stylesheetLinks}<style>html,body{margin:0;min-height:100%;overflow:hidden}#platform-second-window-display{display:grid!important}</style></head><body class="platform-app">${clone.outerHTML}</body></html>`);
+  classroomPresentationWindow.document.close();
+  installSmartboardToolGestures(classroomPresentationWindow.document);
+  classroomPresentationWindow.document.addEventListener("click", (event) => {
+    const action = event.target.closest("[data-action]");
+    if (!action) return;
+    if (handleNamePickerAction(action, classroomPresentationWindow.document)) return;
+    if (action.dataset.action === "toggle-smartboard-tool") {
+      const tool = classroomPresentationWindow.document.querySelector(`[data-smartboard-tool="${action.dataset.smartboardToolName}"]`);
+      if (tool) {
+        tool.hidden = !tool.hidden;
+        if (!tool.hidden) bringSmartboardToolForward(tool);
+      }
+    }
+    if (action.dataset.action === "reset-smartboard-tools") resetSmartboardToolPositions(classroomPresentationWindow.document);
+    if (action.dataset.action === "popout-smartboard-tool") openSmartboardToolPopout(action.closest("[data-smartboard-tool]"));
+    if (action.dataset.action === "close-smartboard-tool") action.closest("[data-smartboard-tool]").hidden = true;
+    if (action.dataset.action === "timer-start") lessonTimer.start();
+    if (action.dataset.action === "timer-start-or-resume") lessonTimer.read().status === LESSON_TIMER_STATES.PAUSED ? lessonTimer.resume() : lessonTimer.start();
+    if (action.dataset.action === "timer-pause") lessonTimer.pause();
+    if (action.dataset.action === "timer-resume") lessonTimer.resume();
+    if (action.dataset.action === "timer-end") lessonTimer.end();
+    if (action.dataset.action === "timer-reset") lessonTimer.reset();
+    if (action.dataset.action === "timer-subtract-minute") lessonTimer.subtractMinute();
+    if (action.dataset.action === "timer-add-minute") lessonTimer.addMinute();
+    if (action.dataset.action === "timer-view-mode") setPresentationTimerViewMode(action.dataset.timerViewMode);
+    if (action.dataset.action === "stopwatch-start" && stopwatchInterval === null) stopwatchInterval = window.setInterval(() => { stopwatchSeconds += 1; document.querySelectorAll("[data-stopwatch-output]").forEach((output) => { output.textContent = formatLessonTime(stopwatchSeconds); }); classroomPresentationWindow?.document.querySelectorAll("[data-stopwatch-output]").forEach((output) => { output.textContent = formatLessonTime(stopwatchSeconds); }); }, 1000);
+    if (action.dataset.action === "stopwatch-pause" && stopwatchInterval !== null) { window.clearInterval(stopwatchInterval); stopwatchInterval = null; }
+    if (action.dataset.action === "stopwatch-reset") { if (stopwatchInterval !== null) window.clearInterval(stopwatchInterval); stopwatchInterval = null; stopwatchSeconds = 0; classroomPresentationWindow.document.querySelectorAll("[data-stopwatch-output]").forEach((output) => { output.textContent = formatLessonTime(0); }); }
+    if (action.dataset.action === "voice-meter-start") void startVoiceMeter();
+    if (action.dataset.action === "voice-meter-stop") stopVoiceMeter("Voice Meter paused.");
+    if (action.dataset.action === "open-whiteboard") document.querySelector('[data-action="open-whiteboard"]')?.click();
+    syncLessonTimerPresentation();
+  });
+  classroomPresentationWindow.document.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    event.preventDefault();
+    classroomPresentationWindow.close();
+    classroomPresentationWindow = null;
+    if (status) status.textContent = "Classroom Display closed.";
+  });
+  syncClassroomPresentationWindow();
+  classroomPresentationWindow.focus();
+  if (status) status.textContent = "Classroom Display opened in a separate window.";
+}
+
 function syncLessonTimerPresentation() {
   const state = lessonTimer.read();
+  const scheduled = currentTimerVisualState(state);
+  const phase = scheduled.active ? scheduled.phase : null;
+  const presentationScheduled = presentationTimerVisualState(state);
+  const presentationPhase = presentationScheduled.active ? presentationScheduled.phase : null;
+  const appState = session.read();
+  if (appState.role === PLATFORM_ROLES.TEACHER && state.status === LESSON_TIMER_STATES.RUNNING) {
+    const classId = currentTeacherClass(appState.teacherId)?.id;
+    const released = classId && (classResourceSharing.release(classId, "class-start").ok || (phase?.color && classResourceSharing.release(classId, phase.color).ok));
+    if (released) {
+      const region = document.querySelector("[data-class-resource-teacher]");
+      if (region) region.outerHTML = classResourceTeacherMarkup(classId);
+    }
+  }
+  const sounds = classTimerSchedule.readEffective();
+  const phaseKey = phase?.key ?? null;
+  if (lastTimerPhaseKey !== null && phaseKey !== lastTimerPhaseKey) {
+    if (phaseKey === "warning") playTimerSound(sounds.yellowSound, sounds.yellowCustomAudio);
+    if (phaseKey === "ending") playTimerSound(sounds.redSound, sounds.redCustomAudio);
+  }
+  if (lastTimerStatus !== null && lastTimerStatus !== LESSON_TIMER_STATES.COMPLETE && state.status === LESSON_TIMER_STATES.COMPLETE) {
+    playTimerSound(sounds.endSound, sounds.endCustomAudio);
+  }
+  lastTimerPhaseKey = phaseKey;
+  lastTimerStatus = state.status;
   document.querySelectorAll("[data-timer-remaining]").forEach((element) => {
     element.textContent = formatLessonTime(state.remainingSeconds);
+    element.dataset.timerPhaseColor = phase?.color ?? "default";
+  });
+  document.querySelectorAll("[data-timer-phase-name]").forEach((element) => {
+    element.textContent = phase?.name ?? "Today's Engineering Time";
+  });
+  document.querySelectorAll("[data-timer-warning]").forEach((element) => {
+    element.hidden = !scheduled.fiveMinuteWarning;
+  });
+  document.querySelectorAll("#platform-student-timer-display [data-timer-phase-name]").forEach((element) => {
+    element.textContent = presentationPhase?.name ?? "Today's Engineering Time";
+  });
+  document.querySelectorAll("#platform-student-timer-display [data-timer-warning]").forEach((element) => {
+    element.hidden = !presentationScheduled.fiveMinuteWarning;
+  });
+  document.querySelectorAll("#platform-student-timer-display [data-timer-remaining]").forEach((element) => {
+    element.dataset.timerPhaseColor = presentationPhase?.color ?? "default";
+  });
+  document.querySelectorAll("[data-timer-ring]").forEach((element) => {
+    element.dataset.activePhases = presentationPhase ? "true" : "false";
+    element.style.setProperty("--timer-elapsed", `${presentationScheduled.elapsedPercent ?? 0}%`);
+    element.style.setProperty("--timer-main-start", `${presentationScheduled.mainStartPercent ?? 20}%`);
+    element.style.setProperty("--timer-warning-start", `${presentationScheduled.warningStartPercent ?? 70}%`);
+    element.style.setProperty("--timer-red-start", `${presentationScheduled.redStartPercent ?? 80}%`);
   });
   document.querySelectorAll("[data-timer-state]").forEach((element) => {
     element.textContent = state.status;
   });
+  document.querySelectorAll("[data-current-plan-timer]").forEach((element) => {
+    element.textContent = `${state.status} · ${formatLessonTime(state.remainingSeconds)}`;
+  });
 
   const controlRules = {
     "timer-start": state.status === LESSON_TIMER_STATES.READY,
+    "timer-start-or-resume": state.status === LESSON_TIMER_STATES.READY || state.status === LESSON_TIMER_STATES.PAUSED,
     "timer-pause": state.status === LESSON_TIMER_STATES.RUNNING,
     "timer-resume": state.status === LESSON_TIMER_STATES.PAUSED,
     "timer-reset": state.status !== LESSON_TIMER_STATES.READY,
@@ -711,8 +2307,10 @@ function syncLessonTimerPresentation() {
       state.remainingSeconds <= MAX_LESSON_MINUTES * 60 - 60,
   };
   Object.entries(controlRules).forEach(([action, enabled]) => {
-    const button = document.querySelector(`[data-action="${action}"]`);
-    if (button) button.disabled = !enabled;
+    document.querySelectorAll(`[data-action="${action}"]`).forEach((button) => { button.disabled = !enabled; });
+    if (classroomPresentationWindow && !classroomPresentationWindow.closed) {
+      classroomPresentationWindow.document.querySelectorAll(`[data-action="${action}"]`).forEach((button) => { button.disabled = !enabled; });
+    }
   });
 
   const durationInput = document.querySelector("[data-timer-duration]");
@@ -720,6 +2318,9 @@ function syncLessonTimerPresentation() {
   const durationLocked = state.status === LESSON_TIMER_STATES.RUNNING || state.status === LESSON_TIMER_STATES.PAUSED;
   if (durationInput) durationInput.disabled = durationLocked;
   if (durationButton) durationButton.disabled = durationLocked;
+  syncPresentationTimerViewControls();
+  syncStudentTimerPopout();
+  syncClassroomPresentationWindow();
 }
 
 function syncTeacherMemoPresentation() {
@@ -728,13 +2329,82 @@ function syncTeacherMemoPresentation() {
   const count = document.querySelector("[data-teacher-memo-count]");
   const clearButton = document.querySelector('[data-action="clear-teacher-memo"]');
   const saved = document.querySelector("[data-teacher-memo-saved]");
-  const studentMemoText = document.querySelector("[data-student-memo-text]");
+  const editor = document.querySelector("[data-teacher-memo-editor]");
   if (field) field.value = state.text;
+  if (editor) editor.innerHTML = memoSegmentsMarkup(state);
   if (count) count.textContent = String(state.text.length);
   if (clearButton) clearButton.disabled = !state.text;
-  if (saved) saved.textContent = state.text || "No class message saved.";
-  if (studentMemoText) studentMemoText.textContent = state.text;
+  if (saved) saved.innerHTML = state.text ? memoSegmentsMarkup(state) : "No class message saved.";
+  document.querySelectorAll("[data-student-memo-text]").forEach((element) => { element.innerHTML = state.text ? memoSegmentsMarkup(state) : "No message is ready yet."; });
+  const studentMemo = document.querySelector("[data-student-memo]");
+  let studentImage = document.querySelector(".platform-student-memo-image");
+  if (state.image && !studentImage && studentMemo) {
+    studentImage = document.createElement("img");
+    studentImage.className = "platform-student-memo-image";
+    studentImage.alt = "Teacher-added class message visual";
+    studentMemo.append(studentImage);
+  }
+  if (studentImage && state.image) studentImage.src = state.image;
+  if (studentImage && !state.image) studentImage.remove();
+  document.querySelectorAll("[data-student-memo]").forEach((element) => {
+    element.dataset.memoColor = state.color;
+    element.dataset.memoSize = state.size;
+    element.dataset.memoStyle = state.style;
+  });
   syncStudentDisplayPresentation();
+  refreshCurrentClassPlan();
+}
+
+function memoEditorSegments(editor) {
+  const defaults = teacherMemo.read();
+  const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+  const segments = [];
+  while (walker.nextNode()) {
+    const text = walker.currentNode.textContent ?? "";
+    if (!text) continue;
+    const format = { color: defaults.color, size: defaults.size, style: defaults.style };
+    let winningPriority = -1;
+    let ancestor = walker.currentNode.parentElement;
+    while (ancestor && ancestor !== editor) {
+      const priority = Number(ancestor.dataset.memoPriority ?? 0);
+      if (priority >= winningPriority && ancestor.dataset.memoColor) {
+        format.color = ancestor.dataset.memoColor;
+        format.size = ancestor.dataset.memoSize ?? format.size;
+        format.style = ancestor.dataset.memoStyle ?? format.style;
+        winningPriority = priority;
+      }
+      ancestor = ancestor.parentElement;
+    }
+    const previous = segments.at(-1);
+    if (previous && previous.color === format.color && previous.size === format.size && previous.style === format.style) previous.text += text;
+    else segments.push({ text, ...format });
+  }
+  return segments;
+}
+
+function applyMemoFormatToSelection() {
+  const editor = document.querySelector("[data-teacher-memo-editor]");
+  const selection = window.getSelection();
+  if (!editor) return false;
+  const liveRange = selection?.rangeCount ? selection.getRangeAt(0) : null;
+  const range = liveRange && !selection.isCollapsed && editor.contains(liveRange.commonAncestorContainer)
+    ? liveRange
+    : memoSelectionRange?.cloneRange();
+  if (!range || range.collapsed) return false;
+  if (!editor.contains(range.commonAncestorContainer)) return false;
+  const wrapper = document.createElement("span");
+  wrapper.dataset.memoColor = document.querySelector('[data-memo-format="color"]')?.value ?? "white";
+  wrapper.dataset.memoSize = document.querySelector('[data-memo-format="size"]')?.value ?? "extra-large";
+  wrapper.dataset.memoStyle = document.querySelector('[data-memo-format="style"]')?.value ?? "bold";
+  memoFormatRevision += 1;
+  wrapper.dataset.memoPriority = String(memoFormatRevision);
+  wrapper.append(range.extractContents());
+  range.insertNode(wrapper);
+  selection.removeAllRanges();
+  memoSelectionRange = null;
+  const hidden = document.querySelector("[data-teacher-memo]");
+  if (hidden) hidden.value = editor.innerText.slice(0, TEACHER_MEMO_MAX_CHARACTERS);
+  return true;
 }
 
 function missionAvailabilityText(value) {
@@ -775,6 +2445,8 @@ function syncTodaysMissionPresentation() {
     const element = document.querySelector(selector);
     if (element) element.textContent = hasMission ? text : "";
   });
+  const studentFocus = document.querySelector("[data-student-mission-focus]");
+  if (studentFocus) studentFocus.hidden = !hasMission || state.focus === state.title;
   syncStudentDisplayPresentation();
 }
 
@@ -791,6 +2463,8 @@ function syncStudentDisplayPresentation() {
   const timer = document.querySelector("[data-student-engineering-time]");
   const memo = document.querySelector("[data-student-memo]");
   const mission = document.querySelector("[data-student-mission]");
+  const imageSlot = document.querySelector("[data-student-image-slot]");
+  const studentImage = display?.querySelector(".platform-student-memo-image");
   if (timer) timer.hidden = !showTimer;
   if (memo) memo.hidden = !showMemo;
   if (mission) mission.hidden = !showMission;
@@ -801,6 +2475,13 @@ function syncStudentDisplayPresentation() {
     display.setAttribute("aria-labelledby", showTimer
       ? "student-timer-title"
       : showMission ? "student-mission-title" : "student-message-title");
+    const combined = showTimer && showMessage;
+    if (studentImage && imageSlot && memo) {
+      (combined ? imageSlot : memo).append(studentImage);
+      imageSlot.hidden = !combined;
+    } else if (imageSlot) {
+      imageSlot.hidden = true;
+    }
   }
   document.querySelectorAll("[data-presentation-mode]").forEach((control) => {
     control.setAttribute("aria-pressed", String(control.dataset.presentationMode === selectedMode));
@@ -808,6 +2489,27 @@ function syncStudentDisplayPresentation() {
       control.disabled = !hasMessageContent;
     }
   });
+  window.requestAnimationFrame(fitStudentMemoPresentation);
+}
+
+function fitStudentMemoPresentation() {
+  const display = document.querySelector("#platform-student-timer-display:not([hidden])");
+  const memo = display?.querySelector("[data-student-memo]:not([hidden])");
+  const text = memo?.querySelector("[data-student-memo-text]");
+  const image = memo?.querySelector(".platform-student-memo-image");
+  if (!display || !memo || !text) return;
+  const combined = display.classList.contains("platform-student-display-combined");
+  memo.style.maxHeight = combined ? "38vh" : "78vh";
+  if (image) image.style.maxHeight = combined ? "16vh" : "38vh";
+  const textLength = text.textContent?.length ?? 0;
+  let fontSize = Math.min(combined ? window.innerHeight * 0.055 : window.innerHeight * 0.11, combined ? 48 : 112);
+  if (textLength > 120) fontSize *= 0.62;
+  else if (textLength > 70) fontSize *= 0.76;
+  text.style.fontSize = `${Math.max(20, fontSize)}px`;
+  for (let attempts = 0; attempts < 24 && memo.scrollHeight > memo.clientHeight; attempts += 1) {
+    fontSize -= 2;
+    text.style.fontSize = `${Math.max(18, fontSize)}px`;
+  }
 }
 
 function manageLessonTimerPresentation(route) {
@@ -834,11 +2536,127 @@ function restoreLessonTimerDisplay(route, state) {
   return true;
 }
 
-function handleSubmit(event) {
+function readTimerAudioFile(file) {
+  if (!file || !file.size) return Promise.resolve("");
+  if (!String(file.type).startsWith("audio/")) return Promise.reject(new Error("audio-type"));
+  if (file.size > 750 * 1024) return Promise.reject(new Error("audio-size"));
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result ?? "")), { once: true });
+    reader.addEventListener("error", () => reject(new Error("audio-read")), { once: true });
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleSubmit(event) {
   const form = event.target.closest("form[data-form]");
   if (!form) return;
   event.preventDefault();
   const data = new FormData(form);
+  if (form.dataset.form === "weekly-reflection-requirement") {
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    const result = weeklyReflections.setRequirement(classId, Number(data.get("required")));
+    const status = form.querySelector("[data-weekly-reflection-teacher-status]");
+    if (status) status.textContent = result.ok ? `Saved: ${result.required} response${result.required === 1 ? "" : "s"} required this week.` : "Choose a requirement from 0 to 5.";
+    return;
+  }
+  if (form.dataset.form === "weekly-reflection") {
+    const state = session.read();
+    const activityChoice = String(data.get("activityChoice") ?? "");
+    const result = weeklyReflections.submit(state.classId, state.studentId, {
+      activity: activityChoice === "__other__" ? data.get("activityOther") : activityChoice,
+      progress: data.get("progress"),
+      explanation: data.get("explanation"),
+      improved: data.get("improved"),
+      badge: data.get("badge"),
+      help: data.get("help"),
+      helpOther: data.get("helpOther"),
+      rating: data.get("rating"),
+    });
+    if (!result.ok) {
+      const error = form.querySelector("[data-weekly-reflection-error]");
+      if (error) { error.hidden = false; error.textContent = "Choose an answer for every question and explain your learning with at least 10 characters."; }
+      return;
+    }
+    render();
+    return;
+  }
+  if (form.dataset.form === "production-student-entry") {
+    void submitProductionStudentEntry(form, data);
+    return;
+  }
+  if (form.dataset.form === "production-classroom-setup") {
+    void submitProductionClassroom(form, data);
+    return;
+  }
+  if (form.dataset.form === "evidence-governance") {
+    const result = evidenceGovernance.save({ retention: data.get("retention"), deletionAuthority: data.get("deletionAuthority"), recovery: data.get("recovery"), exportRule: data.get("exportRule") });
+    const error = form.querySelector("[data-evidence-governance-error]");
+    const status = form.querySelector("[data-evidence-governance-status]");
+    if (!result.ok) {
+      if (status) status.textContent = "";
+      if (error) { error.hidden = false; error.textContent = result.reason === "storage-unavailable" ? "The draft could not be saved in this browser." : "Choose every governance safeguard before saving the draft."; }
+      return;
+    }
+    if (error) { error.hidden = true; error.textContent = ""; }
+    if (status) { status.dataset.state = "saved"; status.textContent = "Governance draft saved for this browser session. It is not an enforced policy."; }
+    renderGovernanceSimulation();
+    return;
+  }
+  if (form.dataset.form === "governance-simulation-request") {
+    const result = evidenceGovernanceSimulation.submit({ evidenceId: data.get("evidenceId"), evidenceLabel: data.get("evidenceLabel"), reason: data.get("reason"), exportOffered: data.get("exportOffered") === "yes" });
+    if (!result.ok) {
+      const error = document.querySelector("[data-governance-simulation-error]");
+      if (error) { error.hidden = false; error.textContent = result.reason === "export-required" ? "Confirm that an export was offered before submitting." : result.reason === "reason-required" ? "Add a reason for the request." : "The fictional request could not be saved in this browser."; }
+      return;
+    }
+    renderGovernanceSimulation();
+    return;
+  }
+  if (form.dataset.form === "governance-simulation-decision") {
+    const result = evidenceGovernanceSimulation.decide({ decision: data.get("decision"), reviewer: data.get("reviewer"), note: data.get("note") });
+    if (!result.ok) {
+      const error = document.querySelector("[data-governance-simulation-error]");
+      if (error) { error.hidden = false; error.textContent = result.reason === "reviewer-required" ? "Add a fictional reviewer label." : result.reason === "note-required" ? "Add a decision note." : "Choose Approve or Reject to complete the simulation."; }
+      return;
+    }
+    renderGovernanceSimulation();
+    return;
+  }
+  if (form.dataset.form === "google-connection-preview") {
+    const result = googleConnectionPreview.connect({ teacherConfirmed: data.get("teacherConfirmed") === "yes", studentBoundaryConfirmed: data.get("studentBoundaryConfirmed") === "yes" });
+    if (!result.ok) {
+      const error = document.querySelector("[data-google-connection-preview-error]");
+      if (error) { error.hidden = false; error.textContent = result.reason === "teacher-confirmation-required" ? "Confirm that the teacher authorizes the connection." : "Confirm that students will not use Google accounts or Drive permissions."; }
+      return;
+    }
+    renderGoogleConnectionPreview();
+    return;
+  }
+  if (form.dataset.form === "evidence-drive-setup") {
+    const result = evidenceDriveSetup.prepare({ folderName: data.get("folderName"), privacyConfirmed: data.get("privacyConfirmed") === "yes" });
+    const error = form.querySelector("[data-evidence-drive-error]");
+    const status = form.querySelector("[data-evidence-drive-status]");
+    if (!result.ok) {
+      if (error) {
+        error.hidden = false;
+        error.textContent = result.reason === "privacy-confirmation-required" ? "Confirm the classroom privacy boundary before preparing the connection." : result.reason === "storage-unavailable" ? "Setup could not be saved in this browser." : "Enter a folder name from 3 to 80 characters.";
+      }
+      return;
+    }
+    if (error) { error.hidden = true; error.textContent = ""; }
+    if (status) {
+      status.dataset.state = "prepared";
+      status.textContent = `Future setup prepared for “${result.value.folderName}.” Production administrator OAuth is still required.`;
+    }
+    return;
+  }
+
+  if (form.dataset.form === "pb002j-teacher-connect" || form.dataset.form === "pb002j-configuration") {
+    void pb002jClasswide.handleSubmit(form);
+    return;
+  }
 
   if (form.dataset.form === "teacher-login") {
     const teacher = validateTeacherCredentials(data.get("email"), data.get("password"));
@@ -883,8 +2701,100 @@ function handleSubmit(event) {
     syncLessonTimerPresentation();
   }
 
+  if (form.dataset.form === "class-timer-schedule") {
+    const phaseNames = data.getAll("phaseName");
+    const phaseStarts = data.getAll("phaseStart");
+    const existingSchedule = classTimerSchedule.read();
+    let customAudio;
+    try {
+      customAudio = {
+        yellowCustomAudio: await readTimerAudioFile(data.get("yellowSoundFile")) || existingSchedule.yellowCustomAudio,
+        redCustomAudio: await readTimerAudioFile(data.get("redSoundFile")) || existingSchedule.redCustomAudio,
+        endCustomAudio: await readTimerAudioFile(data.get("endSoundFile")) || existingSchedule.endCustomAudio,
+      };
+    } catch (error) {
+      const message = error.message === "audio-size" ? "Keep each custom sound at 750 KB or smaller." : "Choose a valid audio file for each custom sound.";
+      const output = form.querySelector("[data-class-timer-schedule-error]");
+      if (output) { output.textContent = message; output.hidden = false; }
+      return;
+    }
+    const selectedSounds = [String(data.get("yellowSound")), String(data.get("redSound")), String(data.get("endSound"))];
+    if (selectedSounds.some((sound, index) => sound === "Custom Upload" && !Object.values(customAudio)[index])) {
+      const output = form.querySelector("[data-class-timer-schedule-error]");
+      if (output) { output.textContent = "Upload an audio file before choosing Custom Upload."; output.hidden = false; }
+      return;
+    }
+    const result = classTimerSchedule.save({
+      enabled: data.get("enabled") === "yes",
+      weekdays: data.getAll("weekdays"),
+      startTime: String(data.get("startTime") ?? ""),
+      durationMinutes: Number(data.get("durationMinutes")),
+      timeZone: String(data.get("timeZone") ?? ""),
+      yellowSound: String(data.get("yellowSound") ?? "None"),
+      redSound: String(data.get("redSound") ?? "None"),
+      endSound: String(data.get("endSound") ?? "None"),
+      ...customAudio,
+      pomodoroEnabled: data.get("pomodoroEnabled") === "yes",
+      phases: [
+        { name: phaseNames[0], startMinute: Number(phaseStarts[0]) },
+        { name: phaseNames[1], startMinute: Number(phaseStarts[1]) },
+        { name: phaseNames[2], startMinute: Number(phaseStarts[2]) },
+        { name: phaseNames[3], startMinute: Number(phaseStarts[3]) },
+      ],
+    });
+    const error = form.querySelector("[data-class-timer-schedule-error]");
+    if (!result.ok) {
+      if (error) {
+        error.textContent = result.reason === "weekdays-required"
+          ? "Choose at least one weekday when automatic timing is on."
+          : result.reason === "invalid-time-zone" ? "Choose a valid time zone."
+            : result.reason === "invalid-phases" ? "Use minute 0 for purple, choose green before the final five-minute yellow warning, and start red before class ends."
+              : "The schedule could not be saved.";
+        error.hidden = false;
+      }
+      return;
+    }
+    const activeSchedule = classTimerSchedule.activeOccurrence();
+    if (activeSchedule.active) {
+      const timerResult = lessonTimer.startScheduled(activeSchedule.durationMinutes, activeSchedule.remainingSeconds);
+      if (timerResult.ok) classTimerSchedule.markApplied(activeSchedule.occurrence);
+    } else {
+      const currentTimer = lessonTimer.read();
+      if (currentTimer.status !== LESSON_TIMER_STATES.RUNNING && currentTimer.status !== LESSON_TIMER_STATES.PAUSED) {
+        lessonTimer.setDuration(result.schedule.durationMinutes);
+      }
+    }
+    return render();
+  }
+
+  if (form.dataset.form === "timer-today-override") {
+    const durationMinutes = Number(data.get("durationMinutes"));
+    const starts = data.getAll("phaseStart").map(Number);
+    const base = classTimerSchedule.readEffective();
+    const phases = base.phases.map((phase, index) => ({ ...phase, startMinute: index === 0 ? 0 : starts[index - 1] }));
+    const result = classTimerSchedule.saveTodayOverride({ durationMinutes, phases, pomodoroEnabled: true });
+    const error = form.querySelector("[data-timer-today-error]");
+    if (!result.ok) {
+      if (error) { error.textContent = "Use increasing phase start minutes that occur before today’s timer ends."; error.hidden = false; }
+      return;
+    }
+    const active = classTimerSchedule.activeOccurrence();
+    const current = lessonTimer.read();
+    if (active.active) lessonTimer.startScheduled(active.durationMinutes, active.remainingSeconds);
+    else if (current.status === LESSON_TIMER_STATES.RUNNING || current.status === LESSON_TIMER_STATES.PAUSED) {
+      const elapsed = current.durationSeconds - current.remainingSeconds;
+      lessonTimer.startScheduled(durationMinutes, Math.max(1, durationMinutes * 60 - elapsed));
+    } else lessonTimer.setDuration(durationMinutes);
+    return render();
+  }
+
   if (form.dataset.form === "teacher-memo") {
-    const result = teacherMemo.save(data.get("memo"));
+    const editor = form.querySelector("[data-teacher-memo-editor]");
+    const text = editor?.innerText.slice(0, TEACHER_MEMO_MAX_CHARACTERS) ?? data.get("memo");
+    const result = teacherMemo.save(text, {
+      segments: editor ? memoEditorSegments(editor) : undefined,
+      image: data.get("memoImage"),
+    });
     const error = form.querySelector("[data-teacher-memo-error]");
     const status = form.querySelector("[data-teacher-memo-status]");
     if (!result.ok) {
@@ -909,11 +2819,12 @@ function handleSubmit(event) {
   }
 
   if (form.dataset.form === "todays-mission") {
+    const goal = String(data.get("title") ?? "").trim();
     const result = todaysMission.save({
-      title: data.get("title"),
-      focus: missionFocusValue(form),
-      builder: data.get("builder"),
-      workshop: data.get("workshop"),
+      title: goal,
+      focus: goal,
+      builder: form.elements.builder.checked ? TODAYS_MISSION_AVAILABILITY.AVAILABLE : TODAYS_MISSION_AVAILABILITY.NOT_PART,
+      workshop: form.elements.workshop.checked ? TODAYS_MISSION_AVAILABILITY.AVAILABLE : TODAYS_MISSION_AVAILABILITY.NOT_PART,
     });
     const error = form.querySelector("[data-todays-mission-error]");
     const status = form.querySelector("[data-todays-mission-status]");
@@ -937,18 +2848,1746 @@ function handleSubmit(event) {
       error.textContent = "";
       error.hidden = true;
     }
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    if (classId) weeklyReflections.recordActivity(classId, result.state.title);
     syncTodaysMissionPresentation();
     if (status) {
       status.dataset.state = "saved";
-      status.textContent = "Today's Mission saved for refresh and Student Display.";
+      status.textContent = "Today’s Plan is saved for this class and Student Display.";
     }
   }
+}
+
+async function submitProductionStudentEntry(form, data) {
+  const classCode = String(data.get("classCode") || "").trim();
+  const studentCode = String(data.get("studentCode") || "").trim();
+  if (!classCode || !studentCode) return showFormError(form, "Enter both codes to continue.");
+  const result = await productionIdentity.studentEntry({ classCode, studentCode });
+  if (!result.ok) return showFormError(form, result.reason === "classroom-entry-not-recognized" ? "Those classroom codes were not recognized." : "Classroom entry is unavailable. Ask your teacher for help.");
+  window.location.assign(result.value.redirect);
+}
+
+async function submitProductionClassroom(form, data) {
+  const name = String(data.get("name") || "").trim();
+  const parsed = parseStudentLabels(data.get("studentLabels"));
+  if (name.length < 2) return showFormError(form, "Enter a class name.");
+  if (!parsed.ok) {
+    const messages = { "student-count": "Enter 1–40 student labels, one per line.", "student-label-too-long": "Keep each student label to 80 characters or fewer.", "duplicate-student-label": "Each student label must be unique." };
+    return showFormError(form, messages[parsed.reason]);
+  }
+  const result = await productionIdentity.createClassroom({ name, studentLabels: parsed.labels });
+  if (!result.ok) return showFormError(form, "The classroom could not be created. Sign in again or try later.");
+  oneTimeClassroomCodes = result.value.classroom;
+  const region = document.querySelector("[data-classroom-setup]");
+  if (region) region.outerHTML = classroomSetupMarkup();
+  document.querySelector("#classroom-code-sheet-title")?.focus();
+}
+
+async function launchEvidencePilot() {
+  const status = document.querySelector("[data-evidence-launch-status]");
+  const keyInput = document.querySelector("[data-evidence-teacher-key]");
+  evidenceTeacherRuntimeKey = keyInput?.value.trim() || evidenceTeacherRuntimeKey;
+  if (status) status.textContent = "Launching the fictional evidence activity…";
+  const result = await evidenceUploadClient.publishLaunch({ teacherKey: evidenceTeacherRuntimeKey, activity: currentEvidenceActivity() });
+  if (keyInput) keyInput.value = "";
+  if (status) status.textContent = result.ok
+    ? `Launched: ${result.launch.activity}. Fictional students can now save Photo and Screenshot evidence to the pilot Drive folder.`
+    : `Launch not completed (${result.reason}). Check that the local pilot service is running and paste its current teacher key.`;
+}
+
+function renderTeacherLiveEvidence() {
+  const region = document.querySelector("[data-live-evidence-inbox]");
+  if (region) region.outerHTML = teacherLiveEvidenceMarkup();
+}
+
+async function refreshTeacherLiveEvidence() {
+  const keyInput = document.querySelector("[data-evidence-teacher-key]");
+  evidenceTeacherRuntimeKey = keyInput?.value.trim() || evidenceTeacherRuntimeKey;
+  teacherLiveEvidenceNotice = "Checking the protected fictional evidence inbox…";
+  renderTeacherLiveEvidence();
+  const result = await evidenceUploadClient.listEvidence({ teacherKey: evidenceTeacherRuntimeKey });
+  if (!result.ok) {
+    teacherLiveEvidenceNotice = `Live evidence unavailable (${result.reason}). Paste the current memory-only teacher key and try again.`;
+    renderTeacherLiveEvidence();
+    return;
+  }
+  teacherLiveEvidence = result.evidence;
+  if (teacherLiveEvidencePreviewUrl) URL.revokeObjectURL(teacherLiveEvidencePreviewUrl);
+  teacherLiveEvidencePreviewUrl = "";
+  teacherLiveEvidenceSelection = teacherLiveEvidence[0]?.id || "";
+  teacherLiveEvidenceNotice = teacherLiveEvidence.length
+    ? `${teacherLiveEvidence.length} persistent fictional submission${teacherLiveEvidence.length === 1 ? "" : "s"} loaded from the teacher-owned Drive.`
+    : "No fictional image submissions were found in the configured Drive folder.";
+  renderTeacherLiveEvidence();
+}
+
+async function openTeacherLiveEvidence(evidenceId) {
+  teacherLiveEvidenceSelection = evidenceId;
+  if (teacherLiveEvidencePreviewUrl) URL.revokeObjectURL(teacherLiveEvidencePreviewUrl);
+  teacherLiveEvidencePreviewUrl = "";
+  teacherLiveEvidenceNotice = "Loading the protected visual preview…";
+  renderTeacherLiveEvidence();
+  const result = await evidenceUploadClient.loadEvidencePreview({ teacherKey: evidenceTeacherRuntimeKey, evidenceId });
+  teacherLiveEvidenceNotice = result.ok ? "Protected fictional visual evidence loaded." : `Visual preview unavailable (${result.reason}).`;
+  if (result.ok) teacherLiveEvidencePreviewUrl = URL.createObjectURL(result.blob);
+  renderTeacherLiveEvidence();
+  document.querySelector(".platform-live-evidence-preview")?.focus();
+}
+
+async function saveEvidenceDraft() {
+  const error = document.querySelector("[data-evidence-error]");
+  const detail = evidenceDraft?.type === EVIDENCE_TYPES.REFLECTION ? evidenceDraft.detail : evidenceDraft?.fileName;
+  if (!evidenceDraft || !String(detail || "").trim()) {
+    if (error) { error.hidden = false; error.textContent = "Add evidence before saving."; }
+    return;
+  }
+  let driveEvidence = null;
+  let driveFailure = "drive-upload-not-attempted";
+  const canUpload = [EVIDENCE_TYPES.PHOTO, EVIDENCE_TYPES.SCREENSHOT].includes(evidenceDraft.type) && evidenceDraft.file;
+  if (canUpload) {
+    const state = session.read();
+    const launch = await evidenceUploadClient.currentLaunch();
+    driveFailure = launch.ok ? "fictional-student-session-required" : `launch-${launch.reason}`;
+    if (launch.ok && state.studentId) {
+      const ticket = await evidenceUploadClient.requestTicket({ launchId: launch.launch.id, studentId: state.studentId });
+      driveFailure = ticket.ok ? "upload-not-completed" : `ticket-${ticket.reason}`;
+      if (ticket.ok) {
+        const upload = await evidenceUploadClient.uploadImage({ ticket: ticket.ticket, file: evidenceDraft.file, fileName: evidenceDraft.fileName, evidenceType: evidenceDraft.type });
+        if (upload.ok) driveEvidence = upload.evidence;
+        else driveFailure = `upload-${upload.reason}`;
+      }
+    }
+  }
+  const timelineDetail = driveEvidence ? `Teacher Drive pilot · ${driveEvidence.name}` : detail;
+  const result = evidenceFoundation.save({ type: evidenceDraft.type, title: evidenceDraft.type === EVIDENCE_TYPES.REFLECTION ? "New reflection" : evidenceDraft.fileName, activity: currentEvidenceActivity(), detail: timelineDetail });
+  if (!result.ok) {
+    if (error) { error.hidden = false; error.textContent = result.reason === "storage-unavailable" ? "Evidence could not be saved in this browser. Try again." : "Add evidence before saving."; }
+    return;
+  }
+  if (evidenceDraft.previewUrl) URL.revokeObjectURL(evidenceDraft.previewUrl);
+  evidenceDraft = null;
+  evidenceNotice = driveEvidence
+    ? "Evidence saved to the teacher-owned fictional pilot Drive and your timeline."
+    : (canUpload ? `The Drive pilot was unavailable (${driveFailure}), so this evidence was saved only in your browser timeline.` : "Evidence saved to your pilot timeline.");
+  renderEvidenceFoundation();
+}
+
+function updateVoiceMeterPresentation(value) {
+  const threshold = readVoiceMeterActivity().target;
+  const state = voiceMeterState(value, threshold);
+  document.querySelectorAll("[data-voice-meter]").forEach((meter) => {
+    meter.style.setProperty("--voice-meter-level", `${value}%`);
+    meter.dataset.meterState = state;
+    const output = meter.querySelector("[data-voice-meter-output]");
+    if (output) output.textContent = String(value);
+  });
+  const prediction = predictedLearningType(value);
+  document.querySelectorAll("[data-voice-prediction]").forEach((label) => { label.textContent = `${prediction.icon} ${prediction.label}`; });
+}
+
+function whiteboardCanvas() {
+  return document.querySelector("[data-whiteboard-canvas]");
+}
+
+function updateWhiteboardHistoryControls() {
+  document.querySelectorAll('[data-action="whiteboard-undo"]').forEach((button) => { button.disabled = whiteboardUndoStack.length === 0; });
+  document.querySelectorAll('[data-action="whiteboard-redo"]').forEach((button) => { button.disabled = whiteboardRedoStack.length === 0; });
+}
+
+function refreshWhiteboardLibraryOptions(selectedId = "") {
+  const select = document.querySelector("[data-whiteboard-saved]");
+  if (!select) return;
+  const boards = readWhiteboardLibrary();
+  select.innerHTML = `<option value="">Choose a saved board</option>${boards.map((board) => `<option value="${escapeHtml(board.id)}"${board.id === selectedId ? " selected" : ""}>${escapeHtml(board.title)} · ${escapeHtml(whiteboardScheduleLabel(board))}${board.studentDisplay ? " · Student Display" : ""}</option>`).join("")}`;
+}
+
+function setWhiteboardStatus(message) {
+  const status = document.querySelector("[data-whiteboard-status]");
+  if (status) status.textContent = message;
+}
+
+function showWhiteboardBobMeasurementCoach() {
+  const coach = document.querySelector("[data-whiteboard-bob-coach]");
+  if (!coach) return;
+  if (!coach.hidden && ["intro", "directions"].includes(coach.dataset.state)) return;
+  let seen = false;
+  try { seen = window.sessionStorage.getItem(WHITEBOARD_BOB_MEASUREMENT_COACH_KEY) === "seen"; } catch {}
+  coach.hidden = false;
+  coach.dataset.state = seen ? "collapsed" : "intro";
+  coach.querySelector("[data-whiteboard-bob-intro]").hidden = seen;
+  coach.querySelector("[data-whiteboard-bob-directions]").hidden = true;
+  if (!seen) { try { window.sessionStorage.setItem(WHITEBOARD_BOB_MEASUREMENT_COACH_KEY, "seen"); } catch {} }
+}
+
+function setWhiteboardBobCoachState(state) {
+  const coach = document.querySelector("[data-whiteboard-bob-coach]");
+  if (!coach) return;
+  coach.hidden = false; coach.dataset.state = state;
+  coach.querySelector("[data-whiteboard-bob-intro]").hidden = state !== "intro";
+  coach.querySelector("[data-whiteboard-bob-directions]").hidden = state !== "directions";
+  const compareUnit = document.querySelector("[data-whiteboard-compare-unit]");
+  if (compareUnit) compareUnit.dataset.bobHighlight = state === "directions" ? "true" : "false";
+}
+
+function syncWhiteboardDimensionCompareControl() {
+  const control = document.querySelector("[data-whiteboard-dimension-compare]");
+  if (!control) return;
+  const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
+  control.disabled = selected?.type !== "dimension";
+  if (selected?.type === "dimension") control.value = selected.compareUnit ?? (selected.unit === "mm" ? "cm" : "mm");
+}
+
+function whiteboardSnapshot(canvas = whiteboardCanvas()) {
+  return canvas?.toDataURL("image/png") ?? "";
+}
+
+function whiteboardStudentDisplayImage(canvas = whiteboardCanvas()) {
+  if (!canvas) return "";
+  const preview = document.createElement("canvas");
+  const scale = Math.min(1, 1200 / canvas.width, 720 / canvas.height);
+  preview.width = Math.max(1, Math.round(canvas.width * scale));
+  preview.height = Math.max(1, Math.round(canvas.height * scale));
+  preview.getContext("2d").drawImage(canvas, 0, 0, preview.width, preview.height);
+  return preview.toDataURL("image/jpeg", 0.78);
+}
+
+function serializableWhiteboardObjects() {
+  return whiteboardObjects.map(({ element, ...object }) => object);
+}
+
+function cloneEditableWhiteboardObject(object) {
+  if (!object) return null;
+  const { element, ...editable } = object;
+  return structuredClone(editable);
+}
+
+function saveWhiteboard(canvas = whiteboardCanvas()) {
+  if (!canvas) return;
+  try {
+    window.sessionStorage.setItem(WHITEBOARD_SESSION_KEY, whiteboardSnapshot(canvas));
+    window.sessionStorage.setItem(WHITEBOARD_OBJECT_SESSION_KEY, JSON.stringify(serializableWhiteboardObjects()));
+    window.sessionStorage.setItem(WHITEBOARD_VIEW_SESSION_KEY, JSON.stringify({ gridUnit: whiteboardGridUnit, rulerUnit: whiteboardRulerUnit, zoom: whiteboardZoom, ruler: whiteboardRuler, title: whiteboardDrawingTitle, controlsDock: whiteboardControlsDock, controlsHidden: whiteboardControlsHidden }));
+  } catch {
+    const status = document.querySelector("[data-whiteboard-status]");
+    if (status) status.textContent = "The board is working, but this browser could not save a recovery copy.";
+  }
+}
+
+function paintWhiteboardSnapshot(snapshot, canvas = whiteboardCanvas(), afterPaint = null) {
+  if (!canvas) return;
+  const context = canvas.getContext("2d");
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.fillStyle = "#ffffff";
+  context.fillRect(0, 0, canvas.width, canvas.height);
+  if (!snapshot) { afterPaint?.(); return; }
+  const image = new Image();
+  image.onload = () => { context.drawImage(image, 0, 0, canvas.width, canvas.height); afterPaint?.(); };
+  image.src = snapshot;
+}
+
+function pushWhiteboardHistory() {
+  whiteboardUndoStack.push(JSON.stringify(serializableWhiteboardObjects()));
+  if (whiteboardUndoStack.length > 30) whiteboardUndoStack.shift();
+  whiteboardRedoStack = [];
+  updateWhiteboardHistoryControls();
+}
+
+function whiteboardPoint(event, canvas) {
+  const bounds = canvas.getBoundingClientRect();
+  return { x: (event.clientX - bounds.left) * canvas.width / bounds.width, y: (event.clientY - bounds.top) * canvas.height / bounds.height };
+}
+
+function drawWhiteboardGrid(context, canvas) {
+  if (whiteboardGridUnit === "plain") return;
+  const minor = whiteboardGridUnit === "inch" ? 24 : whiteboardGridUnit === "cm" ? 37.8 : 3.78;
+  const majorEvery = whiteboardGridUnit === "inch" ? 4 : whiteboardGridUnit === "cm" ? 1 : 10;
+  for (let index = 0, x = 0; x <= canvas.width; index += 1, x += minor) {
+    context.beginPath(); context.strokeStyle = index % majorEvery === 0 ? "#83aec0" : "#d5e8ef"; context.lineWidth = index % majorEvery === 0 ? 1.4 : 0.55; context.moveTo(x, 0); context.lineTo(x, canvas.height); context.stroke();
+  }
+  for (let index = 0, y = 0; y <= canvas.height; index += 1, y += minor) {
+    context.beginPath(); context.strokeStyle = index % majorEvery === 0 ? "#83aec0" : "#d5e8ef"; context.lineWidth = index % majorEvery === 0 ? 1.4 : 0.55; context.moveTo(0, y); context.lineTo(canvas.width, y); context.stroke();
+  }
+}
+
+function drawWhiteboardTitleBar(context, canvas) {
+  if (whiteboardGridUnit === "plain") return;
+  const unitLabel = whiteboardGridUnit === "inch" ? "English · inches" : whiteboardGridUnit === "cm" ? "Metric · centimeters" : "Metric · millimeters";
+  const scaleLabel = whiteboardGridUnit === "inch" ? "Major: 1 in · Minor: 1/4 in" : whiteboardGridUnit === "cm" ? "Major grid: 1 cm" : "Major: 1 cm · Minor: 1 mm";
+  const width = Math.min(410, canvas.width * 0.44), height = 102, x = canvas.width - width - 12, y = canvas.height - height - 12;
+  context.save(); context.globalAlpha = 0.96; context.fillStyle = "#ffffff"; context.strokeStyle = "#12384d"; context.lineWidth = 2; context.fillRect(x, y, width, height); context.strokeRect(x, y, width, height);
+  context.beginPath(); context.moveTo(x, y + 48); context.lineTo(x + width, y + 48); context.moveTo(x + width * 0.62, y + 48); context.lineTo(x + width * 0.62, y + height); context.stroke();
+  context.fillStyle = "#12384d"; context.font = "800 19px sans-serif"; context.fillText(whiteboardDrawingTitle || "Workshop Drawing", x + 10, y + 30, width - 20);
+  context.font = "700 12px sans-serif"; context.fillText(unitLabel, x + 10, y + 69, width * 0.58); context.fillText(scaleLabel, x + 10, y + 89, width * 0.58); context.fillText("DATE", x + width * 0.65, y + 65); context.font = "600 13px sans-serif"; context.fillText(new Date().toLocaleDateString(), x + width * 0.65, y + 87); context.restore();
+}
+
+function drawWhiteboardRuler(context, canvas) {
+  if (whiteboardRulerUnit === "none") return;
+  const metric = whiteboardRulerUnit === "metric";
+  const unit = metric ? 37.8 : 72;
+  const subdivisions = metric ? 10 : 8;
+  const width = Math.max(150, whiteboardRuler.length);
+  const units = Math.max(1, Math.floor(width / unit));
+  const height = 62;
+  context.save(); context.translate(whiteboardRuler.x, whiteboardRuler.y); context.rotate(whiteboardRuler.angle); context.globalAlpha = 0.94; context.fillStyle = "#fff1a8"; context.strokeStyle = "#6b5312"; context.lineWidth = 2; context.fillRect(0, 0, width, height); context.strokeRect(0, 0, width, height); context.fillStyle = "#3e320d"; context.font = "700 13px sans-serif";
+  for (let unitIndex = 0; unitIndex <= units; unitIndex += 1) {
+    const unitX = unitIndex * unit; context.fillText(String(unitIndex), unitX + 3, 43);
+    for (let tick = 0; tick < subdivisions && unitIndex < units; tick += 1) {
+      const tickX = unitX + tick * unit / subdivisions; const length = tick === 0 ? 28 : tick % (subdivisions / 2) === 0 ? 20 : tick % (subdivisions / 4) === 0 ? 15 : 10;
+      context.beginPath(); context.moveTo(tickX, 0); context.lineTo(tickX, length); context.stroke();
+      if (whiteboardRuler.sides === "both") { context.beginPath(); context.moveTo(tickX, height); context.lineTo(tickX, height - length); context.stroke(); }
+    }
+  }
+  context.fillText(metric ? "cm" : "in", width - 25, 43);
+  if (document.querySelector("[data-whiteboard-tool]")?.value === "ruler-adjust") { context.fillStyle = "#087ba0"; context.fillRect(width - 7, height / 2 - 7, 14, 14); context.beginPath(); context.arc(width, -24, 8, 0, Math.PI * 2); context.fill(); context.strokeStyle = "#087ba0"; context.beginPath(); context.moveTo(width, 0); context.lineTo(width, -16); context.stroke(); }
+  context.restore();
+}
+
+function whiteboardTextBackground(value) {
+  return ({ white: "#ffffff", black: "#111820", "highlight-yellow": "rgba(255, 226, 88, 0.62)", "highlight-green": "rgba(116, 219, 148, 0.58)", "highlight-pink": "rgba(255, 145, 196, 0.58)", "highlight-blue": "rgba(105, 196, 235, 0.58)" })[value] ?? "";
+}
+
+function traceWhiteboardPath(context, points, offsetX = 0, offsetY = 0) {
+  if (!points?.length) return;
+  context.beginPath();
+  points.forEach((point, index) => index ? context.lineTo(point.x + offsetX, point.y + offsetY) : context.moveTo(point.x + offsetX, point.y + offsetY));
+  context.stroke();
+}
+
+function drawWhiteboardCalligraphyRibbon(context, object) {
+  const points = object.points ?? [];
+  if (!points.length) return;
+  const nibSize = object.size ?? 10;
+  const nibAngle = -Math.PI / 4;
+  const nibX = Math.cos(nibAngle) * nibSize * 0.5;
+  const nibY = Math.sin(nibAngle) * nibSize * 0.5;
+  context.save();
+  context.fillStyle = object.color ?? "#12384d";
+  if (points.length === 1) {
+    context.beginPath(); context.ellipse(points[0].x, points[0].y, nibSize * 0.52, Math.max(1.5, nibSize * 0.16), nibAngle, 0, Math.PI * 2); context.fill(); context.restore(); return;
+  }
+  context.beginPath();
+  points.forEach((point, index) => index ? context.lineTo(point.x + nibX, point.y + nibY) : context.moveTo(point.x + nibX, point.y + nibY));
+  [...points].reverse().forEach((point) => context.lineTo(point.x - nibX, point.y - nibY));
+  context.closePath(); context.fill();
+  context.restore();
+}
+
+function drawWhiteboardPath(context, object) {
+  const points = object.points ?? [];
+  if (object.strokeStyle === "calligraphy") {
+    drawWhiteboardCalligraphyRibbon(context, object);
+    return;
+  }
+  if (object.strokeStyle === "brush") {
+    context.save();
+    context.lineCap = "round"; context.lineJoin = "round"; context.globalAlpha *= 0.5; context.lineWidth = Math.max(3, (object.size ?? 18) * 0.62);
+    traceWhiteboardPath(context, points);
+    const bristleOffsets = [-0.34, -0.18, 0, 0.19, 0.36];
+    bristleOffsets.forEach((offset, index) => {
+      context.globalAlpha = (object.opacity ?? 1) * (0.34 + index * 0.08);
+      context.lineWidth = Math.max(1.25, (object.size ?? 18) * (index % 2 ? 0.09 : 0.055));
+      traceWhiteboardPath(context, points, offset * (object.size ?? 18), Math.sin(index * 1.7) * (object.size ?? 18) * 0.13);
+    });
+    context.restore();
+    return;
+  }
+  traceWhiteboardPath(context, points);
+}
+
+function drawWhiteboard3DShape(context, object) {
+  const bounds = objectBounds(object), x = bounds.x, y = bounds.y, width = bounds.width, height = bounds.height;
+  const depth = Math.min(Math.min(width, height) * 0.45, Math.max(10, object.depth ?? Math.min(width, height) * 0.22));
+  context.beginPath();
+  if (object.type === "cube" || object.type === "rectangular-prism") {
+    context.rect(x, y + depth, width - depth, height - depth);
+    context.moveTo(x, y + depth); context.lineTo(x + depth, y); context.lineTo(x + width, y); context.lineTo(x + width - depth, y + depth);
+    context.moveTo(x + width, y); context.lineTo(x + width, y + height - depth); context.lineTo(x + width - depth, y + height);
+  } else if (object.type === "cylinder") {
+    context.ellipse(x + width / 2, y + depth / 2, width / 2, depth / 2, 0, 0, Math.PI * 2);
+    context.moveTo(x, y + depth / 2); context.lineTo(x, y + height - depth / 2);
+    context.moveTo(x + width, y + depth / 2); context.lineTo(x + width, y + height - depth / 2);
+    context.ellipse(x + width / 2, y + height - depth / 2, width / 2, depth / 2, 0, 0, Math.PI * 2);
+  } else if (object.type === "cone") {
+    context.moveTo(x + width / 2, y); context.lineTo(x, y + height - depth / 2);
+    context.moveTo(x + width / 2, y); context.lineTo(x + width, y + height - depth / 2);
+    context.ellipse(x + width / 2, y + height - depth / 2, width / 2, depth / 2, 0, 0, Math.PI * 2);
+  } else if (object.type === "pyramid") {
+    context.moveTo(x + width / 2, y); context.lineTo(x, y + height - depth); context.lineTo(x + width / 2, y + height); context.lineTo(x + width, y + height - depth); context.closePath();
+    context.moveTo(x + width / 2, y); context.lineTo(x + width / 2, y + height);
+  } else if (object.type === "sphere") {
+    context.ellipse(x + width / 2, y + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2);
+    context.moveTo(x, y + height / 2); context.bezierCurveTo(x + width * 0.2, y + height * 0.35, x + width * 0.8, y + height * 0.35, x + width, y + height / 2);
+    context.moveTo(x + width / 2, y); context.bezierCurveTo(x + width * 0.35, y + height * 0.2, x + width * 0.35, y + height * 0.8, x + width / 2, y + height);
+  }
+  if (object.fillColor) { context.save(); context.globalAlpha = 0.22; context.fillStyle = object.fillColor; context.fill(); context.restore(); }
+  context.stroke();
+  if (object.shapeLabel) {
+    const name = ({ "rectangular-prism": "Rectangular Prism", cylinder: "Cylinder", pyramid: "Pyramid" })[object.type] ?? "3D Shape";
+    context.save();
+    context.font = "800 18px sans-serif";
+    const labelWidth = context.measureText(name).width + 20;
+    const labelX = x + width / 2 - labelWidth / 2, labelY = y + height + 8;
+    context.fillStyle = "rgba(255,255,255,0.94)"; context.strokeStyle = "#12384d"; context.lineWidth = 1.5;
+    context.fillRect(labelX, labelY, labelWidth, 30); context.strokeRect(labelX, labelY, labelWidth, 30);
+    context.fillStyle = "#12384d"; context.fillText(name, labelX + 10, labelY + 21);
+    context.restore();
+  }
+}
+
+function whiteboardDimensionValue(object, unit = object.unit) {
+  const pixelsPerUnit = ({ mm: 3.78, cm: 37.8, m: 3780, in: 96, ft: 1152, yd: 3456 })[unit] ?? 37.8;
+  return Math.hypot(object.width, object.height) / pixelsPerUnit;
+}
+
+function suggestedWhiteboardDimensionLabel(start, end) {
+  const dx = Math.abs(end.x - start.x), dy = Math.abs(end.y - start.y);
+  const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
+  if (selected && ["ellipse", "cylinder", "sphere"].includes(selected.type)) {
+    const bounds = objectBounds(selected), center = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
+    const startAtCenter = Math.hypot(start.x - center.x, start.y - center.y) <= Math.min(bounds.width, bounds.height) * 0.18;
+    const endAtCenter = Math.hypot(end.x - center.x, end.y - center.y) <= Math.min(bounds.width, bounds.height) * 0.18;
+    if (startAtCenter || endAtCenter) return { label: "Radius", tip: "A radius goes from the center of a round shape to its outside edge." };
+    return { label: "Diameter", tip: "A diameter crosses a round shape from one outside edge to the opposite outside edge." };
+  }
+  if (dy > dx * 1.35) return { label: "Height", tip: "Look at the direction of the laser. A mostly vertical measurement usually describes height." };
+  if (dx > dy * 1.35) return { label: "Length", tip: "Look at the direction of the laser. A mostly horizontal measurement usually describes length." };
+  return { label: "Length", tip: "The laser follows the longest direction between the two selected points, so length is the clearest general label." };
+}
+
+function drawWhiteboardDimension(context, object) {
+  const x2 = object.x + object.width, y2 = object.y + object.height, angle = Math.atan2(object.height, object.width);
+  const annotationOffset = Number(object.annotationOffset ?? 18);
+  const normalX = -Math.sin(angle) * annotationOffset, normalY = Math.cos(angle) * annotationOffset;
+  context.save(); context.strokeStyle = object.color ?? "#b52222"; context.fillStyle = object.color ?? "#b52222"; context.lineWidth = object.size ?? 3;
+  context.beginPath(); context.moveTo(object.x, object.y); context.lineTo(object.x + normalX, object.y + normalY); context.moveTo(x2, y2); context.lineTo(x2 + normalX, y2 + normalY); context.moveTo(object.x + normalX, object.y + normalY); context.lineTo(x2 + normalX, y2 + normalY); context.stroke();
+  const arrow = (x, y, direction) => { context.beginPath(); context.moveTo(x, y); context.lineTo(x + 12 * Math.cos(direction + 0.5), y + 12 * Math.sin(direction + 0.5)); context.lineTo(x + 12 * Math.cos(direction - 0.5), y + 12 * Math.sin(direction - 0.5)); context.closePath(); context.fill(); };
+  arrow(object.x + normalX, object.y + normalY, angle); arrow(x2 + normalX, y2 + normalY, angle + Math.PI);
+  const value = whiteboardDimensionValue(object); const digits = object.unit === "mm" ? 0 : 2; const text = `${object.label || "Length"}: ${value.toFixed(digits)} ${object.unit}`;
+  const compareUnit = object.compareUnit ?? (object.unit === "mm" ? "cm" : "mm"); const compareValue = whiteboardDimensionValue(object, compareUnit); const compareDigits = compareUnit === "mm" ? 0 : compareUnit === "m" ? 3 : 2; const comparison = `This is the same as ${compareValue.toFixed(compareDigits)} ${compareUnit}`;
+  context.font = "700 18px sans-serif"; const textWidth = Math.max(context.measureText(text).width, context.measureText(comparison).width); const midX = (object.x + x2) / 2 + normalX, midY = (object.y + y2) / 2 + normalY; context.translate(midX, midY); context.rotate(angle); context.fillStyle = "rgba(255,255,255,0.94)"; context.fillRect(-textWidth / 2 - 7, -25, textWidth + 14, 49); context.fillStyle = object.color ?? "#b52222"; context.fillText(text, -textWidth / 2, -6); context.font = "600 15px sans-serif"; context.fillText(comparison, -textWidth / 2, 15); context.restore();
+}
+
+function drawWhiteboardLaserPreview(context) {
+  const start = whiteboardPendingDimension?.start;
+  const end = whiteboardPendingDimension?.end ?? whiteboardPendingDimension?.current;
+  if (!start) return;
+  context.save();
+  if (end) {
+    context.beginPath();
+    context.moveTo(start.x, start.y);
+    context.lineTo(end.x, end.y);
+    context.strokeStyle = "rgba(255, 76, 76, 0.48)";
+    context.lineWidth = 8;
+    context.shadowColor = "#ff1f1f";
+    context.shadowBlur = 18;
+    context.stroke();
+    context.beginPath();
+    context.moveTo(start.x, start.y);
+    context.lineTo(end.x, end.y);
+    context.strokeStyle = "rgba(255, 238, 238, 0.96)";
+    context.lineWidth = 2;
+    context.shadowBlur = 7;
+    context.stroke();
+  }
+  const glow = context.createRadialGradient(start.x, start.y, 1, start.x, start.y, 22);
+  glow.addColorStop(0, "rgba(255,255,255,1)");
+  glow.addColorStop(0.18, "rgba(255,48,48,1)");
+  glow.addColorStop(0.52, "rgba(255,31,31,0.5)");
+  glow.addColorStop(1, "rgba(255,31,31,0)");
+  context.fillStyle = glow;
+  context.shadowColor = "#ff1f1f";
+  context.shadowBlur = 14;
+  context.beginPath();
+  context.arc(start.x, start.y, 22, 0, Math.PI * 2);
+  context.fill();
+  context.fillStyle = "#ffffff";
+  context.beginPath();
+  context.arc(start.x, start.y, 3, 0, Math.PI * 2);
+  context.fill();
+  context.restore();
+}
+
+function whiteboardPointInPolygon(point, polygon) {
+  let inside = false;
+  for (let index = 0, previous = polygon.length - 1; index < polygon.length; previous = index++) {
+    const a = polygon[index], b = polygon[previous];
+    const crosses = (a.y > point.y) !== (b.y > point.y) && point.x < (b.x - a.x) * (point.y - a.y) / ((b.y - a.y) || 0.0001) + a.x;
+    if (crosses) inside = !inside;
+  }
+  return inside;
+}
+
+function updateWhiteboardLassoBounds() {
+  if (whiteboardLassoPoints.length < 3) { whiteboardLassoBounds = null; return; }
+  const xs = whiteboardLassoPoints.map((point) => point.x), ys = whiteboardLassoPoints.map((point) => point.y);
+  whiteboardLassoBounds = { x: Math.min(...xs), y: Math.min(...ys), width: Math.max(1, Math.max(...xs) - Math.min(...xs)), height: Math.max(1, Math.max(...ys) - Math.min(...ys)) };
+}
+
+function whiteboardLassoObjectIds() {
+  return whiteboardObjects.filter((object) => { const bounds = objectBounds(object); return bounds && whiteboardPointInPolygon({ x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }, whiteboardLassoPoints); }).map((object) => object.id);
+}
+
+function whiteboardSelectionCanvas({ removeBackground = false } = {}) {
+  const canvas = whiteboardCanvas();
+  if (!canvas || !whiteboardLassoBounds || whiteboardLassoPoints.length < 3) return null;
+  const bounds = { x: Math.max(0, Math.floor(whiteboardLassoBounds.x)), y: Math.max(0, Math.floor(whiteboardLassoBounds.y)), width: Math.max(1, Math.ceil(whiteboardLassoBounds.width)), height: Math.max(1, Math.ceil(whiteboardLassoBounds.height)) };
+  const savedPoints = whiteboardLassoPoints; whiteboardLassoPoints = []; renderWhiteboardObjects(canvas);
+  const selection = document.createElement("canvas"); selection.width = bounds.width; selection.height = bounds.height;
+  const context = selection.getContext("2d"); context.save(); context.beginPath(); savedPoints.forEach((point, index) => index ? context.lineTo(point.x - bounds.x, point.y - bounds.y) : context.moveTo(point.x - bounds.x, point.y - bounds.y)); context.closePath(); context.clip(); context.drawImage(canvas, bounds.x, bounds.y, bounds.width, bounds.height, 0, 0, bounds.width, bounds.height); context.restore();
+  whiteboardLassoPoints = savedPoints; renderWhiteboardObjects(canvas);
+  if (removeBackground) {
+    const pixels = context.getImageData(0, 0, selection.width, selection.height);
+    for (let index = 0; index < pixels.data.length; index += 4) {
+      const red = pixels.data[index], green = pixels.data[index + 1], blue = pixels.data[index + 2];
+      const light = (red + green + blue) / 3 > 218, neutral = Math.max(red, green, blue) - Math.min(red, green, blue) < 38;
+      if (light && neutral) pixels.data[index + 3] = 0;
+    }
+    context.putImageData(pixels, 0, 0);
+  }
+  return { canvas: selection, bounds };
+}
+
+async function copySelectedWhiteboardObjectAsImage() {
+  const canvas = whiteboardCanvas();
+  const object = whiteboardObjects.find((item) => item.id === whiteboardSelectedObjectId);
+  if (!canvas || !object) { setWhiteboardStatus("Right-click a whiteboard object before choosing Copy Image."); return; }
+  const bounds = objectBounds(object), padding = 12;
+  const crop = { x: Math.max(0, Math.floor(bounds.x - padding)), y: Math.max(0, Math.floor(bounds.y - padding)), width: Math.max(1, Math.ceil(bounds.width + padding * 2)), height: Math.max(1, Math.ceil(bounds.height + padding * 2)) };
+  const selectedId = whiteboardSelectedObjectId, savedLasso = whiteboardLassoPoints; whiteboardSelectedObjectId = ""; whiteboardLassoPoints = []; renderWhiteboardObjects(canvas);
+  const imageCanvas = document.createElement("canvas"); imageCanvas.width = crop.width; imageCanvas.height = crop.height; imageCanvas.getContext("2d").drawImage(canvas, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height);
+  whiteboardSelectedObjectId = selectedId; whiteboardLassoPoints = savedLasso; renderWhiteboardObjects(canvas);
+  whiteboardClipboard = structuredClone(serializableWhiteboardObjects().find((item) => item.id === object.id));
+  try {
+    const blob = await new Promise((resolve) => imageCanvas.toBlob(resolve, "image/png"));
+    if (!blob || !navigator.clipboard?.write || typeof ClipboardItem === "undefined") throw new Error("clipboard-image-unavailable");
+    await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+    setWhiteboardStatus("Image copied. Paste it into a document, message, or another supported app.");
+  } catch {
+    setWhiteboardStatus("The browser blocked image clipboard access. The object was copied for Ctrl+V inside this whiteboard.");
+  }
+}
+
+function pasteWhiteboardClipboard(point = null) {
+  if (!whiteboardClipboard) { setWhiteboardStatus("Copy or cut a whiteboard object before pasting."); return false; }
+  pushWhiteboardHistory();
+  let copy = duplicateWhiteboardObject(whiteboardClipboard);
+  if (point) {
+    const bounds = objectBounds(copy);
+    copy = moveWhiteboardObject(copy, point.x - (bounds.x + bounds.width / 2), point.y - (bounds.y + bounds.height / 2));
+  }
+  whiteboardObjects.push(copy); whiteboardSelectedObjectId = copy.id;
+  hydrateWhiteboardImages(() => renderWhiteboardObjects()); renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls();
+  setWhiteboardStatus("Copied image pasted onto the board."); return true;
+}
+
+function cutSelectedWhiteboardObject() {
+  const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
+  if (!selected) { setWhiteboardStatus("Select a whiteboard object before cutting it."); return false; }
+  whiteboardClipboard = structuredClone(serializableWhiteboardObjects().find((object) => object.id === selected.id));
+  pushWhiteboardHistory(); whiteboardObjects = whiteboardObjects.filter((object) => object.id !== selected.id); whiteboardSelectedObjectId = "";
+  renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); setWhiteboardStatus("Object cut. Right-click or press Ctrl+V or Command+V to paste it."); return true;
+}
+
+function duplicateSelectedWhiteboardObject() {
+  const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
+  if (!selected) { setWhiteboardStatus("Select a whiteboard object before duplicating it."); return false; }
+  pushWhiteboardHistory(); const copy = duplicateWhiteboardObject(serializableWhiteboardObjects().find((object) => object.id === selected.id)); whiteboardObjects.push(copy); whiteboardSelectedObjectId = copy.id;
+  hydrateWhiteboardImages(() => renderWhiteboardObjects()); renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); setWhiteboardStatus("Selected object duplicated."); return true;
+}
+
+function deleteSelectedWhiteboardObject() {
+  const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
+  if (!selected) { setWhiteboardStatus("Select a whiteboard object before deleting it."); return false; }
+  pushWhiteboardHistory(); whiteboardObjects = whiteboardObjects.filter((object) => object.id !== selected.id); whiteboardSelectedObjectId = "";
+  renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); setWhiteboardStatus("Selected object deleted. Use Undo to restore it."); return true;
+}
+
+function whiteboardRulerLocalPoint(point) {
+  const dx = point.x - whiteboardRuler.x, dy = point.y - whiteboardRuler.y, cosine = Math.cos(-whiteboardRuler.angle), sine = Math.sin(-whiteboardRuler.angle);
+  return { x: dx * cosine - dy * sine, y: dx * sine + dy * cosine };
+}
+
+function whiteboardResizeCorner(bounds, point) {
+  const corners = { nw: { x: bounds.x, y: bounds.y }, ne: { x: bounds.x + bounds.width, y: bounds.y }, sw: { x: bounds.x, y: bounds.y + bounds.height }, se: { x: bounds.x + bounds.width, y: bounds.y + bounds.height } };
+  return Object.entries(corners).find(([, corner]) => Math.hypot(point.x - corner.x, point.y - corner.y) <= 22)?.[0] ?? "";
+}
+
+function resizeWhiteboardObjectFromCorner(object, corner, dx, dy) {
+  const bounds = objectBounds(object);
+  let left = bounds.x, top = bounds.y, right = bounds.x + bounds.width, bottom = bounds.y + bounds.height;
+  if (corner.includes("w")) left = Math.min(right - 12, left + dx);
+  if (corner.includes("e")) right = Math.max(left + 12, right + dx);
+  if (corner.includes("n")) top = Math.min(bottom - 12, top + dy);
+  if (corner.includes("s")) bottom = Math.max(top + 12, bottom + dy);
+  let resized = resizeWhiteboardObject(object, right - left, bottom - top);
+  if (object.type === "path") resized = moveWhiteboardObject(resized, left - bounds.x, top - bounds.y);
+  else resized = { ...resized, x: left, y: top, width: right - left, height: bottom - top };
+  return resized;
+}
+
+function renderWhiteboardObjects(canvas = whiteboardCanvas()) {
+  if (!canvas) return;
+  const context = canvas.getContext("2d");
+  context.clearRect(0, 0, canvas.width, canvas.height); context.fillStyle = "#fff"; context.fillRect(0, 0, canvas.width, canvas.height); drawWhiteboardGrid(context, canvas);
+  for (const object of whiteboardObjects) {
+    context.save(); context.globalAlpha = object.opacity ?? 1; context.strokeStyle = object.color ?? "#12384d"; context.fillStyle = object.color ?? "#12384d"; context.lineWidth = object.size ?? 6; context.lineCap = "round"; context.lineJoin = "round";
+    if (object.rotation && !["text", "image", "path", "dimension"].includes(object.type)) { const bounds = objectBounds(object), centerX = bounds.x + bounds.width / 2, centerY = bounds.y + bounds.height / 2; context.translate(centerX, centerY); context.rotate(object.rotation); context.translate(-centerX, -centerY); }
+    if (object.type === "path") drawWhiteboardPath(context, object);
+    else if (object.type === "text") { const angle = object.rotation ?? 0, background = whiteboardTextBackground(object.background); context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(angle); if (background) { context.fillStyle = background; context.fillRect(-object.width / 2 - 8, -object.height / 2 - 5, object.width + 16, object.height + 10); } context.fillStyle = object.background === "black" ? "#ffffff" : object.color ?? "#12384d"; context.font = `700 ${object.fontSize ?? 36}px sans-serif`; context.fillText(object.text, -object.width / 2, -object.height / 2 + (object.fontSize ?? 36), object.width); }
+    else if (object.type === "image" && object.element) { context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(object.rotation ?? 0); context.drawImage(object.element, -object.width / 2, -object.height / 2, object.width, object.height); }
+    else if (object.type === "dimension") drawWhiteboardDimension(context, object);
+    else if (object.type === "line" || object.type === "arrow") { context.beginPath(); context.moveTo(object.x, object.y); context.lineTo(object.x + object.width, object.y + object.height); context.stroke(); if (object.type === "arrow") { const angle = Math.atan2(object.height, object.width); context.beginPath(); context.moveTo(object.x + object.width, object.y + object.height); context.lineTo(object.x + object.width - 18 * Math.cos(angle - 0.55), object.y + object.height - 18 * Math.sin(angle - 0.55)); context.moveTo(object.x + object.width, object.y + object.height); context.lineTo(object.x + object.width - 18 * Math.cos(angle + 0.55), object.y + object.height - 18 * Math.sin(angle + 0.55)); context.stroke(); } }
+    else if (["cube", "rectangular-prism", "cylinder", "cone", "pyramid", "sphere"].includes(object.type)) drawWhiteboard3DShape(context, object);
+    else { context.beginPath(); if (object.type === "rectangle") context.rect(object.x, object.y, object.width, object.height); if (object.type === "ellipse") context.ellipse(object.x + object.width / 2, object.y + object.height / 2, Math.abs(object.width / 2), Math.abs(object.height / 2), 0, 0, Math.PI * 2); if (object.type === "triangle") { context.moveTo(object.x + object.width / 2, object.y); context.lineTo(object.x + object.width, object.y + object.height); context.lineTo(object.x, object.y + object.height); context.closePath(); } if (object.fillColor) { context.fillStyle = object.fillColor; context.fill(); } context.stroke(); }
+    context.restore();
+  }
+  const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
+  if (selected) { const bounds = objectBounds(selected); context.save(); context.setLineDash([8, 6]); context.strokeStyle = "#087ba0"; context.lineWidth = 3; context.strokeRect(bounds.x - 6, bounds.y - 6, bounds.width + 12, bounds.height + 12); context.setLineDash([]); context.fillStyle = "#ffffff"; context.strokeStyle = "#087ba0"; context.lineWidth = 3; [[bounds.x, bounds.y], [bounds.x + bounds.width, bounds.y], [bounds.x, bounds.y + bounds.height], [bounds.x + bounds.width, bounds.y + bounds.height]].forEach(([x, y]) => { context.fillRect(x - 7, y - 7, 14, 14); context.strokeRect(x - 7, y - 7, 14, 14); }); context.restore(); }
+  drawWhiteboardTitleBar(context, canvas);
+  drawWhiteboardRuler(context, canvas);
+  drawWhiteboardLaserPreview(context);
+  if (whiteboardLassoPoints.length) { context.save(); context.beginPath(); whiteboardLassoPoints.forEach((point, index) => index ? context.lineTo(point.x, point.y) : context.moveTo(point.x, point.y)); if (whiteboardLassoPoints.length > 2 && !whiteboardDrawing) context.closePath(); context.setLineDash([10, 7]); context.strokeStyle = "#d31324"; context.lineWidth = 3; context.shadowColor = "#ffffff"; context.shadowBlur = 4; context.stroke(); context.restore(); }
+}
+
+function hydrateWhiteboardImages(after = null) {
+  const images = whiteboardObjects.filter((object) => object.type === "image" && object.src && !object.element);
+  if (!images.length) { after?.(); return; }
+  let remaining = images.length;
+  images.forEach((object) => { const image = new Image(); image.onload = () => { object.element = image; remaining -= 1; if (!remaining) after?.(); }; image.src = object.src; });
+}
+
+function applyWhiteboardZoom(canvas = whiteboardCanvas()) {
+  if (!canvas) return;
+  canvas.style.width = `${whiteboardZoom}%`;
+  canvas.style.height = `${whiteboardZoom}%`;
+  const output = document.querySelector("[data-whiteboard-zoom-output]");
+  const control = document.querySelector("[data-whiteboard-zoom]");
+  if (output) output.textContent = `${whiteboardZoom}%`;
+  if (control) control.value = String(whiteboardZoom);
+}
+
+function applyWhiteboardControlsLayout({ resizeCanvas = false } = {}) {
+  const display = document.querySelector("#platform-classroom-whiteboard");
+  if (!display) return;
+  display.dataset.controlsDock = whiteboardControlsDock;
+  display.dataset.controlsHidden = String(whiteboardControlsHidden);
+  const dock = display.querySelector("[data-whiteboard-controls-dock]"); if (dock) dock.value = whiteboardControlsDock;
+  const toggle = display.querySelector('[data-action="whiteboard-toggle-controls"]');
+  if (toggle) { toggle.textContent = whiteboardControlsHidden ? "Show Board Menus" : "Hide Board Menus"; toggle.setAttribute("aria-expanded", String(!whiteboardControlsHidden)); }
+  if (resizeCanvas) window.requestAnimationFrame(() => {
+    const canvas = whiteboardCanvas(), surface = canvas?.parentElement;
+    if (!canvas || !surface) return;
+    canvas.width = Math.max(900, Math.round(surface.clientWidth || 900)); canvas.height = Math.max(520, Math.round(surface.clientHeight || 520));
+    renderWhiteboardObjects(canvas); applyWhiteboardZoom(canvas);
+  });
+}
+
+function mountWhiteboard() {
+  const canvas = whiteboardCanvas();
+  if (!canvas || canvas.dataset.mounted === "true") return;
+  canvas.dataset.mounted = "true";
+  const surface = canvas.parentElement; canvas.width = Math.max(900, Math.round(surface.clientWidth || 900)); canvas.height = Math.max(520, Math.round(surface.clientHeight || 520));
+  try { whiteboardObjects = JSON.parse(window.sessionStorage.getItem(WHITEBOARD_OBJECT_SESSION_KEY) ?? "[]"); } catch { whiteboardObjects = []; }
+  try { const view = JSON.parse(window.sessionStorage.getItem(WHITEBOARD_VIEW_SESSION_KEY) ?? "{}"); whiteboardGridUnit = ["plain", "inch", "cm", "mm"].includes(view.gridUnit) ? view.gridUnit : "plain"; whiteboardRulerUnit = ["none", "english", "metric"].includes(view.rulerUnit) ? view.rulerUnit : "none"; whiteboardZoom = Math.min(300, Math.max(50, Number(view.zoom) || 100)); whiteboardRuler = view.ruler && typeof view.ruler === "object" ? { ...whiteboardRuler, ...view.ruler } : { ...whiteboardRuler, y: canvas.height - 92 }; whiteboardDrawingTitle = String(view.title || "Workshop Drawing").slice(0, 60); whiteboardControlsDock = ["top", "left", "right", "bottom"].includes(view.controlsDock) ? view.controlsDock : "top"; whiteboardControlsHidden = Boolean(view.controlsHidden); } catch { whiteboardGridUnit = "plain"; whiteboardRulerUnit = "none"; whiteboardZoom = 100; whiteboardDrawingTitle = "Workshop Drawing"; whiteboardControlsDock = "top"; whiteboardControlsHidden = false; }
+  const gridControl = document.querySelector("[data-whiteboard-grid]"); const rulerControl = document.querySelector("[data-whiteboard-ruler]"); const rulerSides = document.querySelector("[data-whiteboard-ruler-sides]"); if (gridControl) gridControl.value = whiteboardGridUnit; if (rulerControl) rulerControl.value = whiteboardRulerUnit; if (rulerSides) rulerSides.value = whiteboardRuler.sides; applyWhiteboardControlsLayout({ resizeCanvas: true }); applyWhiteboardZoom(canvas);
+  if (!whiteboardObjects.length) { let legacy = ""; try { legacy = window.sessionStorage.getItem(WHITEBOARD_SESSION_KEY) ?? ""; } catch {} if (legacy) whiteboardObjects = [createWhiteboardObject("image", { x: 0, y: 0, width: canvas.width, height: canvas.height, src: legacy })]; }
+  hydrateWhiteboardImages(() => renderWhiteboardObjects(canvas)); renderWhiteboardObjects(canvas);
+  try { if (window.sessionStorage.getItem(WHITEBOARD_BOB_MEASUREMENT_COACH_KEY) === "seen") showWhiteboardBobMeasurementCoach(); } catch {}
+  const start = (event) => {
+    if (event.button !== undefined && event.button !== 0) return; event.preventDefault(); canvas.focus({ preventScroll: true });
+    const point = whiteboardPoint(event, canvas), tool = document.querySelector("[data-whiteboard-tool]")?.value ?? "select";
+    const selected = hitTestObjects(whiteboardObjects, point);
+    const directTools = !["lasso-select", "emoji-stamp", "pull-3d", "laser-dimension", "fill", "eraser"].includes(tool);
+    if (directTools && whiteboardRulerUnit !== "none") {
+      const local = whiteboardRulerLocalPoint(point);
+      const nearExtend = Math.hypot(local.x - whiteboardRuler.length, local.y - 31) < 28;
+      const nearRotate = Math.hypot(local.x - whiteboardRuler.length, local.y + 24) < 28;
+      const onRuler = local.x >= 0 && local.x <= whiteboardRuler.length && local.y >= 0 && local.y <= 62;
+      if (nearExtend || nearRotate || onRuler) {
+        whiteboardDrawing = { tool: "ruler-adjust", mode: nearRotate ? "rotate" : nearExtend ? "extend" : "move", start: point, originalRuler: structuredClone(whiteboardRuler) };
+        canvas.setPointerCapture?.(event.pointerId); setWhiteboardStatus("Ruler selected directly. Drag to place it where you want."); return;
+      }
+    }
+    if (directTools && tool !== "select" && selected) {
+      pushWhiteboardHistory(); whiteboardSelectedObjectId = selected.id;
+      const bounds = objectBounds(selected); const resizeCorner = selected.type !== "dimension" ? whiteboardResizeCorner(bounds, point) : "";
+      whiteboardDrawing = { tool: "select", objectId: selected.id, start: point, original: cloneEditableWhiteboardObject(selected), resize: Boolean(resizeCorner), resizeCorner };
+      syncWhiteboardDimensionCompareControl(); renderWhiteboardObjects(canvas); canvas.setPointerCapture?.(event.pointerId);
+      setWhiteboardStatus(selected.type === "dimension" ? "Measurement selected directly. Drag its red line or label to reposition it." : "Object selected directly. Drag to move it without changing tools."); return;
+    }
+    if (tool === "lasso-select") {
+      whiteboardLassoPoints = [point]; whiteboardLassoBounds = null; whiteboardSelectionDownload = "";
+      whiteboardDrawing = { tool, start: point }; canvas.setPointerCapture?.(event.pointerId); renderWhiteboardObjects(canvas); setWhiteboardStatus("Drag around the work you want to turn into an image."); return;
+    }
+    if (tool === "emoji-stamp") {
+      const emoji = document.querySelector("[data-whiteboard-emoji]")?.value || "😀";
+      const fontSize = Math.max(42, Number(document.querySelector("[data-whiteboard-size]")?.value ?? 6) * 3);
+      pushWhiteboardHistory();
+      const stamp = createWhiteboardObject("text", { text: emoji, emojiStamp: true, x: point.x - fontSize / 2, y: point.y - fontSize / 2, width: fontSize * 1.25, height: fontSize * 1.25, fontSize, color: "#12384d", background: "transparent", rotation: 0 });
+      whiteboardObjects.push(stamp); whiteboardSelectedObjectId = stamp.id; renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls();
+      setWhiteboardStatus(`${emoji} emoji stamped. Drag it to move, resize, rotate, copy, or delete it.`); return;
+    }
+    if (tool === "pull-3d") {
+      if (!selected || !["rectangle", "ellipse", "triangle"].includes(selected.type)) { setWhiteboardStatus("Choose Pull into 3D, then drag a rectangle, oval, or triangle."); return; }
+      pushWhiteboardHistory(); whiteboardSelectedObjectId = selected.id; whiteboardDrawing = { tool, objectId: selected.id, start: point, original: cloneEditableWhiteboardObject(selected) }; canvas.setPointerCapture?.(event.pointerId); return;
+    }
+    if (tool === "laser-dimension") {
+      if (!whiteboardPendingDimension?.start) { whiteboardPendingDimension = { start: point, current: point, attempts: 0 }; renderWhiteboardObjects(canvas); setWhiteboardStatus("Laser point 1 selected. Move the glowing laser to the second point, then select it."); return; }
+      whiteboardPendingDimension.end = point;
+      whiteboardPendingDimension.current = point;
+      renderWhiteboardObjects(canvas);
+      const unit = whiteboardGridUnit === "inch" ? "in" : whiteboardGridUnit === "mm" ? "mm" : "cm";
+      const unitControl = document.querySelector("[data-whiteboard-dimension-unit]"); if (unitControl) unitControl.value = unit;
+      const tip = document.querySelector("[data-whiteboard-measurement-tip]"); if (tip) { tip.hidden = true; tip.textContent = ""; }
+      const question = document.querySelector("[data-whiteboard-dimension-question]"); if (question) question.hidden = false;
+      setWhiteboardStatus("Two points selected. Answer the measurement question to add the CAD dimension.");
+      return;
+    }
+    if (tool === "ruler-adjust") {
+      if (whiteboardRulerUnit === "none") { setWhiteboardStatus("Choose an English or metric ruler first."); return; }
+      const local = whiteboardRulerLocalPoint(point);
+      const nearExtend = Math.hypot(local.x - whiteboardRuler.length, local.y - 31) < 28;
+      const nearRotate = Math.hypot(local.x - whiteboardRuler.length, local.y + 24) < 28;
+      if (nearExtend || nearRotate || (local.x >= 0 && local.x <= whiteboardRuler.length && local.y >= 0 && local.y <= 62)) {
+        whiteboardDrawing = { tool, mode: nearRotate ? "rotate" : nearExtend ? "extend" : "move", start: point, originalRuler: structuredClone(whiteboardRuler) };
+      }
+      return;
+    }
+    if (tool === "select") { whiteboardSelectedObjectId = selected?.id ?? ""; if (selected) { pushWhiteboardHistory(); const bounds = objectBounds(selected); const resizeCorner = selected.type !== "dimension" ? whiteboardResizeCorner(bounds, point) : ""; whiteboardDrawing = { tool, objectId: selected.id, start: point, original: cloneEditableWhiteboardObject(selected), resize: Boolean(resizeCorner), resizeCorner }; if (selected.type === "dimension") setWhiteboardStatus("Drag the red measurement to the object perimeter, or choose its comparison unit above."); } syncWhiteboardDimensionCompareControl(); renderWhiteboardObjects(canvas); return; }
+    if (tool === "fill") { if (selected && ["rectangle", "ellipse", "triangle", "cube", "rectangular-prism", "cylinder", "cone", "pyramid", "sphere"].includes(selected.type)) { pushWhiteboardHistory(); selected.fillColor = document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d"; whiteboardSelectedObjectId = selected.id; renderWhiteboardObjects(canvas); saveWhiteboard(canvas); setWhiteboardStatus("Shape filled. Use Undo to restore its previous color."); } else setWhiteboardStatus("Use the Paint Can on a closed 2D or 3D shape."); return; }
+    if (tool === "eraser") { if (selected) { pushWhiteboardHistory(); whiteboardObjects = whiteboardObjects.filter((object) => object.id !== selected.id); whiteboardSelectedObjectId = ""; renderWhiteboardObjects(canvas); saveWhiteboard(canvas); } return; }
+    pushWhiteboardHistory(); const color = document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d", size = Number(document.querySelector("[data-whiteboard-size]")?.value ?? 6);
+    const isDrawingStroke = ["pen", "calligraphy", "brush", "highlighter"].includes(tool);
+    const strokeSize = tool === "highlighter" ? size * 2.5 : tool === "brush" ? size * 3 : tool === "calligraphy" ? size * 1.6 : size;
+    const object = isDrawingStroke ? createWhiteboardObject("path", { points: [point], color, size: strokeSize, opacity: tool === "highlighter" ? 0.3 : tool === "brush" ? 0.78 : 1, strokeStyle: tool }) : createWhiteboardObject(tool, { x: point.x, y: point.y, width: 1, height: 1, color, size });
+    whiteboardObjects.push(object); whiteboardSelectedObjectId = object.id; whiteboardDrawing = { tool, objectId: object.id, start: point }; canvas.setPointerCapture?.(event.pointerId);
+  };
+  const move = (event) => {
+    const point = whiteboardPoint(event, canvas);
+    if (!whiteboardDrawing) {
+      const tool = document.querySelector("[data-whiteboard-tool]")?.value ?? "select";
+      if (tool === "laser-dimension" && whiteboardPendingDimension?.start && !whiteboardPendingDimension?.end) { whiteboardPendingDimension.current = point; renderWhiteboardObjects(canvas); }
+      return;
+    }
+    event.preventDefault();
+    if (whiteboardDrawing.tool === "lasso-select") { whiteboardLassoPoints.push(point); renderWhiteboardObjects(canvas); return; }
+    if (whiteboardDrawing.tool === "ruler-adjust") {
+      const original = whiteboardDrawing.originalRuler;
+      if (whiteboardDrawing.mode === "move") { whiteboardRuler.x = original.x + point.x - whiteboardDrawing.start.x; whiteboardRuler.y = original.y + point.y - whiteboardDrawing.start.y; }
+      else if (whiteboardDrawing.mode === "rotate") whiteboardRuler.angle = Math.atan2(point.y - original.y, point.x - original.x);
+      else { const dx = point.x - original.x, dy = point.y - original.y; whiteboardRuler.length = Math.max(150, Math.min(canvas.width * 1.5, dx * Math.cos(original.angle) + dy * Math.sin(original.angle))); }
+      renderWhiteboardObjects(canvas); return;
+    }
+    const index = whiteboardObjects.findIndex((object) => object.id === whiteboardDrawing.objectId);
+    if (index < 0) return;
+    const object = whiteboardObjects[index];
+    if (whiteboardDrawing.tool === "pull-3d") {
+      const typeMap = { rectangle: "rectangular-prism", ellipse: "cylinder", triangle: "pyramid" };
+      whiteboardObjects[index] = { ...whiteboardDrawing.original, type: typeMap[whiteboardDrawing.original.type], original2DType: whiteboardDrawing.original.type, shapeLabel: true, depth: Math.max(10, Math.min(120, Math.hypot(point.x - whiteboardDrawing.start.x, point.y - whiteboardDrawing.start.y))) };
+      renderWhiteboardObjects(canvas); return;
+    }
+    if (whiteboardDrawing.tool === "select") {
+      const dx = point.x - whiteboardDrawing.start.x, dy = point.y - whiteboardDrawing.start.y;
+      let updated;
+      if (whiteboardDrawing.original.type === "dimension" && !whiteboardDrawing.resize) {
+        const angle = Math.atan2(whiteboardDrawing.original.height, whiteboardDrawing.original.width);
+        updated = { ...whiteboardDrawing.original, annotationOffset: Number(whiteboardDrawing.original.annotationOffset ?? 18) + dx * -Math.sin(angle) + dy * Math.cos(angle) };
+      } else updated = whiteboardDrawing.resize ? resizeWhiteboardObjectFromCorner(whiteboardDrawing.original, whiteboardDrawing.resizeCorner, dx, dy) : moveWhiteboardObject(whiteboardDrawing.original, dx, dy);
+      if (updated.emojiStamp && whiteboardDrawing.resize) updated.fontSize = Math.max(18, updated.height / 1.25);
+      if (object.element) updated.element = object.element;
+      whiteboardObjects[index] = updated;
+    } else if (object.type === "path") object.points.push(point);
+    else { object.width = point.x - whiteboardDrawing.start.x; object.height = point.y - whiteboardDrawing.start.y; }
+    renderWhiteboardObjects(canvas);
+  };
+  const end = () => { if (!whiteboardDrawing) return; const completedTool = whiteboardDrawing.tool; whiteboardDrawing = null; if (completedTool === "lasso-select") { updateWhiteboardLassoBounds(); renderWhiteboardObjects(canvas); setWhiteboardStatus(whiteboardLassoBounds ? "Selection ready. Remove its background or download it as a PNG." : "Draw a larger loop around the work you want to select."); return; } saveWhiteboard(canvas); setWhiteboardStatus("Board saved. Select any object to move, resize, copy, or delete it."); };
+  canvas.addEventListener("pointerdown", start); canvas.addEventListener("pointermove", move); canvas.addEventListener("pointerup", end); canvas.addEventListener("pointercancel", end);
+  canvas.addEventListener("contextmenu", (event) => {
+    const point = whiteboardPoint(event, canvas), selected = hitTestObjects(whiteboardObjects, point);
+    if (!selected && !whiteboardClipboard) return;
+    event.preventDefault(); whiteboardContextPoint = point;
+    if (selected) { whiteboardSelectedObjectId = selected.id; syncWhiteboardDimensionCompareControl(); renderWhiteboardObjects(canvas); }
+    const menu = document.querySelector("[data-whiteboard-context-menu]");
+    if (menu) { menu.hidden = false; menu.style.left = `${Math.min(event.clientX, window.innerWidth - 180)}px`; menu.style.top = `${Math.min(event.clientY, window.innerHeight - 170)}px`; menu.querySelector('[data-action="whiteboard-copy-image"]').disabled = !selected; menu.querySelector('[data-action="whiteboard-cut-image"]').disabled = !selected; menu.querySelector('[data-action="whiteboard-paste-image"]').disabled = !whiteboardClipboard; menu.querySelector("button:not([disabled])")?.focus(); }
+    setWhiteboardStatus(selected ? "Object selected. Choose Copy Image, Cut Image, or Paste Image." : "Choose Paste Image to place the copied object here.");
+  });
+  updateWhiteboardHistoryControls();
+}
+
+function stopVoiceMeter(message = "Voice Meter stopped. No audio was saved.") {
+  if (voiceMeterAnimationFrame) window.cancelAnimationFrame(voiceMeterAnimationFrame);
+  voiceMeterAnimationFrame = null;
+  voiceMeterStream?.getTracks().forEach((track) => track.stop());
+  voiceMeterStream = null;
+  if (voiceMeterAudioContext && voiceMeterAudioContext.state !== "closed") void voiceMeterAudioContext.close();
+  voiceMeterAudioContext = null;
+  recordVoiceMeterUse();
+  document.querySelectorAll("[data-student-voice-meter]").forEach((meter) => { meter.hidden = true; });
+  document.querySelectorAll('[data-action="voice-meter-start"]').forEach((button) => { button.disabled = false; });
+  document.querySelectorAll('[data-action="voice-meter-stop"]').forEach((button) => { button.disabled = true; });
+  const status = document.querySelector("[data-voice-meter-status]");
+  if (status) status.textContent = message;
+  document.querySelectorAll("[data-live-voice-status]").forEach((label) => { label.dataset.state = "off"; label.innerHTML = `<span aria-hidden="true"></span> Voice Meter is off`; });
+  updateVoiceMeterPresentation(0);
+  refreshCurrentClassPlan();
+}
+
+async function startVoiceMeter() {
+  const status = document.querySelector("[data-voice-meter-status]");
+  if (!navigator.mediaDevices?.getUserMedia) {
+    if (status) status.textContent = "Voice Meter is not supported in this browser. Open the platform in Chrome.";
+    return;
+  }
+  if (status) status.textContent = "Requesting microphone permission…";
+  try {
+    voiceMeterStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    voiceMeterAudioContext = new AudioContextClass();
+    const analyser = voiceMeterAudioContext.createAnalyser();
+    analyser.fftSize = 512;
+    analyser.smoothingTimeConstant = 0.72;
+    voiceMeterAudioContext.createMediaStreamSource(voiceMeterStream).connect(analyser);
+    beginVoiceMeterUsage();
+    const samples = new Uint8Array(analyser.fftSize);
+    document.querySelectorAll("[data-student-voice-meter]").forEach((meter) => { meter.hidden = !studentDisplayVoiceMeterIsEnabled(); });
+    document.querySelectorAll('[data-action="voice-meter-start"]').forEach((button) => { button.disabled = true; });
+    document.querySelectorAll('[data-action="voice-meter-stop"]').forEach((button) => { button.disabled = false; });
+    if (status) status.textContent = "Voice Meter is listening. Audio is analyzed live and never saved.";
+    document.querySelectorAll("[data-live-voice-status]").forEach((label) => { label.dataset.state = "on"; label.innerHTML = `<span aria-hidden="true"></span> Voice Meter is on and listening`; });
+    const sample = () => {
+      if (!voiceMeterAudioContext || !voiceMeterStream) return;
+      analyser.getByteTimeDomainData(samples);
+      const level = Math.max(0, Math.min(100, Math.round(rmsToVoiceLevel(samples) * voiceMeter.readSensitivity() / 100)));
+      const sampledAt = Date.now();
+      const elapsed = Math.min(250, Math.max(0, sampledAt - voiceMeterUsage.lastSampleAt));
+      const change = Math.abs(level - voiceMeterUsage.previousLevel);
+      const detectedMode = level <= 22 ? "independent" : (level <= 58 && change <= 9 ? "teacher-led" : "collaborative");
+      voiceMeterUsage.detectedSeconds[detectedMode] += elapsed / 1000;
+      voiceMeterUsage.goalMilliseconds += elapsed;
+      if (level > voiceMeterUsage.target) voiceMeterUsage.loudMilliseconds += elapsed;
+      voiceMeterUsage.lastSampleAt = sampledAt;
+      voiceMeterUsage.previousLevel = level;
+      voiceMeterUsage.total += level;
+      voiceMeterUsage.count += 1;
+      voiceMeterUsage.peak = Math.max(voiceMeterUsage.peak, level);
+      updateVoiceMeterPresentation(level);
+      voiceMeterAnimationFrame = window.requestAnimationFrame(sample);
+    };
+    sample();
+  } catch {
+    stopVoiceMeter("Microphone permission is blocked. Allow microphone access, then try again.");
+  }
+}
+
+async function startReflectionDictation(button) {
+  const form = button.closest('[data-form="weekly-reflection"]');
+  const field = form?.elements.explanation;
+  const status = form?.querySelector("[data-reflection-speech-status]");
+  const stopButton = form?.querySelector('[data-action="reflection-dictate-stop"]');
+  const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!form || !field || !status) return;
+  if (!Recognition) {
+    status.textContent = "Speak Answer is not supported in this browser. Open the platform in Chrome or type your answer.";
+    return;
+  }
+  if (reflectionRecognition) {
+    reflectionRecognition.stop();
+    return;
+  }
+  button.disabled = true;
+  button.setAttribute("aria-pressed", "true");
+  status.textContent = "Requesting microphone permission…";
+  try {
+    if (navigator.mediaDevices?.getUserMedia) {
+      const permissionStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      permissionStream.getTracks().forEach((track) => track.stop());
+    }
+  } catch {
+    button.disabled = false;
+    button.setAttribute("aria-pressed", "false");
+    status.textContent = "Microphone permission is blocked. Allow microphone access in the browser, then try again.";
+    return;
+  }
+  const recognition = new Recognition();
+  reflectionRecognition = recognition;
+  const answerBeforeListening = field.value.trim();
+  recognition.lang = document.documentElement.lang || "en-US";
+  recognition.interimResults = false;
+  recognition.maxAlternatives = 1;
+  button.hidden = true;
+  if (stopButton) stopButton.hidden = false;
+  status.textContent = "Start speaking now — listening.";
+  recognition.onresult = (event) => {
+    const spoken = Array.from(event.results ?? [])
+      .filter((result) => result.isFinal !== false)
+      .map((result) => String(result?.[0]?.transcript ?? "").trim())
+      .filter(Boolean)
+      .join(" ");
+    if (!spoken) return;
+    field.value = `${answerBeforeListening}${answerBeforeListening ? " " : ""}${spoken}`.slice(0, 500);
+    field.focus();
+    status.textContent = "Your spoken answer was added. Check it before submitting.";
+  };
+  recognition.onerror = (event) => {
+    const permissionError = event.error === "not-allowed" || event.error === "service-not-allowed";
+    status.textContent = permissionError
+      ? "Microphone permission is blocked. Allow microphone access in the browser, then try again."
+      : "I couldn't hear that. Try again or type your answer.";
+  };
+  recognition.onend = () => {
+    reflectionRecognition = null;
+    button.disabled = false;
+    button.hidden = false;
+    if (stopButton) stopButton.hidden = true;
+    button.setAttribute("aria-pressed", "false");
+    if (status.textContent === "Start speaking now — listening.") status.textContent = "Listening stopped. No words were added; try again or type your answer.";
+  };
+  try {
+    recognition.start();
+  } catch {
+    reflectionRecognition = null;
+    button.disabled = false;
+    button.hidden = false;
+    if (stopButton) stopButton.hidden = true;
+    button.setAttribute("aria-pressed", "false");
+    status.textContent = "Speak Answer could not start. Try Chrome or type your answer.";
+  }
+}
+
+function closeQuickMessageBoard() {
+  const panel = document.querySelector("[data-message-board-quick-panel]");
+  const home = document.querySelector("[data-message-board-home]");
+  const board = document.querySelector("#teacher-message-board");
+  if (home && board) home.append(board);
+  if (panel) panel.hidden = true;
+}
+
+function closeQuickClassSchedule() {
+  const panel = document.querySelector("[data-class-schedule-quick-panel]");
+  const storage = document.querySelector("[data-class-schedule-storage]");
+  const schedule = document.querySelector("#teacher-class-schedule");
+  if (storage && schedule) storage.append(schedule);
+  if (panel) panel.hidden = true;
 }
 
 function handleClick(event) {
   const action = event.target.closest("[data-action]");
   if (!action) return;
+  if (handleNamePickerAction(action, document)) return;
+  if (action.closest("[data-class-resource-teacher]") || action.dataset.action?.startsWith("timer-") || action.dataset.action === "instant-timer") window.setTimeout(refreshCurrentClassPlan, 0);
+  if (action.dataset.action === "open-current-plan-editor") {
+    const modal = document.querySelector("[data-current-plan-modal]");
+    const content = modal?.querySelector("[data-current-plan-editor-content]");
+    const title = modal?.querySelector("#current-plan-editor-title");
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    if (!modal || !content || !title || !classId) return;
+    const labels = { activities: "Edit Assigned Activities", access: "Student Resource Access", message: "Edit Current Message", timer: "Adjust Today’s Timer", whiteboard: "Latest Whiteboard", voice: "Voice Meter History" };
+    title.textContent = labels[action.dataset.currentPlanEditor] || "Quick edit";
+    content.innerHTML = currentClassPlanEditorMarkup(action.dataset.currentPlanEditor, classId, state.teacherId);
+    modal.dataset.editorCategory = action.dataset.currentPlanEditor;
+    modal.hidden = false;
+    modal.querySelector('[data-action="close-current-plan-editor"]')?.focus();
+    return;
+  }
+  if (action.dataset.action === "close-current-plan-editor") {
+    closeCurrentClassPlanEditor();
+    document.querySelector(`[data-current-plan-editor="${action.closest("[data-current-plan-modal]")?.dataset.editorCategory || ""}"]`)?.focus();
+    return;
+  }
+  if (action.dataset.action === "return-current-plan") {
+    closeCurrentClassPlanEditor();
+    const plan = document.querySelector(".platform-current-class-plan");
+    plan?.scrollIntoView({ behavior: "smooth", block: "start" });
+    plan?.querySelector(`[data-current-plan-editor="${action.closest("[data-current-plan-modal]")?.dataset.editorCategory || ""}"]`)?.focus();
+    return;
+  }
+  if (action.dataset.action === "return-to-current-class-plan") {
+    closeCurrentClassPlanEditor();
+    closeQuickMessageBoard();
+    closeQuickClassSchedule();
+    const readinessPanel = document.querySelector('[data-form="class-readiness"]');
+    if (readinessPanel) readinessPanel.hidden = true;
+    const plan = document.querySelector(".platform-current-class-plan");
+    plan?.scrollIntoView({ behavior: "smooth", block: "start" });
+    plan?.querySelector("#current-class-plan-title")?.focus?.();
+    return;
+  }
+  if (action.dataset.action === "current-plan-open-resources") {
+    closeCurrentClassPlanEditor();
+    document.querySelector("#teacher-todays-resources")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  if (action.dataset.action === "save-current-plan-message") {
+    const modal = action.closest("[data-current-plan-modal]");
+    const value = modal?.querySelector("[data-current-plan-message]")?.value ?? "";
+    const result = teacherMemo.save(value);
+    const status = modal?.querySelector("[data-current-plan-editor-status]");
+    if (status) status.textContent = result.ok ? "Message saved and displayed." : value.trim() ? `Keep the message to ${TEACHER_MEMO_MAX_CHARACTERS} characters or fewer.` : "Type a message before saving.";
+    if (result.ok) syncTeacherMemoPresentation();
+    return;
+  }
+  if (action.dataset.action === "clear-current-plan-message") {
+    teacherMemo.clear();
+    syncTeacherMemoPresentation();
+    const modal = action.closest("[data-current-plan-modal]");
+    const field = modal?.querySelector("[data-current-plan-message]");
+    const status = modal?.querySelector("[data-current-plan-editor-status]");
+    if (field) field.value = "";
+    if (status) status.textContent = "Message cleared.";
+    return;
+  }
+  if (["open-message-board-quick", "open-whiteboard", "open-today-timer-tools"].includes(action.dataset.action)) closeCurrentClassPlanEditor();
+  if (action.dataset.action === "open-teacher-preview") {
+    session.signInTeacher("teacher-preview-1");
+    navigate(ROUTES.TEACHER_DASHBOARD);
+    return;
+  }
+  if (action.dataset.action === "open-student-preview") {
+    session.signInStudent("class-preview-1", "student-preview-1");
+    navigate(ROUTES.STUDENT_DASHBOARD);
+    return;
+  }
+  if (action.dataset.action === "open-class-readiness") {
+    const panel = document.querySelector("[data-form='class-readiness']");
+    if (panel) {
+      const state = session.read();
+      const classId = currentTeacherClass(state.teacherId)?.id;
+      const goals = panel.querySelector("[data-quick-goals]");
+      if (classId && goals?.dataset.goalsMode === "automatic") goals.outerHTML = todaysGoalInputsMarkup(classId);
+      closeQuickMessageBoard();
+      closeQuickClassSchedule();
+      panel.hidden = false;
+      panel.querySelector(`[data-readiness-setting="${action.dataset.readinessFocus}"]`)?.focus();
+    }
+    return;
+  }
+  if (action.dataset.action === "open-today-timer-tools") {
+    const card = document.querySelector("#teacher-timer-card");
+    const adjuster = card?.querySelector(".platform-timer-display-settings");
+    if (adjuster) adjuster.open = true;
+    card?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  if (action.dataset.action === "toggle-smartboard-tool") {
+    const display = action.closest("#platform-student-timer-display");
+    installSmartboardToolPopoutButtons(document);
+    const tool = display?.querySelector(`[data-smartboard-tool="${action.dataset.smartboardToolName}"]`);
+    if (tool) {
+      tool.hidden = !tool.hidden;
+      if (!tool.hidden) bringSmartboardToolForward(tool);
+    }
+    return;
+  }
+  if (action.dataset.action === "reset-smartboard-tools") {
+    resetSmartboardToolPositions(action.ownerDocument || document);
+    return;
+  }
+  if (action.dataset.action === "popout-smartboard-tool") {
+    openSmartboardToolPopout(action.closest("[data-smartboard-tool]"));
+    return;
+  }
+  if (action.dataset.action === "fullscreen-smartboard-tool") {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void (action.closest("#platform-student-timer-display") || document.documentElement).requestFullscreen();
+    return;
+  }
+  if (action.dataset.action === "close-smartboard-tool") {
+    const tool = action.closest("[data-smartboard-tool]");
+    if (tool) {
+      tool.hidden = true;
+      const display = tool.closest("#platform-student-timer-display[data-tool-only]");
+      if (display) { display.hidden = true; delete display.dataset.toolOnly; }
+    }
+    return;
+  }
+  if (action.dataset.action === "open-message-board-quick") {
+    const settings = document.querySelector("[data-form='class-readiness']");
+    const panel = document.querySelector("[data-message-board-quick-panel]");
+    const host = panel?.querySelector("[data-message-board-quick-host]");
+    const board = document.querySelector("#teacher-message-board");
+    if (settings) settings.hidden = true;
+    closeQuickClassSchedule();
+    if (panel && host && board) {
+      panel.hidden = false;
+      host.append(board);
+    }
+    return;
+  }
+  if (action.dataset.action === "open-class-schedule-quick") {
+    const settings = document.querySelector("[data-form='class-readiness']");
+    const panel = document.querySelector("[data-class-schedule-quick-panel]");
+    const host = panel?.querySelector("[data-class-schedule-quick-host]");
+    const schedule = document.querySelector("#teacher-class-schedule");
+    if (settings) settings.hidden = true;
+    closeQuickMessageBoard();
+    if (panel && host && schedule) {
+      panel.hidden = false;
+      host.append(schedule);
+    }
+    return;
+  }
+  if (action.dataset.action === "close-class-schedule-quick") {
+    closeQuickClassSchedule();
+    document.querySelector('[data-action="open-class-schedule-quick"]')?.focus();
+    return;
+  }
+  if (action.dataset.action === "close-message-board-quick") {
+    closeQuickMessageBoard();
+    document.querySelector('[data-action="open-message-board-quick"]')?.focus();
+    return;
+  }
+  if (action.dataset.action === "close-class-readiness") {
+    const panel = document.querySelector("[data-form='class-readiness']");
+    if (panel) panel.hidden = true;
+    return;
+  }
+  if (action.dataset.action === "add-quick-goal") {
+    const goals = action.closest("[data-quick-goals]");
+    const list = goals?.querySelector("[data-quick-goal-list]");
+    if (!goals || !list) return;
+    goals.dataset.goalsMode = "custom";
+    list.querySelector("[data-no-quick-goals]")?.remove();
+    const index = list.querySelectorAll('[name="todayGoal"]').length;
+    list.insertAdjacentHTML("beforeend", `<label>Goal ${index + 1}<span><input name="todayGoal" maxlength="80" value=""><button type="button" data-action="delete-quick-goal" aria-label="Delete goal ${index + 1}">Delete</button></span></label>`);
+    list.querySelectorAll('[name="todayGoal"]')[index]?.focus();
+    return;
+  }
+  if (action.dataset.action === "delete-quick-goal") {
+    const goals = action.closest("[data-quick-goals]");
+    const list = goals?.querySelector("[data-quick-goal-list]");
+    action.closest("label")?.remove();
+    if (goals) goals.dataset.goalsMode = "custom";
+    if (list && !list.querySelector('[name="todayGoal"]')) list.innerHTML = `<p data-no-quick-goals>No goal is currently assigned.</p>`;
+    return;
+  }
+  if (action.dataset.action === "save-class-readiness") {
+    const form = action.closest("[data-form='class-readiness']");
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    if (!form || !classId) return;
+    const readiness = { ...classReadiness(classId), mission: form.elements.mission.value };
+    const profile = classSetupProfiles.profile(classId) ?? {};
+    const goalsRegion = form.querySelector("[data-quick-goals]");
+    const todayGoals = [...form.querySelectorAll('[name="todayGoal"]')].map((input) => input.value.trim()).filter(Boolean).slice(0, 6);
+    const todayGoalsMode = goalsRegion?.dataset.goalsMode === "custom" ? "custom" : "automatic";
+    classSetupProfiles.save(classId, { ...profile, readiness, todayGoals, todayGoalsMode });
+    if (readiness.mission === "none" || !todayGoals.length) todaysMission.clear();
+    else {
+      const resources = classResourceSharing.read(classId).audienceRows.flatMap((row) => row.resources).filter(Boolean);
+      todaysMission.save({ title: todayGoals[0], focus: todayGoals.join(" • "), builder: resources.some((item) => item.type === "Builder") ? TODAYS_MISSION_AVAILABILITY.AVAILABLE : TODAYS_MISSION_AVAILABILITY.NOT_PART, workshop: resources.some((item) => item.type === "Workshop") ? TODAYS_MISSION_AVAILABILITY.AVAILABLE : TODAYS_MISSION_AVAILABILITY.NOT_PART });
+    }
+    if (readiness.timer !== "saved") classTimerSchedule.save({ ...classTimerSchedule.read(), enabled: false });
+    if (readiness.mission === "new") {
+      pendingScrollTarget = "teacher-todays-resources";
+      pendingOpenClassResourceEditor = true;
+    }
+    render();
+    return;
+  }
+  if (action.dataset.action === "select-catalog-resource") {
+    const form = action.closest('[data-form="class-resource"]');
+    if (!form) return;
+    form.elements.type.value = action.dataset.resourceType;
+    form.elements.title.value = action.dataset.resourceTitle;
+    form.elements.url.value = action.dataset.resourceUrl;
+    const status = form.querySelector("[data-class-resource-status]");
+    if (status) status.textContent = `Selected: ${action.dataset.resourceTitle}. Choose Save for Later or Show on Student Page.`;
+    form.elements.title.focus();
+    return;
+  }
+  if (action.dataset.action === "use-custom-webpage") {
+    const form = action.closest('[data-form="class-resource"]');
+    if (!form) return;
+    form.elements.type.value = "Webpage";
+    form.elements.title.value = "";
+    form.elements.url.value = "";
+    const customFields = form.querySelector("[data-custom-resource-fields]");
+    if (customFields) customFields.open = true;
+    const status = form.querySelector("[data-class-resource-status]");
+    if (status) status.textContent = "Enter the page name and address below. Students will not see it until you choose Show on Student Page.";
+    form.elements.title.focus();
+    return;
+  }
+  if (action.dataset.action === "add-resource-slot") {
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    const region = action.closest("[data-class-resource-teacher]");
+    if (!classId || !region) return;
+    const result = classResourceSharing.addSlot(classId, action.dataset.resourceRowId);
+    region.outerHTML = classResourceTeacherMarkup(classId);
+    const status = document.querySelector("[data-class-resource-status]");
+    if (status && result.ok) status.textContent = `Slot ${result.slotCount} added. Choose another resource when ready.`;
+    return;
+  }
+  if (action.dataset.action === "remove-resource-slot") {
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    const region = action.closest("[data-class-resource-teacher]");
+    if (!classId || !region) return;
+    const result = classResourceSharing.removeSlot(classId, action.dataset.resourceRowId);
+    region.outerHTML = classResourceTeacherMarkup(classId);
+    const status = document.querySelector("[data-class-resource-status]");
+    if (status) status.textContent = result.ok ? `Empty Slot ${result.slotCount + 1} deleted.` : "Uncheck the resource in the last slot before deleting that slot.";
+    return;
+  }
+  if (action.dataset.action === "edit-resource-slot") {
+    const region = action.closest("[data-class-resource-teacher]");
+    const editor = region?.querySelector(".platform-class-resource-editor");
+    const form = editor?.querySelector('[data-form="class-resource"]');
+    if (!editor || !form) return;
+    form.elements.rowId.value = action.dataset.resourceRowId;
+    form.elements.slot.value = action.dataset.resourceSlotIndex;
+    editor.open = true;
+    return;
+  }
+  if (action.dataset.action === "add-resource-audience") {
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    const region = action.closest("[data-class-resource-teacher]");
+    if (!classId || !region) return;
+    classResourceSharing.addAudienceRow(classId);
+    region.outerHTML = classResourceTeacherMarkup(classId);
+    return;
+  }
+  if (action.dataset.action === "add-resource-exception") {
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    const region = action.closest("[data-class-resource-teacher]");
+    const type = region?.querySelector("[data-resource-exception-type]")?.value;
+    if (!classId || !region || !type) return;
+    const row = classResourceSharing.addAudienceRow(classId);
+    const label = type === "whole-class" ? "Whole class" : type === "students" ? "Selected students" : type === "teacher-group" ? "Exception Group" : "Random Exception Group";
+    classResourceSharing.updateAudience(classId, row.id, { audienceType: type, audienceIds: [], audienceLabel: label });
+    region.outerHTML = classResourceTeacherMarkup(classId);
+    return;
+  }
+  if (action.dataset.action === "add-teacher-group") {
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    const region = action.closest("[data-class-resource-teacher]");
+    if (!classId || !region) return;
+    const row = classResourceSharing.addAudienceRow(classId);
+    const groupNumber = classResourceSharing.read(classId).audienceRows.filter((item) => ["teacher-group", "random-group"].includes(item.audienceType)).length + 1;
+    classResourceSharing.updateAudience(classId, row.id, { audienceType: "teacher-group", audienceIds: [], audienceLabel: `Group ${groupNumber}` });
+    region.outerHTML = classResourceTeacherMarkup(classId);
+    return;
+  }
+  if (action.dataset.action === "build-random-groups") {
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    const region = action.closest("[data-class-resource-teacher]");
+    if (!classId || !region) return;
+    const roster = [...getRosterForClass(classId)].sort(() => Math.random() - 0.5);
+    const requestedSize = Number(region.querySelector("[data-random-group-size]")?.value);
+    const size = Math.max(1, Math.min(roster.length || 1, Number.isFinite(requestedSize) ? requestedSize : 3));
+    const groupCount = Math.max(1, Math.ceil(roster.length / size));
+    const groups = Array.from({ length: groupCount }, (_, index) => ({ name: `Random Group ${index + 1}`, audienceIds: [] }));
+    roster.forEach((student, index) => groups[index % groupCount].audienceIds.push(student.id));
+    classResourceSharing.setGroupRows(classId, groups, "random-group");
+    region.outerHTML = classResourceTeacherMarkup(classId);
+    return;
+  }
+  if (action.dataset.action === "save-group-set") {
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    const region = action.closest("[data-class-resource-teacher]");
+    if (!classId || !region) return;
+    const result = classResourceSharing.saveGroupSet(classId, region.querySelector("[data-group-set-name]")?.value);
+    if (result.ok) region.outerHTML = classResourceTeacherMarkup(classId);
+    else {
+      const status = region.querySelector("[data-class-resource-status]");
+      if (status) status.textContent = "Name the group settings and create at least one group before saving.";
+    }
+    return;
+  }
+  if (action.dataset.action === "apply-group-set") {
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    const region = action.closest("[data-class-resource-teacher]");
+    const presetId = region?.querySelector("[data-saved-group-set]")?.value;
+    if (!classId || !region || !presetId) return;
+    classResourceSharing.applyGroupSet(classId, presetId);
+    region.outerHTML = classResourceTeacherMarkup(classId);
+    return;
+  }
+  if (action.dataset.action === "remove-resource-audience") {
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    const region = action.closest("[data-class-resource-teacher]");
+    if (!classId || !region) return;
+    classResourceSharing.removeAudienceRow(classId, action.dataset.resourceRowId);
+    region.outerHTML = classResourceTeacherMarkup(classId);
+    return;
+  }
+  if (action.dataset.action === "randomize-resource-audience") {
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    const region = action.closest("[data-class-resource-teacher]");
+    if (!classId || !region) return;
+    const shuffled = [...getRosterForClass(classId)].sort(() => Math.random() - 0.5);
+    const count = Math.max(1, Math.ceil(shuffled.length / 2));
+    classResourceSharing.updateAudience(classId, action.dataset.resourceRowId, { audienceType: "random-group", audienceIds: shuffled.slice(0, count).map((student) => student.id), audienceLabel: "Random group" });
+    region.outerHTML = classResourceTeacherMarkup(classId);
+    return;
+  }
+  if (action.dataset.action === "show-selected-webpages") {
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    const region = action.closest("[data-class-resource-teacher]");
+    const form = region?.querySelector('[data-form="class-resource"]');
+    const selected = [...(region?.querySelectorAll("[data-webpage-selection]:checked") ?? [])];
+    if (!classId || !region || !form) return;
+    const catalogUrls = new Set(TEACHER_WEBPAGE_CATALOG.map((page) => page.url));
+    const retained = classResourceSharing.read(classId).activeResources.filter((resource) => resource.type !== "Webpage" || !catalogUrls.has(resource.url));
+    const selectedPages = selected.map((input, selectionIndex) => {
+      const page = TEACHER_WEBPAGE_CATALOG[Number(input.value)];
+      return page ? { id: `webpage-${Date.now()}-${selectionIndex}`, type: "Webpage", title: page.title, url: page.url, release: form.elements.release.value } : null;
+    }).filter(Boolean);
+    classResourceSharing.replaceActive(classId, [...retained, ...selectedPages]);
+    region.outerHTML = classResourceTeacherMarkup(classId);
+    const status = document.querySelector("[data-class-resource-status]");
+    if (status) status.textContent = selected.length ? `${selected.length} webpage${selected.length === 1 ? " is" : "s are"} now available to students.` : "Catalog webpages were removed from the student page.";
+    return;
+  }
+  if (action.dataset.action === "whiteboard-tool-select") { const tool = document.querySelector("[data-whiteboard-tool]"); if (tool) { tool.value = "select"; tool.dispatchEvent(new Event("change", { bubbles: true })); } whiteboardCanvas()?.focus({ preventScroll: true }); setWhiteboardStatus("Select and move is active."); return; }
+  if (action.dataset.action === "whiteboard-cut") { cutSelectedWhiteboardObject(); whiteboardCanvas()?.focus({ preventScroll: true }); return; }
+  if (action.dataset.action === "whiteboard-copy-image") { const menu = document.querySelector("[data-whiteboard-context-menu]"); if (menu) menu.hidden = true; void copySelectedWhiteboardObjectAsImage(); return; }
+  if (action.dataset.action === "whiteboard-cut-image") { const menu = document.querySelector("[data-whiteboard-context-menu]"); if (menu) menu.hidden = true; cutSelectedWhiteboardObject(); return; }
+  if (action.dataset.action === "whiteboard-paste-image") { const menu = document.querySelector("[data-whiteboard-context-menu]"); if (menu) menu.hidden = true; pasteWhiteboardClipboard(whiteboardContextPoint); return; }
+  if (action.dataset.action === "whiteboard-close-context-menu") { const menu = document.querySelector("[data-whiteboard-context-menu]"); if (menu) menu.hidden = true; return; }
+  if (action.dataset.action === "whiteboard-toggle-controls") {
+    whiteboardControlsHidden = !whiteboardControlsHidden; applyWhiteboardControlsLayout({ resizeCanvas: true }); saveWhiteboard();
+    setWhiteboardStatus(whiteboardControlsHidden ? "Board menus hidden. The canvas now uses the extra space." : "Board menus expanded."); return;
+  }
+  if (action.dataset.action === "whiteboard-remove-selection-background") {
+    if (!whiteboardLassoBounds) { setWhiteboardStatus("Choose Lasso select for image and drag around the work first."); return; }
+    try {
+      const selectedIds = new Set(whiteboardLassoObjectIds());
+      const result = whiteboardSelectionCanvas({ removeBackground: true });
+      if (!result) return;
+      pushWhiteboardHistory(); whiteboardSelectionDownload = result.canvas.toDataURL("image/png");
+      whiteboardObjects = whiteboardObjects.filter((object) => !selectedIds.has(object.id));
+      const image = createWhiteboardObject("image", { x: result.bounds.x, y: result.bounds.y, width: result.bounds.width, height: result.bounds.height, src: whiteboardSelectionDownload, backgroundRemoved: true, rotation: 0 });
+      whiteboardObjects.push(image); whiteboardSelectedObjectId = image.id; whiteboardLassoPoints = []; whiteboardLassoBounds = null;
+      hydrateWhiteboardImages(() => renderWhiteboardObjects()); renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls();
+      setWhiteboardStatus("Background removed. The selection is now one movable image. Use Undo if light details were removed.");
+    } catch { setWhiteboardStatus("This selection could not remove its background. Try a smaller selection or an uploaded image from this device."); }
+    return;
+  }
+  if (action.dataset.action === "whiteboard-download-selection") {
+    try {
+      if (!whiteboardSelectionDownload) {
+        const result = whiteboardSelectionCanvas();
+        if (!result) { setWhiteboardStatus("Use Lasso select for image and drag around the work before downloading."); return; }
+        whiteboardSelectionDownload = result.canvas.toDataURL("image/png");
+      }
+      const link = document.createElement("a"); link.download = "whiteboard-selection.png"; link.href = whiteboardSelectionDownload; link.click();
+      setWhiteboardStatus("Selected work downloaded as a PNG image.");
+    } catch { setWhiteboardStatus("The selected image could not be downloaded from this browser."); }
+    return;
+  }
+  if (action.dataset.action === "whiteboard-bob-directions") { setWhiteboardBobCoachState("directions"); return; }
+  if (action.dataset.action === "whiteboard-bob-collapse") { setWhiteboardBobCoachState("collapsed"); return; }
+  if (action.dataset.action === "whiteboard-bob-open") { setWhiteboardBobCoachState("directions"); return; }
+  if (action.dataset.action === "whiteboard-dimension-cancel") {
+    whiteboardPendingDimension = null;
+    const question = document.querySelector("[data-whiteboard-dimension-question]"); if (question) question.hidden = true;
+    renderWhiteboardObjects();
+    setWhiteboardStatus("CAD measurement canceled.");
+    return;
+  }
+  if (action.dataset.action === "whiteboard-dimension-save") {
+    if (!whiteboardPendingDimension?.start || !whiteboardPendingDimension?.end) return;
+    let choice = document.querySelector("[data-whiteboard-dimension-label]")?.value ?? "Length";
+    const custom = document.querySelector("[data-whiteboard-dimension-custom]")?.value.trim();
+    const suggestion = suggestedWhiteboardDimensionLabel(whiteboardPendingDimension.start, whiteboardPendingDimension.end);
+    const tip = document.querySelector("[data-whiteboard-measurement-tip]");
+    if (choice !== "custom" && choice !== suggestion.label) {
+      whiteboardPendingDimension.attempts = Number(whiteboardPendingDimension.attempts ?? 0) + 1;
+      if (whiteboardPendingDimension.attempts < 2) {
+        if (tip) { tip.hidden = false; tip.textContent = `Try again. Tip: ${suggestion.tip}`; }
+        setWhiteboardStatus("That label does not match the two laser points yet. Use the tip and try again.");
+        return;
+      }
+      choice = suggestion.label;
+      const labelControl = document.querySelector("[data-whiteboard-dimension-label]"); if (labelControl) labelControl.value = choice;
+      if (tip) { tip.hidden = false; tip.textContent = `The most logical answer is ${suggestion.label}. ${suggestion.tip}`; }
+    }
+    const label = choice === "custom" ? custom : choice;
+    if (!label) { setWhiteboardStatus("Add your own measurement label before continuing."); return; }
+    const unit = document.querySelector("[data-whiteboard-dimension-unit]")?.value ?? "cm";
+    const { start, end } = whiteboardPendingDimension; pushWhiteboardHistory();
+    const dimension = createWhiteboardObject("dimension", { x: start.x, y: start.y, width: end.x - start.x, height: end.y - start.y, annotationOffset: 18, label, unit, compareUnit: unit === "mm" ? "cm" : unit === "cm" ? "mm" : "cm", color: "#b52222", size: 3 });
+    whiteboardObjects.push(dimension); whiteboardSelectedObjectId = dimension.id;
+    whiteboardRulerUnit = unit === "in" ? "english" : "metric"; whiteboardRuler.x = Math.min(start.x, end.x); whiteboardRuler.y = Math.max(40, Math.min(start.y, end.y) - 82); whiteboardRuler.angle = Math.atan2(end.y - start.y, end.x - start.x); whiteboardRuler.length = Math.max(150, Math.hypot(end.x - start.x, end.y - start.y));
+    const rulerControl = document.querySelector("[data-whiteboard-ruler]"); if (rulerControl) rulerControl.value = whiteboardRulerUnit;
+    whiteboardPendingDimension = null; const question = document.querySelector("[data-whiteboard-dimension-question]"); if (question) question.hidden = true;
+    syncWhiteboardDimensionCompareControl(); renderWhiteboardObjects(); saveWhiteboard(); showWhiteboardBobMeasurementCoach(); setWhiteboardStatus(`CAD dimension added: ${label}. ${suggestion.tip}`);
+    return;
+  }
+  if (action.dataset.action === "open-whiteboard") {
+    const display = document.querySelector("#platform-classroom-whiteboard");
+    if (display) {
+      whiteboardDisplayTrigger = action;
+      display.hidden = false;
+      mountWhiteboard();
+      display.focus();
+    }
+    return;
+  }
+  if (action.dataset.action === "whiteboard-keyboard-help") {
+    const help = document.querySelector("[data-whiteboard-keyboard-help]");
+    if (help) { help.hidden = false; help.querySelector("button")?.focus(); }
+    return;
+  }
+  if (action.dataset.action === "whiteboard-close-keyboard-help") {
+    const help = document.querySelector("[data-whiteboard-keyboard-help]");
+    if (help) help.hidden = true;
+    document.querySelector('[data-action="whiteboard-keyboard-help"]')?.focus();
+    return;
+  }
+  if (action.dataset.action === "close-whiteboard") {
+    const display = document.querySelector("#platform-classroom-whiteboard");
+    if (display) display.hidden = true;
+    whiteboardDisplayTrigger?.focus();
+    whiteboardDisplayTrigger = null;
+    return;
+  }
+  if (action.dataset.action === "whiteboard-present" || action.dataset.action === "whiteboard-exit-presentation") {
+    const display = document.querySelector("#platform-classroom-whiteboard");
+    if (display) {
+      const presenting = action.dataset.action === "whiteboard-present";
+      display.dataset.presentation = String(presenting);
+      const exit = display.querySelector("[data-action=\"whiteboard-exit-presentation\"]");
+      if (exit) exit.hidden = !presenting;
+      if (!presenting) display.focus();
+    }
+    return;
+  }
+  if (action.dataset.action === "whiteboard-save-named") {
+    const canvas = whiteboardCanvas();
+    const titleField = document.querySelector("[data-whiteboard-title]");
+    const title = titleField?.value.trim();
+    if (!canvas || !title) { setWhiteboardStatus("Add a board name before saving."); return; }
+    const scheduleType = document.querySelector("[data-whiteboard-schedule-type]")?.value ?? "none";
+    const date = document.querySelector("[data-whiteboard-date]")?.value ?? "";
+    const studentDisplay = Boolean(document.querySelector("[data-whiteboard-student-display]")?.checked);
+    if (scheduleType === "date" && !date) { setWhiteboardStatus("Choose the specific date before saving."); return; }
+    if (studentDisplay && scheduleType === "none") { setWhiteboardStatus("Choose a weekly schedule or specific date for automatic Student Display use."); return; }
+    whiteboardDrawingTitle = title;
+    renderWhiteboardObjects(canvas);
+    const boards = readWhiteboardLibrary();
+    const board = { id: globalThis.crypto?.randomUUID?.() ?? `board-${Date.now()}`, title, classId: document.querySelector("[data-whiteboard-class]")?.value ?? "all", scheduleType, day: scheduleType === "weekly" ? (document.querySelector("[data-whiteboard-day]")?.value ?? WEEKDAYS[0]) : "", date: scheduleType === "date" ? date : "", studentDisplay, gridUnit: whiteboardGridUnit, rulerUnit: whiteboardRulerUnit, ruler: structuredClone(whiteboardRuler), image: whiteboardSnapshot(canvas), displayImage: studentDisplay ? whiteboardStudentDisplayImage(canvas) : "", objects: serializableWhiteboardObjects(), savedAt: Date.now() };
+    boards.unshift(board);
+    if (!writeWhiteboardLibrary(boards)) { setWhiteboardStatus("This board is too large for browser storage. Export it as a PNG instead."); return; }
+    refreshWhiteboardLibraryOptions(board.id);
+    setWhiteboardStatus(`Saved “${title}” for later use.`);
+    refreshCurrentClassPlan();
+    return;
+  }
+  if (action.dataset.action === "whiteboard-load") {
+    const id = document.querySelector("[data-whiteboard-saved]")?.value;
+    const board = readWhiteboardLibrary().find((item) => item.id === id);
+    if (!board) { setWhiteboardStatus("Choose a saved board to load."); return; }
+    pushWhiteboardHistory();
+    whiteboardObjects = Array.isArray(board.objects) && board.objects.length ? structuredClone(board.objects) : [createWhiteboardObject("image", { x: 0, y: 0, width: whiteboardCanvas().width, height: whiteboardCanvas().height, src: board.image })];
+    whiteboardGridUnit = ["plain", "inch", "cm", "mm"].includes(board.gridUnit) ? board.gridUnit : "plain";
+    whiteboardRulerUnit = ["none", "english", "metric"].includes(board.rulerUnit) ? board.rulerUnit : "none";
+    whiteboardRuler = board.ruler && typeof board.ruler === "object" ? { ...whiteboardRuler, ...board.ruler } : whiteboardRuler;
+    whiteboardDrawingTitle = board.title || "Workshop Drawing";
+    const gridControl = document.querySelector("[data-whiteboard-grid]"); const rulerControl = document.querySelector("[data-whiteboard-ruler]"); const rulerSides = document.querySelector("[data-whiteboard-ruler-sides]");
+    if (gridControl) gridControl.value = whiteboardGridUnit; if (rulerControl) rulerControl.value = whiteboardRulerUnit; if (rulerSides) rulerSides.value = whiteboardRuler.sides;
+    whiteboardSelectedObjectId = ""; hydrateWhiteboardImages(() => { renderWhiteboardObjects(); saveWhiteboard(); }); renderWhiteboardObjects();
+    const title = document.querySelector("[data-whiteboard-title]");
+    if (title) title.value = board.title;
+    const scheduleType = document.querySelector("[data-whiteboard-schedule-type]");
+    const weekday = document.querySelector("[data-whiteboard-day]");
+    const date = document.querySelector("[data-whiteboard-date]");
+    const studentDisplay = document.querySelector("[data-whiteboard-student-display]");
+    if (scheduleType) scheduleType.value = board.scheduleType === "date" ? "date" : board.scheduleType === "weekly" && board.day && board.day !== "any" ? "weekly" : "none";
+    if (weekday && board.day && board.day !== "any") weekday.value = board.day;
+    if (date) date.value = board.date ?? "";
+    if (studentDisplay) studentDisplay.checked = board.studentDisplay === true;
+    if (scheduleType) scheduleType.dispatchEvent(new Event("change", { bubbles: true }));
+    setWhiteboardStatus(`Loaded “${board.title}”.`);
+    return;
+  }
+  if (action.dataset.action === "whiteboard-delete") {
+    const id = document.querySelector("[data-whiteboard-saved]")?.value;
+    const boards = readWhiteboardLibrary();
+    const board = boards.find((item) => item.id === id);
+    if (!board) { setWhiteboardStatus("Choose a saved board to delete."); return; }
+    writeWhiteboardLibrary(boards.filter((item) => item.id !== id));
+    refreshWhiteboardLibraryOptions();
+    setWhiteboardStatus(`Deleted the saved copy of “${board.title}”. The open board was not cleared.`);
+    return;
+  }
+  if (action.dataset.action === "whiteboard-export") {
+    const canvas = whiteboardCanvas();
+    if (!canvas) return;
+    const title = document.querySelector("[data-whiteboard-title]")?.value.trim() || "classroom-whiteboard";
+    const link = document.createElement("a");
+    link.download = `${title.replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "").toLowerCase() || "classroom-whiteboard"}.png`;
+    link.href = whiteboardSnapshot(canvas);
+    link.click();
+    setWhiteboardStatus("Whiteboard exported as a PNG image.");
+    return;
+  }
+  if (action.dataset.action === "whiteboard-add-text") {
+    const canvas = whiteboardCanvas();
+    const field = document.querySelector("[data-whiteboard-text]");
+    const text = field?.value.trim();
+    if (!canvas || !text) return;
+    pushWhiteboardHistory();
+    const size = Math.max(22, Number(document.querySelector("[data-whiteboard-size]")?.value ?? 6) * 5);
+    const object = createWhiteboardObject("text", { text, x: 35, y: Math.min(canvas.height - 80, 30 + whiteboardObjects.length * 24), width: Math.min(canvas.width - 70, Math.max(180, text.length * size * 0.55)), height: size * 1.3, fontSize: size, color: document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d", background: document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent", rotation: 0 });
+    whiteboardObjects.push(object); whiteboardSelectedObjectId = object.id; field.value = ""; renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls();
+    return;
+  }
+  if (action.dataset.action === "whiteboard-apply-text-background") {
+    const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
+    if (selected?.type !== "text") { setWhiteboardStatus("Select a text object before applying a text background."); return; }
+    pushWhiteboardHistory(); selected.background = document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent"; renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus("Text background updated."); return;
+  }
+  if (["whiteboard-copy", "whiteboard-paste", "whiteboard-duplicate", "whiteboard-push-2d", "whiteboard-rotate-left", "whiteboard-rotate-right", "whiteboard-delete-object"].includes(action.dataset.action)) {
+    const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
+    if (action.dataset.action === "whiteboard-copy") { if (selected) { whiteboardClipboard = structuredClone(serializableWhiteboardObjects().find((object) => object.id === selected.id)); setWhiteboardStatus("Selected object copied."); } else setWhiteboardStatus("Select an object first."); return; }
+    if (action.dataset.action === "whiteboard-paste") { if (!whiteboardClipboard) { setWhiteboardStatus("Copy an object before pasting."); return; } pushWhiteboardHistory(); const copy = duplicateWhiteboardObject(whiteboardClipboard); whiteboardObjects.push(copy); whiteboardSelectedObjectId = copy.id; hydrateWhiteboardImages(() => renderWhiteboardObjects()); saveWhiteboard(); return; }
+    if (!selected) { setWhiteboardStatus("Select an object first."); return; }
+    if (action.dataset.action === "whiteboard-push-2d") {
+      if (!["rectangle", "ellipse", "triangle"].includes(selected.original2DType)) { setWhiteboardStatus("Select a shape that was pulled from 2D into 3D first."); return; }
+      pushWhiteboardHistory();
+      selected.type = selected.original2DType;
+      delete selected.original2DType; delete selected.shapeLabel; delete selected.depth;
+      renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus("The shape was pushed back to its original 2D form."); return;
+    }
+    if (["whiteboard-rotate-left", "whiteboard-rotate-right"].includes(action.dataset.action)) {
+      if (["path", "dimension"].includes(selected.type)) { setWhiteboardStatus("Rotation is available for images, text, lines, arrows, and 2D or 3D shapes."); return; }
+      pushWhiteboardHistory(); selected.rotation = (selected.rotation ?? 0) + (action.dataset.action === "whiteboard-rotate-left" ? -Math.PI / 12 : Math.PI / 12); renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus("Selected object rotated 15 degrees."); return;
+    }
+    pushWhiteboardHistory();
+    if (action.dataset.action === "whiteboard-duplicate") { const copy = duplicateWhiteboardObject(selected); whiteboardObjects.push(copy); whiteboardSelectedObjectId = copy.id; hydrateWhiteboardImages(() => renderWhiteboardObjects()); }
+    else { whiteboardObjects = whiteboardObjects.filter((object) => object.id !== selected.id); whiteboardSelectedObjectId = ""; }
+    renderWhiteboardObjects(); saveWhiteboard(); return;
+  }
+  if (action.dataset.action === "whiteboard-undo" || action.dataset.action === "whiteboard-redo") {
+    const canvas = whiteboardCanvas();
+    if (!canvas) return;
+    const source = action.dataset.action === "whiteboard-undo" ? whiteboardUndoStack : whiteboardRedoStack;
+    const target = action.dataset.action === "whiteboard-undo" ? whiteboardRedoStack : whiteboardUndoStack;
+    const snapshot = source.pop();
+    if (!snapshot) return;
+    target.push(JSON.stringify(serializableWhiteboardObjects()));
+    whiteboardObjects = JSON.parse(snapshot); whiteboardSelectedObjectId = ""; hydrateWhiteboardImages(() => renderWhiteboardObjects(canvas)); renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls();
+    return;
+  }
+  if (action.dataset.action === "whiteboard-clear") {
+    const confirmation = document.querySelector("[data-whiteboard-clear-confirmation]");
+    if (confirmation) confirmation.hidden = false;
+    return;
+  }
+  if (action.dataset.action === "whiteboard-keep") {
+    const confirmation = document.querySelector("[data-whiteboard-clear-confirmation]");
+    if (confirmation) confirmation.hidden = true;
+    return;
+  }
+  if (action.dataset.action === "whiteboard-confirm-clear") {
+    const canvas = whiteboardCanvas();
+    if (canvas) { pushWhiteboardHistory(); whiteboardObjects = []; whiteboardSelectedObjectId = ""; renderWhiteboardObjects(canvas); saveWhiteboard(canvas); }
+    whiteboardRedoStack = [];
+    updateWhiteboardHistoryControls();
+    const confirmation = document.querySelector("[data-whiteboard-clear-confirmation]");
+    if (confirmation) confirmation.hidden = true;
+    return;
+  }
+  if (action.dataset.action === "voice-meter-start") {
+    void startVoiceMeter();
+    return;
+  }
+  if (action.dataset.action === "voice-meter-stop") {
+    stopVoiceMeter(action.dataset.meterStopMessage);
+    return;
+  }
+  if (action.dataset.action === "open-voice-meter-display") {
+    const display = document.querySelector("#platform-large-voice-meter-display");
+    if (display) {
+      voiceMeterDisplayTrigger = action;
+      display.hidden = false;
+      display.focus();
+    }
+    return;
+  }
+  if (action.dataset.action === "close-voice-meter-display") {
+    const display = document.querySelector("#platform-large-voice-meter-display");
+    if (display) display.hidden = true;
+    voiceMeterDisplayTrigger?.focus();
+    voiceMeterDisplayTrigger = null;
+    return;
+  }
+  if (action.dataset.action === "reflection-dictate") {
+    void startReflectionDictation(action);
+    return;
+  }
+  if (action.dataset.action === "reflection-dictate-stop") {
+    reflectionRecognition?.stop();
+    const status = action.closest("form")?.querySelector("[data-reflection-speech-status]");
+    if (status) status.textContent = "Stopping…";
+    return;
+  }
+  if (action.dataset.action === "open-manage-classes-section") {
+    event.preventDefault();
+    pendingScrollTarget = action.dataset.scrollTarget ?? "";
+    navigate(ROUTES.TEACHER_CLASSES);
+    return;
+  }
+  if (action.dataset.action === "open-teacher-dashboard-section") {
+    event.preventDefault();
+    pendingScrollTarget = action.dataset.scrollTarget ?? "";
+    navigate(ROUTES.TEACHER_DASHBOARD);
+    return;
+  }
+  if (action.dataset.action === "close-optional-dashboard-section") {
+    const section = action.closest("[data-optional-dashboard-section]");
+    if (section) section.hidden = true;
+    document.querySelector("#teacher-classroom-tools")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    return;
+  }
+  if (["prepare-class-resource", "push-class-resource", "hide-class-resource", "push-saved-resource", "remove-saved-resource"].includes(action.dataset.action)) {
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    const region = action.closest("[data-class-resource-teacher]");
+    const form = region?.querySelector('[data-form="class-resource"]');
+    if (!classId || !region || !form) return;
+    let result = { ok: true };
+    if (["prepare-class-resource", "push-class-resource"].includes(action.dataset.action)) {
+      const result = classResourceSharing.prepare(classId, { type: form.elements.type.value, title: form.elements.title.value, url: form.elements.url.value, release: form.elements.release.value });
+      if (!result.ok) {
+        const status = region.querySelector("[data-class-resource-status]");
+        if (status) status.textContent = "Add a title and a safe http(s) or platform resource address.";
+        return;
+      }
+    }
+    if (action.dataset.action === "push-class-resource") result = classResourceSharing.push(classId, form.elements.slot.value, form.elements.rowId.value);
+    if (action.dataset.action === "hide-class-resource") classResourceSharing.stop(classId, action.dataset.resourceIndex, action.dataset.resourceRowId);
+    if (action.dataset.action === "push-saved-resource") result = classResourceSharing.pushSaved(classId, action.dataset.resourceId, form.elements.slot.value, form.elements.rowId.value);
+    if (action.dataset.action === "remove-saved-resource") classResourceSharing.removeSaved(classId, action.dataset.resourceId);
+    region.outerHTML = classResourceTeacherMarkup(classId);
+    if (!result.ok && result.reason === "tray-full") {
+      const status = document.querySelector("[data-class-resource-status]");
+      if (status) status.textContent = "Every current slot is full. Choose Add an Additional Slot, replace a slot, or uncheck a resource.";
+    }
+    return;
+  }
+  if (action.dataset.action === "print-classroom-codes") {
+    window.print();
+    return;
+  }
+  if (action.dataset.action === "timer-recommend-phases") {
+    const form = action.closest('form[data-form="class-timer-schedule"]');
+    const duration = Number(form?.querySelector('[name="durationMinutes"]')?.value);
+    const recommended = recommendedTimerPhases(duration);
+    recommended.forEach((phase) => {
+      const input = form?.querySelector(`[data-phase-start="${phase.key}"]`);
+      if (input) input.value = String(phase.startMinute);
+    });
+    return;
+  }
+  if (action.dataset.action === "timer-test-sound") {
+    const form = action.closest("form");
+    const selected = form?.querySelector(`[name="${action.dataset.soundField}"]`)?.value;
+    if (selected === "Custom Upload") {
+      const fileField = form?.querySelector(`[name="${action.dataset.soundField}File"]`);
+      const stored = classTimerSchedule.read()[action.dataset.soundField.replace("Sound", "CustomAudio")];
+      void readTimerAudioFile(fileField?.files?.[0]).then((audio) => playTimerSound(selected, audio || stored)).catch(() => {
+        const output = form?.querySelector("[data-class-timer-schedule-error]");
+        if (output) { output.textContent = "Choose a valid custom audio file of 750 KB or smaller."; output.hidden = false; }
+      });
+    } else playTimerSound(selected);
+    return;
+  }
+  if (action.dataset.action === "close-classroom-codes") {
+    oneTimeClassroomCodes = null;
+    const region = document.querySelector("[data-classroom-setup]");
+    if (region) region.outerHTML = classroomSetupMarkup();
+    return;
+  }
+  if (action.dataset.action === "evidence-start") {
+    evidenceDraft = { type: action.dataset.evidenceType, detail: "", fileName: "", file: null, previewUrl: "", hasSelection: false };
+    evidenceNotice = "";
+    renderEvidenceFoundation();
+    document.querySelector("#evidence-capture-title")?.focus();
+    return;
+  }
+  if (action.dataset.action === "evidence-teacher-launch") {
+    void launchEvidencePilot();
+    return;
+  }
+  if (action.dataset.action === "evidence-teacher-refresh") {
+    void refreshTeacherLiveEvidence();
+    return;
+  }
+  if (action.dataset.action === "evidence-teacher-live-open") {
+    void openTeacherLiveEvidence(action.dataset.evidenceId);
+    return;
+  }
+  if (action.dataset.action === "governance-simulation-cancel") {
+    evidenceGovernanceSimulation.cancel();
+    renderGovernanceSimulation();
+    return;
+  }
+  if (action.dataset.action === "governance-simulation-reset") {
+    evidenceGovernanceSimulation.reset();
+    renderGovernanceSimulation();
+    return;
+  }
+  if (action.dataset.action === "google-connection-preview-begin") {
+    googleConnectionPreview.begin();
+    renderGoogleConnectionPreview();
+    return;
+  }
+  if (action.dataset.action === "google-connection-preview-cancel") {
+    googleConnectionPreview.cancel();
+    renderGoogleConnectionPreview();
+    return;
+  }
+  if (action.dataset.action === "google-connection-preview-disconnect") {
+    googleConnectionPreview.disconnect();
+    renderGoogleConnectionPreview();
+    return;
+  }
+  if (action.dataset.action === "teacher-evidence-open") {
+    teacherEvidenceSelection = action.dataset.evidenceId;
+    renderTeacherEvidenceReview();
+    document.querySelector(".platform-teacher-evidence-detail")?.focus();
+    return;
+  }
+  if (action.dataset.action === "evidence-retake") {
+    if (evidenceDraft?.previewUrl) URL.revokeObjectURL(evidenceDraft.previewUrl);
+    evidenceDraft = { ...evidenceDraft, detail: "", fileName: "", file: null, previewUrl: "", hasSelection: false };
+    evidenceNotice = "Ready for another capture. Nothing was saved.";
+    renderEvidenceFoundation();
+    return;
+  }
+  if (action.dataset.action === "evidence-cancel") {
+    if (evidenceDraft?.previewUrl) URL.revokeObjectURL(evidenceDraft.previewUrl);
+    evidenceDraft = null;
+    evidenceNotice = "Capture canceled. Nothing was saved.";
+    renderEvidenceFoundation();
+    return;
+  }
+  if (action.dataset.action === "evidence-open-log") {
+    document.querySelector("#student-evidence-log")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    document.querySelector("#evidence-log-title")?.focus();
+    return;
+  }
+  if (action.dataset.action === "evidence-save") {
+    void saveEvidenceDraft();
+    return;
+  }
   if (action.dataset.action === "sign-out") {
+    stopVoiceMeter();
     storeLessonTimerDisplayOpen(false);
     lessonTimer.clear();
     session.signOut();
@@ -956,6 +4595,15 @@ function handleClick(event) {
     todaysMission.clear();
     studentDisplayMode.clear();
     navigate(ROUTES.WELCOME, { replace: true });
+    if (studentTimerPopout && !studentTimerPopout.closed) studentTimerPopout.close();
+    studentTimerPopout = null;
+    if (classroomPresentationWindow && !classroomPresentationWindow.closed) classroomPresentationWindow.close();
+    classroomPresentationWindow = null;
+    if (productionIdentityConfig.enabled) void productionIdentity.signOut();
+    pb002jClasswide.signOut();
+  }
+  if (action.dataset.action === "pb002j-withdraw") {
+    void pb002jClasswide.handleWithdraw();
   }
   if (action.dataset.action === "reserved-nav") {
     const status = document.querySelector("#teacher-nav-status");
@@ -967,6 +4615,40 @@ function handleClick(event) {
     if (!student || student.classId !== state.pendingClassId) return navigate(ROUTES.STUDENT_ENTRY, { replace: true });
     session.selectStudent(student.id);
     navigate(ROUTES.STUDENT_IDENTIFIER);
+  }
+  if (action.dataset.action === "instant-timer") {
+    lessonTimer.setDuration(Number(action.dataset.instantMinutes));
+    lessonTimer.start();
+    syncLessonTimerPresentation();
+    return;
+  }
+  if (action.dataset.action === "stopwatch-start") {
+    if (stopwatchInterval === null) stopwatchInterval = window.setInterval(() => {
+      stopwatchSeconds += 1;
+      document.querySelectorAll("[data-stopwatch-output]").forEach((output) => { output.textContent = formatLessonTime(stopwatchSeconds); });
+    }, 1000);
+    return;
+  }
+  if (action.dataset.action === "stopwatch-pause") {
+    if (stopwatchInterval !== null) window.clearInterval(stopwatchInterval);
+    stopwatchInterval = null;
+    return;
+  }
+  if (action.dataset.action === "stopwatch-reset") {
+    if (stopwatchInterval !== null) window.clearInterval(stopwatchInterval);
+    stopwatchInterval = null;
+    stopwatchSeconds = 0;
+    document.querySelectorAll("[data-stopwatch-output]").forEach((output) => { output.textContent = formatLessonTime(0); });
+    return;
+  }
+  if (action.dataset.action === "timer-view-mode") {
+    setPresentationTimerViewMode(action.dataset.timerViewMode);
+    return;
+  }
+  if (action.dataset.action === "timer-start-or-resume") {
+    lessonTimer.read().status === LESSON_TIMER_STATES.PAUSED ? lessonTimer.resume() : lessonTimer.start();
+    syncLessonTimerPresentation();
+    return;
   }
   const timerActions = {
     "timer-start": () => lessonTimer.start(),
@@ -995,6 +4677,76 @@ function handleClick(event) {
       status.textContent = "Memo cleared. No memo is currently saved.";
     }
   }
+  if (action.dataset.action === "apply-memo-format") {
+    if (!applyMemoFormatToSelection()) {
+      const status = document.querySelector("[data-teacher-memo-status]");
+      if (status) status.textContent = "Highlight some memo text, then apply formatting.";
+    }
+  }
+  if (action.dataset.action === "apply-class-setup") {
+    const section = action.closest(".platform-class-setup-sharing");
+    const currentId = classSetupProfiles.read().currentClassId;
+    preserveCurrentClassSetup(currentId);
+    const all = section?.querySelector("[data-class-setup-all]")?.checked;
+    const targets = all
+      ? pilotTeacherClasses.filter((item) => item.id !== currentId).map((item) => item.id)
+      : [...(section?.querySelectorAll("[data-class-setup-target]:checked") ?? [])].map((input) => input.value);
+    const components = Object.fromEntries([...(section?.querySelectorAll("[data-class-setup-component]") ?? [])].map((input) => [input.dataset.classSetupComponent, input.checked]));
+    const targetNames = pilotTeacherClasses.filter((item) => targets.includes(item.id)).map((item) => item.periodLabel).join(", ");
+    if (!targets.length || (!components.timer && !components.memo && !components.resources && !components.reflection)) {
+      const status = section?.querySelector("[data-class-setup-status]");
+      if (status) status.textContent = "Choose at least one class and one setup type.";
+      return;
+    }
+    if (!window.confirm(`Apply the selected setup to ${targetNames}? Unselected settings will remain unchanged.`)) return;
+    classSetupProfiles.copy(currentId, targets, components);
+    if (components.resources) targets.forEach((classId) => classResourceSharing.copyPlan(currentId, classId));
+    if (components.reflection) {
+      const required = weeklyReflections.requirement(currentId);
+      targets.forEach((classId) => weeklyReflections.setRequirement(classId, required));
+    }
+    const status = section?.querySelector("[data-class-setup-status]");
+    if (status) status.textContent = `Setup copied to ${targetNames}.`;
+  }
+  if (action.dataset.action === "save-message-to-library") {
+    const title = document.querySelector("[data-message-library-title]")?.value ?? "";
+    const memo = teacherMemo.read();
+    const result = messageLibrary.save({ title, ...memo });
+    if (!result.ok) {
+      const status = document.querySelector("[data-message-library-status]");
+      if (status) status.textContent = result.reason === "limit" ? "The 20-message library is full." : "Add a title and save a memo first.";
+      return;
+    }
+    render();
+  }
+  if (action.dataset.action === "save-class-message") {
+    const region = action.closest(".platform-class-message-creator");
+    const result = messageLibrary.save({
+      title: region?.querySelector("[data-class-message-title]")?.value ?? "",
+      text: region?.querySelector("[data-class-message-text]")?.value ?? "",
+      color: region?.querySelector("[data-class-message-color]")?.value ?? "white",
+      size: region?.querySelector("[data-class-message-size]")?.value ?? "extra-large",
+      style: region?.querySelector("[data-class-message-style]")?.value ?? "bold",
+    });
+    if (!result.ok) {
+      const status = region?.querySelector("[data-class-message-status]");
+      if (status) status.textContent = result.reason === "limit" ? "The shared library is full. Delete an older message first." : "Add both a message title and message text.";
+      return;
+    }
+    render();
+    return;
+  }
+  if (action.dataset.action === "use-saved-message") {
+    const message = messageLibrary.read().messages.find((item) => item.id === action.dataset.messageId);
+    if (message) { teacherMemo.save(message.text, message); render(); }
+  }
+  if (action.dataset.action === "delete-saved-message") {
+    if (window.confirm("Delete this saved message?")) { messageLibrary.remove(action.dataset.messageId); render(); }
+  }
+  if (action.dataset.action === "save-message-assignments") {
+    document.querySelectorAll("[data-message-assignment]").forEach((select) => messageLibrary.assign(action.dataset.classId, select.dataset.messageAssignment, select.value));
+    render();
+  }
   if (action.dataset.action === "clear-todays-mission") {
     const confirmation = document.querySelector("[data-todays-mission-confirmation]");
     if (confirmation && confirmation.hidden) {
@@ -1013,10 +4765,7 @@ function handleClick(event) {
     const form = document.querySelector('[data-form="todays-mission"]');
     if (form) {
       form.elements.title.value = "";
-      form.elements.focusChoice.value = "";
-      form.elements.focus.value = "";
-      syncMissionFocusChoice(form);
-      form.querySelectorAll('input[type="radio"]').forEach((control) => {
+      form.querySelectorAll('input[type="checkbox"]').forEach((control) => {
         control.checked = false;
       });
     }
@@ -1032,7 +4781,7 @@ function handleClick(event) {
     }
     if (status) {
       status.dataset.state = "empty";
-      status.textContent = "Today's Mission cleared. No mission announcement is currently saved.";
+      status.textContent = "Today’s Plan cleared. No plan is currently saved.";
     }
     closeTodaysMissionClearConfirmation({ restoreFocus: false });
   }
@@ -1042,27 +4791,107 @@ function handleClick(event) {
     if (result.ok) syncStudentDisplayPresentation();
   }
   if (action.dataset.action === "open-timer-display") {
+    syncStudentDisplayPresentation();
     const display = document.querySelector("#platform-student-timer-display");
     if (display) {
       lessonTimerDisplayTrigger = action;
       storeLessonTimerDisplayOpen(true);
       display.hidden = false;
       display.focus();
+      window.requestAnimationFrame(fitStudentMemoPresentation);
+      if (studentDisplayVoiceMeterIsEnabled() && !voiceMeterStream) void startVoiceMeter();
     }
   }
+  if (action.dataset.action === "open-name-picker-display") {
+    syncStudentDisplayPresentation();
+    installSmartboardToolPopoutButtons(document);
+    const display = document.querySelector("#platform-student-timer-display");
+    const picker = display?.querySelector('[data-smartboard-tool="names"]');
+    if (picker && display) {
+      picker.hidden = false;
+      updateNamePickerView(document);
+      display.dataset.toolOnly = "names";
+      display.hidden = false;
+      installSmartboardPopoutFullscreenButton(picker, document);
+      picker.focus?.();
+    }
+  }
+  if (action.dataset.action === "open-timer-popout") {
+    openStudentTimerPopout();
+  }
+  if (action.dataset.action === "open-classroom-presentation-window") {
+    openClassroomPresentationWindow();
+  }
+}
+
+function renderEvidenceFoundation() {
+  const region = document.querySelector("[data-evidence-foundation]");
+  if (!region) return;
+  const workspace = region.querySelector(".platform-evidence-workspace");
+  if (workspace) workspace.outerHTML = evidenceCaptureMarkup();
+}
+
+function renderTeacherEvidenceReview() {
+  const region = document.querySelector("[data-teacher-evidence-review]");
+  if (region) region.outerHTML = teacherEvidenceReviewMarkup();
+}
+
+function renderGovernanceSimulation() {
+  const region = document.querySelector("[data-governance-simulation]");
+  if (!region) return;
+  const policyReady = evidenceGovernance.read().status === EVIDENCE_GOVERNANCE_STATUS.DRAFT_SAVED;
+  region.outerHTML = governanceSimulationMarkup({ policyReady });
+}
+
+function renderGoogleConnectionPreview() {
+  const region = document.querySelector("[data-google-connection-preview]");
+  if (region) region.outerHTML = googleConnectionPreviewMarkup();
 }
 
 function render() {
   const requestedRoute = currentRoute();
   if (!knownRoutes.has(requestedRoute)) return navigate(ROUTES.WELCOME, { replace: true });
+  if (requestedRoute === ROUTES.PREVIEW_CLASSROOM_DEMO) {
+    setClassroomDemoMode(true);
+    session.signInTeacher("teacher-preview-1");
+    seedClassroomDemo();
+    return navigate(ROUTES.TEACHER_DASHBOARD, { replace: true });
+  }
+  if (requestedRoute === ROUTES.PREVIEW_TEACHER) {
+    setClassroomDemoMode(false);
+    session.signInTeacher("teacher-preview-1");
+    return navigate(ROUTES.TEACHER_DASHBOARD, { replace: true });
+  }
+  if (requestedRoute === ROUTES.PREVIEW_STUDENT) {
+    session.signInStudent("class-preview-1", "student-preview-1");
+    return navigate(ROUTES.STUDENT_DASHBOARD, { replace: true });
+  }
   const state = session.read();
   const allowedRoute = guardRoute(requestedRoute, state);
   if (allowedRoute !== requestedRoute) return navigate(allowedRoute, { replace: true });
   root.innerHTML = viewForRoute(allowedRoute, state);
+  if (allowedRoute === ROUTES.TEACHER_LOGIN) mountProductionGoogleSignIn();
+  if (allowedRoute === ROUTES.TEACHER_DASHBOARD) pb002jClasswide.mount(root, "teacher");
+  if (allowedRoute === ROUTES.STUDENT_DASHBOARD) pb002jClasswide.mount(root, "student");
   manageLessonTimerPresentation(allowedRoute);
+  if (allowedRoute === ROUTES.TEACHER_DASHBOARD) {
+    syncStudentDisplayPresentation();
+    updateNamePickerView(document);
+  }
   const studentDisplayRestored = restoreLessonTimerDisplay(allowedRoute, state);
   window.requestAnimationFrame(() => {
-    if (studentDisplayRestored) {
+    const scrollTarget = pendingScrollTarget ? document.querySelector(`#${pendingScrollTarget}`) : null;
+    if (scrollTarget) {
+      if (scrollTarget.matches("[data-optional-dashboard-section]")) scrollTarget.hidden = false;
+      if (pendingOpenClassResourceEditor) {
+        const resourceEditor = scrollTarget.querySelector(".platform-class-resource-editor");
+        if (resourceEditor) resourceEditor.open = true;
+        pendingOpenClassResourceEditor = false;
+      }
+      pendingScrollTarget = "";
+      scrollTarget.scrollIntoView({ behavior: "smooth", block: "start" });
+      scrollTarget.querySelector("h3")?.focus({ preventScroll: true });
+    } else if (studentDisplayRestored) {
       document.querySelector("#platform-student-timer-display")?.focus({ preventScroll: true });
     } else {
       document.querySelector("#platform-main")?.focus({ preventScroll: true });
@@ -1070,8 +4899,62 @@ function render() {
   });
 }
 
+function mountProductionGoogleSignIn() {
+  if (!productionIdentityConfig.googleEnabled) return;
+  const target = document.querySelector("[data-production-google-signin]");
+  if (!target) return;
+  const renderButton = () => {
+    if (!globalThis.google?.accounts?.id || !target.isConnected) return;
+    globalThis.google.accounts.id.initialize({ client_id: productionIdentityConfig.clientId, ux_mode: "redirect", login_uri: `${window.location.origin}/api/auth/v1/google` });
+    globalThis.google.accounts.id.renderButton(target, { type: "standard", theme: "outline", size: "large", text: "continue_with", width: 280 });
+  };
+  if (globalThis.google?.accounts?.id) return renderButton();
+  if (document.querySelector('script[data-production-google-identity]')) return;
+  const script = document.createElement("script");
+  script.src = "https://accounts.google.com/gsi/client";
+  script.async = true;
+  script.dataset.productionGoogleIdentity = "true";
+  script.addEventListener("load", renderButton, { once: true });
+  document.head.append(script);
+}
+
 root.addEventListener("submit", handleSubmit);
 root.addEventListener("click", handleClick);
+root.addEventListener("click", (event) => {
+  const action = event.target.closest?.('[data-action="open-name-picker-display"]');
+  if (!action) return;
+  const display = document.querySelector("#platform-student-timer-display");
+  const picker = display?.querySelector('[data-smartboard-tool="names"]');
+  if (!display || !picker) return;
+  installSmartboardToolPopoutButtons(document);
+  picker.hidden = false;
+  updateNamePickerView(document);
+  display.dataset.toolOnly = "names";
+  display.hidden = false;
+  installSmartboardPopoutFullscreenButton(picker, document);
+  picker.focus?.();
+});
+root.addEventListener("pointerover", (event) => {
+  if (!window.matchMedia("(hover: hover)").matches) return;
+  const category = event.target instanceof Element ? event.target.closest(".platform-teacher-menu-category") : null;
+  if (!category || category.contains(event.relatedTarget)) return;
+  document.querySelectorAll(".platform-teacher-menu-category[open]").forEach((item) => { if (item !== category) item.open = false; });
+  category.open = true;
+});
+root.addEventListener("pointerout", (event) => {
+  if (!window.matchMedia("(hover: hover)").matches) return;
+  const category = event.target instanceof Element ? event.target.closest(".platform-teacher-menu-category") : null;
+  if (!category || category.contains(event.relatedTarget)) return;
+  category.open = false;
+});
+root.addEventListener("focusin", (event) => {
+  const category = event.target instanceof Element ? event.target.closest(".platform-teacher-menu-category") : null;
+  if (category) category.open = true;
+});
+root.addEventListener("focusout", (event) => {
+  const category = event.target instanceof Element ? event.target.closest(".platform-teacher-menu-category") : null;
+  if (category && !category.contains(event.relatedTarget)) category.open = false;
+});
 function closeTodaysMissionClearConfirmation({ restoreFocus = true } = {}) {
   const confirmation = document.querySelector("[data-todays-mission-confirmation]");
   if (!confirmation || confirmation.hidden) return;
@@ -1084,11 +4967,10 @@ function closeTodaysMissionClearConfirmation({ restoreFocus = true } = {}) {
 function handleTodaysMissionEdit(event) {
   const missionForm = event.target.closest('[data-form="todays-mission"]');
   if (missionForm) {
-    syncMissionFocusChoice(missionForm);
     const title = missionForm.elements.title?.value ?? "";
-    const focus = missionFocusValue(missionForm);
-    const builder = new FormData(missionForm).get("builder") ?? "";
-    const workshop = new FormData(missionForm).get("workshop") ?? "";
+    const focus = title;
+    const builder = missionForm.elements.builder.checked ? TODAYS_MISSION_AVAILABILITY.AVAILABLE : TODAYS_MISSION_AVAILABILITY.NOT_PART;
+    const workshop = missionForm.elements.workshop.checked ? TODAYS_MISSION_AVAILABILITY.AVAILABLE : TODAYS_MISSION_AVAILABILITY.NOT_PART;
     const saved = todaysMission.read();
     const titleCount = missionForm.querySelector("[data-todays-mission-title-count]");
     const focusCount = missionForm.querySelector("[data-todays-mission-focus-count]");
@@ -1107,22 +4989,679 @@ function handleTodaysMissionEdit(event) {
       status.textContent = hasUnsavedChanges
         ? "Unsaved changes. Save before refreshing or opening Student Display."
         : (saved.title
-            ? "Today's Mission saved for refresh and Student Display."
-            : "No Today's Mission has been prepared for this browser session.");
+            ? "Today’s Plan is saved for this class and Student Display."
+            : "No plan has been prepared for this class today.");
     }
     return true;
   }
   return false;
 }
 
+let smartboardToolZIndex = 30;
+const SMARTBOARD_TOOL_DEFAULT_STYLES = Object.freeze({
+  timer: "left: 3%; top: 12%;",
+  message: "right: 3%; top: 12%;",
+  stopwatch: "left: 35%; top: 18%;",
+  voice: "right: 16%; top: 18%;",
+  names: "left: 24%; top: 8%; width: min(28rem, 82vw);",
+  whiteboard: "left: 8%; top: 8%; width: min(46rem, 82vw); height: min(34rem, 72vh);",
+});
+
+function bringSmartboardToolForward(tool) {
+  if (!tool) return;
+  smartboardToolZIndex += 1;
+  tool.style.zIndex = String(smartboardToolZIndex);
+}
+
+function resetSmartboardToolPositions(documentRef = document) {
+  documentRef.querySelectorAll("[data-smartboard-tool]").forEach((tool) => {
+    const initialStyle = tool.dataset.smartboardDefaultStyle ?? SMARTBOARD_TOOL_DEFAULT_STYLES[tool.dataset.smartboardTool] ?? "";
+    tool.setAttribute("style", initialStyle);
+    tool.style.zIndex = "";
+  });
+}
+
+function installSmartboardToolPopoutButtons(documentRef = document) {
+  documentRef.querySelectorAll("[data-smartboard-tool]").forEach((tool) => {
+    const header = tool.querySelector("[data-smartboard-drag-handle]");
+    const close = header?.querySelector('[data-action="close-smartboard-tool"]');
+    if (!header || !close || header.querySelector('[data-action="popout-smartboard-tool"]')) return;
+    const button = documentRef.createElement("button");
+    button.type = "button";
+    button.dataset.action = "popout-smartboard-tool";
+    button.className = "platform-smartboard-popout-button";
+    button.setAttribute("aria-label", `Pop out ${tool.dataset.smartboardTool} tool`);
+    button.title = "Move this tool to its own window";
+    button.textContent = "Pop Out ↗";
+    header.insertBefore(button, close);
+  });
+}
+
+function smartboardToolSource(name) {
+  if (classroomPresentationWindow && !classroomPresentationWindow.closed) {
+    const tool = classroomPresentationWindow.document.querySelector(`[data-smartboard-tool="${name}"]`);
+    if (tool) return tool;
+  }
+  return document.querySelector(`[data-smartboard-tool="${name}"]`);
+}
+
+function syncSmartboardToolPopout(name) {
+  const popout = smartboardToolPopouts.get(name);
+  const source = smartboardToolSource(name);
+  if (!popout || popout.closed || !source) return;
+  const target = popout.document.querySelector("[data-smartboard-tool]");
+  if (!target) return;
+  target.innerHTML = source.innerHTML;
+  target.querySelector('[data-action="popout-smartboard-tool"]')?.remove();
+  installSmartboardPopoutFullscreenButton(target, popout.document);
+}
+
+function installSmartboardPopoutFullscreenButton(tool, documentRef) {
+  const header = tool?.querySelector("header");
+  const close = header?.querySelector('[data-action="close-smartboard-tool"]');
+  if (!header || !close || header.querySelector('[data-action="fullscreen-smartboard-tool"]')) return;
+  const button = documentRef.createElement("button");
+  button.type = "button";
+  button.dataset.action = "fullscreen-smartboard-tool";
+  button.className = "platform-smartboard-fullscreen-button";
+  button.textContent = "Full Screen";
+  header.insertBefore(button, close);
+}
+
+function openSmartboardToolPopout(sourceTool) {
+  const name = sourceTool?.dataset.smartboardTool;
+  if (!name) return null;
+  const existing = smartboardToolPopouts.get(name);
+  if (existing && !existing.closed) { existing.focus(); syncSmartboardToolPopout(name); return existing; }
+  const title = sourceTool.querySelector("header strong")?.textContent?.trim() || "Presentation Tool";
+  const styles = [...document.querySelectorAll('link[rel="stylesheet"]')].map((link) => `<link rel="stylesheet" href="${escapeHtml(link.href)}">`).join("");
+  const clone = sourceTool.cloneNode(true);
+  clone.hidden = false;
+  clone.removeAttribute("style");
+  clone.querySelector('[data-action="popout-smartboard-tool"]')?.remove();
+  installSmartboardPopoutFullscreenButton(clone, clone.ownerDocument);
+  const sourceWindow = sourceTool.ownerDocument?.defaultView || window;
+  const popout = sourceWindow.open("", `thinkamigbob-tool-${name}`, "popup=yes,width=520,height=640,resizable=yes");
+  if (!popout) return null;
+  smartboardToolPopouts.set(name, popout);
+  popout.document.write(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)} · THINKamigBOB</title>${styles}<style>html,body{margin:0;min-height:100%;background:#dce9ee}.platform-smartboard-tool{position:relative!important;inset:auto!important;display:grid!important;width:auto!important;min-height:calc(100vh - 1rem);max-height:none!important;margin:.5rem}.platform-smartboard-resize-handle,.platform-floating-tool-switcher{display:none!important}</style></head><body class="platform-app">${clone.outerHTML}</body></html>`);
+  popout.document.close();
+  popout.document.addEventListener("click", (event) => {
+    const action = event.target.closest("[data-action]");
+    if (!action) return;
+    if (action.dataset.action === "close-smartboard-tool") { popout.close(); return; }
+    if (action.dataset.action === "fullscreen-smartboard-tool") {
+      if (popout.document.fullscreenElement) void popout.document.exitFullscreen();
+      else void popout.document.documentElement.requestFullscreen();
+      return;
+    }
+    const source = smartboardToolSource(name);
+    const candidates = [...(source?.querySelectorAll(`[data-action="${action.dataset.action}"]`) || [])];
+    const matching = candidates.find((candidate) => !action.dataset.studentId || candidate.dataset.studentId === action.dataset.studentId) || candidates[0];
+    matching?.click();
+    window.setTimeout(() => syncSmartboardToolPopout(name), 40);
+    window.setTimeout(() => syncSmartboardToolPopout(name), 1150);
+  });
+  popout.addEventListener("beforeunload", () => smartboardToolPopouts.delete(name));
+  popout.focus();
+  return popout;
+}
+
+function installSmartboardToolGestures(eventTarget) {
+  installSmartboardToolPopoutButtons(eventTarget.nodeType === 9 ? eventTarget : eventTarget.ownerDocument);
+  eventTarget.querySelectorAll?.("[data-smartboard-tool]").forEach((tool) => {
+    if (!tool.dataset.smartboardDefaultStyle) tool.dataset.smartboardDefaultStyle = tool.getAttribute("style") || "";
+  });
+  eventTarget.addEventListener("pointerdown", (event) => {
+    const resizeHandle = event.target.closest?.("[data-smartboard-resize-handle]");
+    const dragHandle = event.target.closest?.("[data-smartboard-drag-handle]");
+    const handle = resizeHandle || dragHandle;
+    const tool = handle?.closest("[data-smartboard-tool]");
+    if (!handle || !tool || (!resizeHandle && event.target.closest("button"))) return;
+    if (tool.dataset.smartboardDefaultStyle === undefined) tool.dataset.smartboardDefaultStyle = SMARTBOARD_TOOL_DEFAULT_STYLES[tool.dataset.smartboardTool] ?? tool.getAttribute("style") ?? "";
+    const view = eventTarget.defaultView || window;
+    const bounds = { left: 0, top: 0, width: view.innerWidth, height: view.innerHeight };
+    const rect = tool.getBoundingClientRect();
+    bringSmartboardToolForward(tool);
+    smartboardDrag = {
+      tool,
+      mode: resizeHandle ? "resize" : "move",
+      pointerId: event.pointerId,
+      handle,
+      bounds,
+      startX: event.clientX,
+      startY: event.clientY,
+      startLeft: rect.left,
+      startTop: rect.top,
+      startWidth: rect.width,
+      startHeight: rect.height,
+      offsetX: event.clientX - rect.left,
+      offsetY: event.clientY - rect.top,
+    };
+    handle.setPointerCapture?.(event.pointerId);
+    event.preventDefault();
+  });
+
+  eventTarget.addEventListener("pointermove", (event) => {
+    if (!smartboardDrag || smartboardDrag.pointerId !== event.pointerId) return;
+    const { tool, bounds } = smartboardDrag;
+    if (smartboardDrag.mode === "resize") {
+      const width = Math.max(220, Math.min(bounds.width - smartboardDrag.startLeft, smartboardDrag.startWidth + event.clientX - smartboardDrag.startX));
+      const height = Math.max(150, Math.min(bounds.height - smartboardDrag.startTop - 52, smartboardDrag.startHeight + event.clientY - smartboardDrag.startY));
+      tool.style.width = `${width}px`;
+      tool.style.height = `${height}px`;
+      tool.style.maxHeight = "none";
+    } else {
+      const left = Math.max(0, Math.min(bounds.width - tool.offsetWidth, event.clientX - smartboardDrag.offsetX));
+      const top = Math.max(0, Math.min(bounds.height - tool.offsetHeight, event.clientY - smartboardDrag.offsetY));
+      tool.style.right = "auto";
+      tool.style.left = `${left}px`;
+      tool.style.top = `${top}px`;
+    }
+    event.preventDefault();
+  });
+
+  const endGesture = (event) => {
+    if (smartboardDrag && event.pointerId === smartboardDrag.pointerId) smartboardDrag = null;
+  };
+  eventTarget.addEventListener("pointerup", endGesture);
+  eventTarget.addEventListener("pointercancel", endGesture);
+}
+
+installSmartboardToolGestures(root);
+
+root.addEventListener("dragstart", (event) => {
+  const student = event.target.closest("[data-group-student-id]");
+  if (!student || !event.dataTransfer) return;
+  event.dataTransfer.effectAllowed = "move";
+  event.dataTransfer.setData("text/plain", student.dataset.groupStudentId);
+});
+
+root.addEventListener("dragover", (event) => {
+  if (event.target.closest("[data-group-drop-row-id]")) event.preventDefault();
+});
+
+root.addEventListener("drop", (event) => {
+  const dropzone = event.target.closest("[data-group-drop-row-id]");
+  const studentId = event.dataTransfer?.getData("text/plain");
+  if (!dropzone || !studentId) return;
+  event.preventDefault();
+  const sessionState = session.read();
+  const classId = currentTeacherClass(sessionState.teacherId)?.id;
+  const region = dropzone.closest("[data-class-resource-teacher]");
+  if (!classId || !region) return;
+  const current = classResourceSharing.read(classId);
+  current.audienceRows.filter((row) => ["teacher-group", "random-group"].includes(row.audienceType)).forEach((row) => {
+    const audienceIds = row.audienceIds.filter((id) => id !== studentId);
+    if (dropzone.dataset.groupDropRowId === row.id) audienceIds.push(studentId);
+    classResourceSharing.updateAudience(classId, row.id, { audienceIds: [...new Set(audienceIds)] });
+  });
+  region.outerHTML = classResourceTeacherMarkup(classId);
+});
+
 root.addEventListener("change", (event) => {
+  if (event.target.closest("[data-class-resource-teacher]")) window.setTimeout(refreshCurrentClassPlan, 0);
+  const planResourceToggle = event.target.closest("[data-current-plan-resource-toggle]");
+  if (planResourceToggle) {
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    if (!classId) return;
+    classResourceSharing.stop(classId, planResourceToggle.dataset.resourceIndex, planResourceToggle.dataset.resourceRowId);
+    refreshCurrentClassPlan();
+    return;
+  }
+  const classComparison = event.target.closest("[data-class-plan-comparison]");
+  if (classComparison) {
+    teacherComparisonClassId = classComparison.value;
+    render();
+    return;
+  }
+  const planMode = event.target.closest("[data-resource-plan-mode]");
+  if (planMode) {
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    const region = planMode.closest("[data-class-resource-teacher]");
+    if (!classId || !region) return;
+    const current = classResourceSharing.read(classId);
+    classResourceSharing.configureAssignment(classId, planMode.value, current.exceptionsEnabled);
+    region.outerHTML = classResourceTeacherMarkup(classId);
+    return;
+  }
+  const exceptionsEnabled = event.target.closest("[data-resource-exceptions-enabled]");
+  if (exceptionsEnabled) {
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    const region = exceptionsEnabled.closest("[data-class-resource-teacher]");
+    if (!classId || !region) return;
+    const current = classResourceSharing.read(classId);
+    classResourceSharing.configureAssignment(classId, current.assignmentMode, exceptionsEnabled.value === "yes");
+    region.outerHTML = classResourceTeacherMarkup(classId);
+    return;
+  }
+  const groupName = event.target.closest("[data-resource-group-name]");
+  if (groupName) {
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    if (!classId) return;
+    classResourceSharing.updateAudience(classId, groupName.dataset.resourceRowId, { audienceLabel: groupName.value.trim() || "Unnamed group" });
+    return;
+  }
+  const audienceType = event.target.closest("[data-resource-audience-type]");
+  if (audienceType) {
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    const region = audienceType.closest("[data-class-resource-teacher]");
+    if (!classId || !region) return;
+    const type = audienceType.value;
+    classResourceSharing.updateAudience(classId, audienceType.dataset.resourceRowId, { audienceType: type, audienceIds: type === "whole-class" ? [] : undefined, audienceLabel: type === "whole-class" ? "Whole class" : type === "students" ? "Selected students" : type === "teacher-group" ? "Teacher group" : "Random group" });
+    region.outerHTML = classResourceTeacherMarkup(classId);
+    return;
+  }
+  const audienceStudent = event.target.closest("[data-resource-audience-student]");
+  if (audienceStudent) {
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    const region = audienceStudent.closest("[data-class-resource-teacher]");
+    if (!classId || !region) return;
+    const resourceState = classResourceSharing.read(classId);
+    const row = resourceState.audienceRows.find((item) => item.id === audienceStudent.dataset.resourceRowId);
+    if (audienceStudent.checked && ["teacher-group", "random-group"].includes(row?.audienceType)) {
+      resourceState.audienceRows.filter((item) => item.id !== row.id && ["teacher-group", "random-group"].includes(item.audienceType)).forEach((item) => {
+        classResourceSharing.updateAudience(classId, item.id, { audienceIds: item.audienceIds.filter((id) => id !== audienceStudent.value) });
+      });
+    }
+    const audienceIds = new Set(row?.audienceIds ?? []);
+    if (audienceStudent.checked) audienceIds.add(audienceStudent.value); else audienceIds.delete(audienceStudent.value);
+    classResourceSharing.updateAudience(classId, audienceStudent.dataset.resourceRowId, { audienceIds: [...audienceIds] });
+    region.outerHTML = classResourceTeacherMarkup(classId);
+    return;
+  }
+  const activeResourceToggle = event.target.closest("[data-active-resource-toggle]");
+  if (activeResourceToggle && !activeResourceToggle.checked) {
+    const state = session.read();
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    const region = activeResourceToggle.closest("[data-class-resource-teacher]");
+    if (!classId || !region) return;
+    classResourceSharing.stop(classId, activeResourceToggle.dataset.resourceIndex, activeResourceToggle.dataset.resourceRowId);
+    region.outerHTML = classResourceTeacherMarkup(classId);
+    const status = document.querySelector("[data-class-resource-status]");
+    if (status) status.textContent = "Resource removed from the student page.";
+    return;
+  }
+  const webpageSelection = event.target.closest("[data-webpage-selection]");
+  if (webpageSelection) {
+    const picker = webpageSelection.closest("[data-resource-picker-webpage]");
+    const selectedCount = picker?.querySelectorAll("[data-webpage-selection]:checked").length ?? 0;
+    const status = webpageSelection.closest("[data-class-resource-teacher]")?.querySelector("[data-class-resource-status]");
+    if (status) status.textContent = `${selectedCount} webpage choice${selectedCount === 1 ? "" : "s"} selected. Choose Show Selected Pages to Students when ready.`;
+    return;
+  }
+  const webpageCategory = event.target.closest("[data-webpage-category]");
+  if (webpageCategory) {
+    webpageCategory.closest("[data-resource-picker-webpage]")?.querySelector("[data-webpage-search]")?.dispatchEvent(new Event("input", { bubbles: true }));
+    return;
+  }
+  const controlsDock = event.target.closest("[data-whiteboard-controls-dock]");
+  if (controlsDock) {
+    whiteboardControlsDock = ["top", "left", "right", "bottom"].includes(controlsDock.value) ? controlsDock.value : "top";
+    applyWhiteboardControlsLayout({ resizeCanvas: true }); saveWhiteboard(); setWhiteboardStatus(`Board menus moved to the ${whiteboardControlsDock}.`); return;
+  }
+  const whiteboardTool = event.target.closest("[data-whiteboard-tool]");
+  if (whiteboardTool) {
+    const emojiLabel = document.querySelector("[data-whiteboard-emoji-label]");
+    if (emojiLabel) emojiLabel.hidden = whiteboardTool.value !== "emoji-stamp";
+    const lassoActions = document.querySelector("[data-whiteboard-lasso-actions]");
+    if (lassoActions) lassoActions.hidden = whiteboardTool.value !== "lasso-select";
+    const help = document.querySelector("[data-whiteboard-push-help]");
+    if (help) help.hidden = whiteboardTool.value !== "pull-3d";
+    if (whiteboardTool.value === "pull-3d") setWhiteboardStatus("Pull a rectangle, oval, or triangle into 3D. The highlighted Push Back to 2D button restores it later.");
+    return;
+  }
+  const dimensionCompare = event.target.closest("[data-whiteboard-dimension-compare]");
+  if (dimensionCompare) {
+    const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
+    if (selected?.type === "dimension") { pushWhiteboardHistory(); selected.compareUnit = dimensionCompare.value; renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus(`Dimension comparison changed to ${dimensionCompare.options[dimensionCompare.selectedIndex].text}.`); }
+    return;
+  }
+  const dimensionLabel = event.target.closest("[data-whiteboard-dimension-label]");
+  if (dimensionLabel) {
+    const custom = document.querySelector("[data-whiteboard-dimension-custom-label]");
+    if (custom) custom.hidden = dimensionLabel.value !== "custom";
+    return;
+  }
+  const whiteboardGrid = event.target.closest("[data-whiteboard-grid]");
+  if (whiteboardGrid) {
+    whiteboardGridUnit = whiteboardGrid.value;
+    renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus(`${whiteboardGrid.options[whiteboardGrid.selectedIndex].text} graph paper selected.`);
+    return;
+  }
+  const whiteboardRuler = event.target.closest("[data-whiteboard-ruler]");
+  if (whiteboardRuler) {
+    whiteboardRulerUnit = whiteboardRuler.value;
+    renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus(whiteboardRulerUnit === "none" ? "Ruler hidden." : `${whiteboardRuler.options[whiteboardRuler.selectedIndex].text} shown on the board.`);
+    return;
+  }
+  const whiteboardRulerSides = event.target.closest("[data-whiteboard-ruler-sides]");
+  if (whiteboardRulerSides) {
+    whiteboardRuler.sides = whiteboardRulerSides.value === "top" ? "top" : "both";
+    renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus(whiteboardRuler.sides === "both" ? "Ruler measurements shown on both sides." : "Ruler measurements shown on one side.");
+    return;
+  }
+  const whiteboardScheduleType = event.target.closest("[data-whiteboard-schedule-type]");
+  if (whiteboardScheduleType) {
+    const usesDate = whiteboardScheduleType.value === "date";
+    const usesWeekday = whiteboardScheduleType.value === "weekly";
+    const weekdayLabel = document.querySelector("[data-whiteboard-weekday-label]");
+    const dateLabel = document.querySelector("[data-whiteboard-date-label]");
+    if (weekdayLabel) weekdayLabel.hidden = !usesWeekday;
+    if (dateLabel) dateLabel.hidden = !usesDate;
+    return;
+  }
+  const whiteboardImage = event.target.closest("[data-whiteboard-image]");
+  if (whiteboardImage) {
+    const file = whiteboardImage.files?.[0];
+    if (!file) return;
+    if (!String(file.type).startsWith("image/") || file.size > 3 * 1024 * 1024) {
+      setWhiteboardStatus("Choose an image file no larger than 3 MB.");
+      whiteboardImage.value = "";
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const canvas = whiteboardCanvas();
+      if (!canvas) return;
+      const image = new Image();
+      image.onload = () => {
+        pushWhiteboardHistory();
+        const scale = Math.min((canvas.width * 0.7) / image.width, (canvas.height * 0.7) / image.height, 1);
+        const width = image.width * scale;
+        const height = image.height * scale;
+        const object = createWhiteboardObject("image", { x: (canvas.width - width) / 2, y: (canvas.height - height) / 2, width, height, src: String(reader.result), element: image });
+        whiteboardObjects.push(object); whiteboardSelectedObjectId = object.id; renderWhiteboardObjects(canvas);
+        saveWhiteboard(canvas);
+        setWhiteboardStatus("Image added to the board. Use Undo to remove it.");
+      };
+      image.src = String(reader.result);
+    };
+    reader.readAsDataURL(file);
+    whiteboardImage.value = "";
+    return;
+  }
+  const studentDisplayVoiceMeter = event.target.closest("[data-student-display-voice-meter]");
+  if (studentDisplayVoiceMeter) {
+    storeStudentDisplayVoiceMeterEnabled(studentDisplayVoiceMeter.checked);
+    document.querySelectorAll("[data-student-voice-meter]").forEach((meter) => {
+      meter.hidden = !studentDisplayVoiceMeter.checked || !voiceMeterStream;
+    });
+    return;
+  }
+  const voiceTarget = event.target.closest("[data-voice-meter-target]");
+  if (voiceTarget) {
+    const result = voiceMeter.setLevel(voiceTarget.value);
+    const activityKey = result.level.key === "team" ? "collaborative" : (["silent", "whisper"].includes(result.level.key) ? "independent" : "teacher-led");
+    const activity = VOICE_METER_ACTIVITIES.find((item) => item.key === activityKey) ?? VOICE_METER_ACTIVITIES[0];
+    try { window.localStorage.setItem(VOICE_METER_ACTIVITY_KEY, activity.key); } catch {}
+    segmentActiveVoiceMeter(activity);
+    const status = document.querySelector("[data-voice-meter-status]");
+    if (status) status.textContent = result.ok ? `Expected level: ${result.level.label}.` : "Choose a supported voice level.";
+    document.querySelectorAll("[data-voice-meter-target]").forEach((select) => { select.value = result.level.key; });
+    document.querySelectorAll("[data-student-voice-meter] > p").forEach((label) => { label.textContent = `${result.level.icon} ${result.level.label}`; });
+    document.querySelectorAll("[data-large-voice-level-label]").forEach((label) => { label.textContent = `${result.level.icon} ${result.level.label}`; });
+    document.querySelectorAll("[data-voice-meter-activity]").forEach((select) => { select.value = activity.key; });
+    document.querySelectorAll("[data-voice-meter]").forEach((meter) => { meter.style.setProperty("--voice-threshold", `${activity.target}%`); });
+    updateVoiceMeterPresentation(Number(document.querySelector("[data-voice-meter-output]")?.textContent ?? 0));
+    return;
+  }
+  const voiceActivity = event.target.closest("[data-voice-meter-activity]");
+  if (voiceActivity) {
+    const activity = VOICE_METER_ACTIVITIES.find((item) => item.key === voiceActivity.value) ?? VOICE_METER_ACTIVITIES[0];
+    try { window.localStorage.setItem(VOICE_METER_ACTIVITY_KEY, activity.key); } catch {}
+    segmentActiveVoiceMeter(activity);
+    const matchingLevel = { "teacher-led": "partner", independent: "whisper", collaborative: "team" }[activity.key];
+    const result = voiceMeter.setLevel(matchingLevel);
+    document.querySelectorAll("[data-voice-meter-target]").forEach((select) => { select.value = result.level.key; });
+    document.querySelectorAll("[data-large-voice-level-label]").forEach((label) => { label.textContent = `${result.level.icon} ${result.level.label}`; });
+    document.querySelectorAll("[data-voice-meter]").forEach((meter) => { meter.style.setProperty("--voice-threshold", `${activity.target}%`); });
+    const status = document.querySelector("[data-voice-meter-status]");
+    if (status) status.textContent = `${activity.label} selected. The louder-than-expected threshold is set automatically.`;
+    return;
+  }
+  const voiceStarGoal = event.target.closest("[data-voice-star-goal]");
+  if (voiceStarGoal) {
+    const percentage = Math.max(50, Math.min(100, Math.round(Number(voiceStarGoal.value) || 80)));
+    try { window.localStorage.setItem(VOICE_METER_STAR_GOAL_KEY, String(percentage)); } catch {}
+    refreshCurrentClassPlan();
+    return;
+  }
+  const voiceWeeklyStarGoal = event.target.closest("[data-voice-weekly-star-goal]");
+  if (voiceWeeklyStarGoal) {
+    const days = Math.max(1, Math.min(5, Math.round(Number(voiceWeeklyStarGoal.value) || 3)));
+    try { window.localStorage.setItem(VOICE_METER_WEEKLY_STAR_GOAL_KEY, String(days)); } catch {}
+    refreshCurrentClassPlan();
+    return;
+  }
+  const voiceDisplayMode = event.target.closest("[data-voice-meter-display-mode]");
+  if (voiceDisplayMode) {
+    const mode = voiceDisplayMode.value === "prediction" ? "prediction" : "basic";
+    try { window.localStorage.setItem(VOICE_METER_DISPLAY_MODE_KEY, mode); } catch {}
+    document.querySelectorAll("[data-voice-display-mode]").forEach((element) => { element.dataset.voiceDisplayMode = mode; });
+    document.querySelectorAll("[data-voice-meter-display-mode]").forEach((select) => { select.value = mode; });
+    return;
+  }
+  const reflectionActivity = event.target.closest('[data-form="weekly-reflection"] [name="activityChoice"]');
+  if (reflectionActivity) {
+    const form = reflectionActivity.closest("form");
+    const other = form?.querySelector("[data-reflection-other-activity]");
+    const input = other?.querySelector("input");
+    const usesOther = reflectionActivity.value === "__other__";
+    if (other) other.hidden = !usesOther;
+    if (input) {
+      input.required = usesOther;
+      if (usesOther) input.focus();
+      else input.value = "";
+    }
+    return;
+  }
+  const resourceType = event.target.closest("[data-class-resource-type]");
+  if (resourceType) {
+    const form = resourceType.closest('[data-form="class-resource"]');
+    const defaults = resourceType.value === "Builder"
+      ? { title: "STEM Builder", url: "../index.html" }
+      : resourceType.value === "Workshop"
+        ? { title: "STEM Workshop", url: "http://192.168.1.252:8000" }
+        : null;
+    if (defaults && form) {
+      form.elements.title.value = defaults.title;
+      form.elements.url.value = defaults.url;
+    }
+    const picker = form?.querySelector("[data-resource-picker]");
+    const missionPicker = picker?.querySelector("[data-resource-picker-mission]");
+    const sidePathPicker = picker?.querySelector("[data-resource-picker-side-path]");
+    const webpagePicker = picker?.querySelector("[data-resource-picker-webpage]");
+    if (picker) {
+      picker.hidden = !["Mission Activity", "Side Path", "Webpage"].includes(resourceType.value);
+      picker.dataset.pickerMode = resourceType.value === "Side Path" ? "side-path" : resourceType.value === "Webpage" ? "webpage" : "mission";
+    }
+    if (missionPicker) missionPicker.hidden = resourceType.value !== "Mission Activity";
+    if (sidePathPicker) sidePathPicker.hidden = resourceType.value !== "Side Path";
+    if (webpagePicker) webpagePicker.hidden = resourceType.value !== "Webpage";
+    return;
+  }
+  const currentClass = event.target.closest("[data-current-teacher-class]");
+  if (currentClass) {
+    const previousId = classSetupProfiles.read().currentClassId;
+    preserveCurrentClassSetup(previousId);
+    classSetupProfiles.select(currentClass.value);
+    activateClassSetup(currentClass.value);
+    render();
+    return;
+  }
+  const allClasses = event.target.closest("[data-class-setup-all]");
+  if (allClasses) {
+    allClasses.closest(".platform-class-setup-sharing")?.querySelectorAll("[data-class-setup-target]").forEach((input) => { input.checked = allClasses.checked; });
+    return;
+  }
+  if (event.target.closest("[data-memo-format]")) {
+    memoTypingFormat = {
+      color: document.querySelector('[data-memo-format="color"]')?.value ?? "white",
+      size: document.querySelector('[data-memo-format="size"]')?.value ?? "extra-large",
+      style: document.querySelector('[data-memo-format="style"]')?.value ?? "bold",
+    };
+    const status = document.querySelector("[data-teacher-memo-status]");
+    if (status) status.textContent = `New typing will use ${memoTypingFormat.color.replaceAll("-", " ")}, ${memoTypingFormat.size.replaceAll("-", " ")}, ${memoTypingFormat.style.replaceAll("-", " ")}. Highlight existing text and choose Apply to change it.`;
+    return;
+  }
+  const memoImage = event.target.closest("[data-memo-image-file]")?.files?.[0];
+  if (memoImage) {
+    const status = document.querySelector("[data-teacher-memo-status]");
+    if (!String(memoImage.type).startsWith("image/") || memoImage.size > 500 * 1024) {
+      if (status) status.textContent = "Choose an image no larger than 500 KB.";
+      return;
+    }
+    const reader = new FileReader();
+    reader.addEventListener("load", () => {
+      const hidden = document.querySelector('[name="memoImage"]');
+      if (hidden) hidden.value = String(reader.result ?? "");
+      if (status) status.textContent = "Image ready. Save the memo to keep it.";
+    }, { once: true });
+    reader.readAsDataURL(memoImage);
+    return;
+  }
+  const liveEvidenceFilter = event.target.closest("[data-live-evidence-filter]");
+  if (liveEvidenceFilter) {
+    teacherLiveEvidenceFilters = { ...teacherLiveEvidenceFilters, [liveEvidenceFilter.dataset.liveEvidenceFilter]: liveEvidenceFilter.value };
+    const visible = teacherLiveEvidence.filter((item) => Object.entries(teacherLiveEvidenceFilters).every(([field, value]) => value === "All" || item[field] === value));
+    teacherLiveEvidenceSelection = visible[0]?.id || "";
+    if (teacherLiveEvidencePreviewUrl) URL.revokeObjectURL(teacherLiveEvidencePreviewUrl);
+    teacherLiveEvidencePreviewUrl = "";
+    renderTeacherLiveEvidence();
+    return;
+  }
+  const teacherFilter = event.target.closest("[data-teacher-evidence-filter]");
+  if (teacherFilter) {
+    teacherEvidenceFilter = teacherFilter.value;
+    const visible = teacherEvidenceFilter === "All" ? PILOT_TEACHER_EVIDENCE : PILOT_TEACHER_EVIDENCE.filter((item) => item.type === teacherEvidenceFilter);
+    teacherEvidenceSelection = visible[0]?.id ?? "";
+    renderTeacherEvidenceReview();
+    return;
+  }
+  const file = event.target.closest("[data-evidence-file]")?.files?.[0];
+  if (file && evidenceDraft) {
+    if (evidenceDraft.previewUrl) URL.revokeObjectURL(evidenceDraft.previewUrl);
+    evidenceDraft.fileName = file.name;
+    evidenceDraft.file = file;
+    evidenceDraft.detail = `${file.name} · ${Math.max(1, Math.round(file.size / 1024))} KB`;
+    evidenceDraft.previewUrl = URL.createObjectURL(file);
+    evidenceDraft.hasSelection = true;
+    renderEvidenceFoundation();
+    return;
+  }
   handleTodaysMissionEdit(event);
 });
 
+root.addEventListener("beforeinput", (event) => {
+  const editor = event.target.closest("[data-teacher-memo-editor]");
+  if (!editor || !memoTypingFormat || event.inputType !== "insertText" || !event.data) return;
+  const selection = window.getSelection();
+  if (!selection?.rangeCount) return;
+  const range = selection.getRangeAt(0);
+  if (!editor.contains(range.commonAncestorContainer)) return;
+  event.preventDefault();
+  if (editor.innerText.length >= TEACHER_MEMO_MAX_CHARACTERS && range.collapsed) return;
+  range.deleteContents();
+  const span = document.createElement("span");
+  span.dataset.memoColor = memoTypingFormat.color;
+  span.dataset.memoSize = memoTypingFormat.size;
+  span.dataset.memoStyle = memoTypingFormat.style;
+  memoFormatRevision += 1;
+  span.dataset.memoPriority = String(memoFormatRevision);
+  span.textContent = event.data;
+  range.insertNode(span);
+  range.setStartAfter(span);
+  range.collapse(true);
+  selection.removeAllRanges();
+  selection.addRange(range);
+  const hidden = document.querySelector("[data-teacher-memo]");
+  if (hidden) hidden.value = editor.innerText.slice(0, TEACHER_MEMO_MAX_CHARACTERS);
+  const count = document.querySelector("[data-teacher-memo-count]");
+  if (count) count.textContent = String(hidden?.value.length ?? 0);
+  const status = document.querySelector("[data-teacher-memo-status]");
+  if (status) {
+    status.dataset.state = "unsaved";
+    status.textContent = "Unsaved changes. Save before refreshing or opening Student Display.";
+  }
+});
+
 root.addEventListener("input", (event) => {
+  const voiceSensitivity = event.target.closest("[data-voice-sensitivity]");
+  if (voiceSensitivity) {
+    const sensitivity = voiceMeter.setSensitivity(voiceSensitivity.value);
+    document.querySelectorAll("[data-voice-sensitivity]").forEach((input) => { input.value = String(sensitivity); });
+    document.querySelectorAll("[data-voice-sensitivity-value]").forEach((output) => { output.textContent = `${sensitivity}%`; });
+    const status = document.querySelector("[data-voice-meter-status]");
+    if (status) status.textContent = sensitivity === 100 ? "Sensitivity is set to normal." : sensitivity < 100 ? "Sensitivity reduced for a louder room or microphone." : "Sensitivity increased for a quieter room or microphone.";
+    return;
+  }
+  const quickGoal = event.target.closest('[name="todayGoal"]');
+  if (quickGoal) {
+    const goals = quickGoal.closest("[data-quick-goals]");
+    if (goals) goals.dataset.goalsMode = "custom";
+    return;
+  }
+  const webpageSearch = event.target.closest("[data-webpage-search]");
+  if (webpageSearch) {
+    const picker = webpageSearch.closest("[data-resource-picker-webpage]");
+    const category = picker?.querySelector("[data-webpage-category]")?.value ?? "all";
+    const query = webpageSearch.value.trim().toLowerCase();
+    let visible = 0;
+    picker?.querySelectorAll("[data-webpage-catalog-item]").forEach((item) => {
+      const matches = (!query || item.dataset.webpageSearchValue.includes(query)) && (category === "all" || item.dataset.webpageCategoryValue === category);
+      item.hidden = !matches;
+      if (matches) visible += 1;
+    });
+    const empty = picker?.querySelector("[data-webpage-empty]");
+    if (empty) empty.hidden = visible > 0;
+    return;
+  }
+  const whiteboardTitle = event.target.closest("[data-whiteboard-title]");
+  if (whiteboardTitle) {
+    whiteboardDrawingTitle = whiteboardTitle.value.trim() || "Workshop Drawing";
+    renderWhiteboardObjects();
+    return;
+  }
+  const whiteboardZoomControl = event.target.closest("[data-whiteboard-zoom]");
+  if (whiteboardZoomControl) {
+    whiteboardZoom = Math.min(300, Math.max(50, Number(whiteboardZoomControl.value) || 100));
+    applyWhiteboardZoom(); saveWhiteboard(); setWhiteboardStatus(`Zoom set to ${whiteboardZoom}%.`);
+    return;
+  }
+  const whiteboardSize = event.target.closest("[data-whiteboard-size]");
+  if (whiteboardSize) {
+    const output = document.querySelector("[data-whiteboard-size-output]");
+    if (output) output.textContent = whiteboardSize.value;
+    return;
+  }
+  const scheduleDuration = event.target.closest('form[data-form="class-timer-schedule"] [name="durationMinutes"]');
+  if (scheduleDuration) {
+    const form = scheduleDuration.closest("form");
+    recommendedTimerPhases(Number(scheduleDuration.value)).forEach((phase) => {
+      const input = form?.querySelector(`[data-phase-start="${phase.key}"]`);
+      if (input) input.value = String(phase.startMinute);
+    });
+    return;
+  }
+  const reflection = event.target.closest("[data-evidence-reflection]");
+  if (reflection && evidenceDraft) {
+    evidenceDraft.detail = reflection.value;
+    const preview = document.querySelector("[data-evidence-preview]");
+    if (preview) preview.innerHTML = `<p>${escapeHtml(reflection.value || "Your preview will appear here before anything is saved.")}</p>`;
+    return;
+  }
   if (handleTodaysMissionEdit(event)) return;
-  const field = event.target.closest("[data-teacher-memo]");
+  const editor = event.target.closest("[data-teacher-memo-editor]");
+  const field = editor ? document.querySelector("[data-teacher-memo]") : event.target.closest("[data-teacher-memo]");
   if (!field) return;
+  if (editor) field.value = editor.innerText.slice(0, TEACHER_MEMO_MAX_CHARACTERS);
   const count = document.querySelector("[data-teacher-memo-count]");
   const error = document.querySelector("[data-teacher-memo-error]");
   const status = document.querySelector("[data-teacher-memo-status]");
@@ -1140,9 +5679,81 @@ root.addEventListener("input", (event) => {
       : (savedText ? "Saved for refresh and Student Display." : "No memo saved yet.");
   }
 });
-window.addEventListener("hashchange", render);
+window.addEventListener("hashchange", () => {
+  stopVoiceMeter();
+  render();
+});
+window.addEventListener("storage", (event) => {
+  if (![CLASS_RESOURCE_STORAGE_KEY, WEEKLY_REFLECTION_STORAGE_KEY].includes(event.key)) return;
+  const state = session.read();
+  if (currentRoute() === ROUTES.STUDENT_DASHBOARD && state.role === PLATFORM_ROLES.STUDENT) render();
+  if (currentRoute() === ROUTES.TEACHER_DASHBOARD && state.role === PLATFORM_ROLES.TEACHER) {
+    const classId = currentTeacherClass(state.teacherId)?.id;
+    const region = document.querySelector("[data-class-resource-teacher]");
+    if (classId && region) region.outerHTML = classResourceTeacherMarkup(classId);
+  }
+});
+window.addEventListener("resize", () => window.requestAnimationFrame(fitStudentMemoPresentation));
+document.addEventListener("selectionchange", () => {
+  const selection = window.getSelection();
+  const editor = document.querySelector("[data-teacher-memo-editor]");
+  if (!editor || !selection?.rangeCount || selection.isCollapsed) return;
+  const range = selection.getRangeAt(0);
+  if (editor.contains(range.commonAncestorContainer)) memoSelectionRange = range.cloneRange();
+});
 document.addEventListener("keydown", (event) => {
+  const openWhiteboard = document.querySelector("#platform-classroom-whiteboard:not([hidden])");
+  const typingTarget = event.target instanceof Element && event.target.closest("textarea, [contenteditable='true'], input:not([type='button']):not([type='range']):not([type='color'])");
+  const shortcutKey = (event.ctrlKey || event.metaKey) && !event.altKey ? event.key.toLowerCase() : "";
+  if (openWhiteboard && !typingTarget && ["c", "v", "x", "d"].includes(shortcutKey)) {
+    event.preventDefault();
+    if (shortcutKey === "c") {
+      const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
+      if (!selected) { setWhiteboardStatus("Select a whiteboard object before copying it."); return; }
+      whiteboardClipboard = structuredClone(serializableWhiteboardObjects().find((object) => object.id === selected.id));
+      setWhiteboardStatus("Selected object copied. Press Ctrl+V or Command+V to paste it."); return;
+    }
+    if (shortcutKey === "x") { cutSelectedWhiteboardObject(); return; }
+    if (shortcutKey === "d") { duplicateSelectedWhiteboardObject(); return; }
+    pasteWhiteboardClipboard(); return;
+  }
+  if (openWhiteboard && !typingTarget && (event.key === "Backspace" || event.key === "Delete")) {
+    if (!whiteboardSelectedObjectId) return;
+    event.preventDefault(); deleteSelectedWhiteboardObject(); return;
+  }
   if (event.key !== "Escape") return;
+  const whiteboard = document.querySelector("#platform-classroom-whiteboard:not([hidden])");
+  if (whiteboard) {
+    event.preventDefault();
+    const keyboardHelp = whiteboard.querySelector("[data-whiteboard-keyboard-help]:not([hidden])");
+    const contextMenu = whiteboard.querySelector("[data-whiteboard-context-menu]:not([hidden])");
+    const confirmation = whiteboard.querySelector("[data-whiteboard-clear-confirmation]:not([hidden])");
+    const dimensionQuestion = whiteboard.querySelector("[data-whiteboard-dimension-question]:not([hidden])");
+    if (keyboardHelp) keyboardHelp.hidden = true;
+    else if (contextMenu) contextMenu.hidden = true;
+    else if (dimensionQuestion) { dimensionQuestion.hidden = true; whiteboardPendingDimension = null; renderWhiteboardObjects(); setWhiteboardStatus("CAD measurement canceled."); }
+    else if (confirmation) confirmation.hidden = true;
+    else if (whiteboard.dataset.presentation === "true") {
+      whiteboard.dataset.presentation = "false";
+      const exit = whiteboard.querySelector('[data-action="whiteboard-exit-presentation"]');
+      if (exit) exit.hidden = true;
+      whiteboard.focus();
+    }
+    else {
+      whiteboard.hidden = true;
+      whiteboardDisplayTrigger?.focus();
+      whiteboardDisplayTrigger = null;
+    }
+    return;
+  }
+  const voiceDisplay = document.querySelector("#platform-large-voice-meter-display:not([hidden])");
+  if (voiceDisplay) {
+    event.preventDefault();
+    voiceDisplay.hidden = true;
+    voiceMeterDisplayTrigger?.focus();
+    voiceMeterDisplayTrigger = null;
+    return;
+  }
   const missionConfirmation = document.querySelector("[data-todays-mission-confirmation]:not([hidden])");
   if (missionConfirmation) {
     event.preventDefault();
@@ -1159,4 +5770,14 @@ document.addEventListener("keydown", (event) => {
   lessonTimerDisplayTrigger = null;
   focusTarget?.focus();
 });
-render();
+async function startPlatform() {
+  if (productionIdentityConfig.enabled) {
+    const result = await productionIdentity.session();
+    if (result.ok && result.value.teacher?.id) session.signInTeacher(result.value.teacher.id);
+    else if (result.ok && result.value.student?.id && result.value.student?.classId) session.signInStudent(result.value.student.classId, result.value.student.id);
+    else if (result.ok) session.signOut();
+  }
+  render();
+}
+
+void startPlatform();

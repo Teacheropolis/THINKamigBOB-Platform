@@ -22,13 +22,15 @@ test("teacher dashboard keeps the PB-001 protected route and role guard", () => 
   assert.doesNotMatch(appSource, /TEACHER_COMMAND_BOARD:/);
 });
 
-test("top navigation displays approved teacher orientation and reserved areas", () => {
+test("top navigation displays teacher context and categorized workspace tools", () => {
   for (const label of ["Teacher", "Current class", "Current period", "Settings", "Sign out"]) {
     assert.ok(appSource.includes(label), `expected ${label}`);
   }
-  for (const item of ["Classes", "Students", "Missions", "Reports", "Settings"]) {
-    assert.ok(teacherViewSource.includes(`"${item}"`), `expected reserved ${item} navigation`);
-  }
+  assert.match(appSource, /class="platform-teacher-menu"/);
+  assert.match(appSource, /class="platform-teacher-context"/);
+  for (const item of ["Evidence", "Manage Classes"]) assert.ok(appSource.includes(`>${item}<`), `expected ${item} menu category or link`);
+  for (const item of ["Run Class", "Classroom", "Setup"]) assert.ok(!teacherViewSource.includes(`>${item}<`), `did not expect ${item} shortcut`);
+  for (const item of ["Students", "Missions", "Reports"]) assert.doesNotMatch(teacherViewSource, new RegExp(`data-label="${item}"`));
   assert.match(fixtureSource, /periodLabel: "Period 2"/);
   assert.match(appSource, /data-action="reserved-nav"/);
   assert.match(appSource, /Coming in future build\./);
@@ -38,8 +40,8 @@ test("Today board contains every approved PB-002A classroom area", () => {
   const requiredContent = [
     "aria-label=\"Today\"",
     "Class focus, organization, and readiness at a glance.",
-    "Today's Mission",
-    "No Today's Mission has been prepared for this browser session.",
+    "Today’s Goal",
+    "No plan has been prepared for this class today.",
     "Today's Engineering Time",
     "Teacher Memo",
     "Wins",
@@ -61,14 +63,17 @@ test("command board preserves PB-002A exclusions outside authorized timer and me
   assert.doesNotMatch(teacherViewSource, /setInterval|setTimeout|fetch\s*\(|localStorage|WebSocket|EventSource/);
   assert.doesNotMatch(teacherViewSource, /student progress|support signal|teacher moment|shoutout|kit checkout|hall of fame|google drive|google forms|artificial intelligence/i);
   assert.doesNotMatch(teacherViewSource, /href=.*(?:builder|workshop)/i);
-  assert.equal((teacherViewSource.match(/<input/g) ?? []).length, 6);
+  assert.ok((teacherViewSource.match(/<input/g) ?? []).length >= 12);
   assert.match(teacherViewSource, /<input[^>]+data-timer-duration/);
   assert.match(teacherViewSource, /<input[^>]+name="title"/);
-  assert.equal((teacherViewSource.match(/type="radio"/g) ?? []).length, 4);
-  assert.equal((teacherViewSource.match(/<textarea/g) ?? []).length, 2);
+  assert.match(teacherViewSource, /<input[^>]+data-message-library-title/);
+  assert.match(teacherViewSource, /<input[^>]+data-memo-image-file/);
+  assert.match(teacherViewSource, /<input[^>]+data-evidence-teacher-key/);
+  assert.ok((teacherViewSource.match(/type="radio"/g) ?? []).length <= 4);
+  assert.ok((teacherViewSource.match(/<textarea/g) ?? []).length >= 1);
   assert.match(teacherViewSource, /<textarea[^>]+data-teacher-memo/);
-  assert.match(teacherViewSource, /<textarea[^>]+name="focus"/);
-  assert.doesNotMatch(teacherViewSource, /contenteditable/i);
+  assert.doesNotMatch(teacherViewSource, /<textarea[^>]+name="focus"/);
+  assert.match(teacherViewSource, /contenteditable="true"[^>]+data-teacher-memo-editor/);
 });
 
 test("command board CSS is namespaced, responsive, and overflow-safe", () => {

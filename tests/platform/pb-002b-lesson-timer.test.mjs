@@ -32,6 +32,16 @@ test("timer starts ready with the development default and formats classroom time
   assert.equal(formatLessonTime(3661), "1:01:01");
 });
 
+test("scheduled start accepts precise remaining time", () => {
+  const timer = createLessonTimer({ storage: createMemoryStorage(), now: () => 1_000 });
+  const result = timer.startScheduled(45, 1_770);
+  assert.equal(result.ok, true);
+  assert.equal(result.state.status, LESSON_TIMER_STATES.RUNNING);
+  assert.equal(result.state.durationSeconds, 2_700);
+  assert.equal(result.state.remainingSeconds, 1_770);
+  assert.equal(result.state.endsAt, 1_771_000);
+});
+
 test("duration validation accepts whole classroom minutes only", () => {
   const timer = createLessonTimer({ storage: createMemoryStorage(), now: () => 0 });
   assert.equal(timer.setDuration(0).ok, false);
@@ -170,7 +180,7 @@ test("Teacher Command Board exposes only approved timer controls", () => {
     "Resume",
     "Reset",
     "End",
-    "Open Student Display",
+    "Open Separate Student Timer Window",
   ]) {
     assert.ok(appSource.includes(label), `expected ${label}`);
   }

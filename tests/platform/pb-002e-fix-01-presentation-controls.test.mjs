@@ -108,9 +108,18 @@ test("all three student presentations remain control-free and responsive", () =>
     ".platform-student-display-timer-only",
   ]) assert.ok(cssSource.includes(selector), `expected ${selector}`);
   assert.match(cssSource,
-    /\.platform-student-display-combined \{ justify-content: flex-start;/);
+    /\.platform-student-display-combined \{ display: grid; grid-template-columns: minmax\(16rem, 30vw\) minmax\(0, 1fr\);/);
+  assert.match(cssSource,
+    /\.platform-student-display-combined \.platform-student-engineering-time \{ grid-column: 1; grid-row: 2;/);
+  assert.match(cssSource,
+    /\.platform-student-display-combined \.platform-student-display-image-slot \{ grid-column: 1; grid-row: 4;/);
   assert.match(cssSource,
     /\.platform-student-display-message-only \.platform-student-memo p \{ font-size: clamp\(/);
+  assert.match(appSource, /function fitStudentMemoPresentation\(\)/);
+  assert.match(appSource, /if \(allowedRoute === ROUTES\.TEACHER_DASHBOARD\) syncStudentDisplayPresentation\(\)/);
+  assert.match(appSource, /if \(action\.dataset\.action === "open-timer-display"\) \{\s*syncStudentDisplayPresentation\(\)/);
+  assert.match(appSource, /memo\.scrollHeight > memo\.clientHeight/);
+  assert.match(appSource, /window\.addEventListener\("resize"/);
 });
 
 test("mode module stores no content, analytics, networking, or future features", () => {

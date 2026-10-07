@@ -46,16 +46,16 @@ test("Mission Choice presents Continue, Available Missions, and Side Paths in or
   assert.match(missionChoiceSource, /Start<\/strong> begins a mission made available to you/);
 });
 
-test("Mission Choice uses exactly the approved honest current states", () => {
+test("Mission Choice preserves honest Continue and Side Path states plus the approved PB-002J mount", () => {
   for (const state of [
     "No mission is ready to continue yet.",
-    "No new missions are available right now.",
     "Optional Side Paths are not available yet.",
     "Coming Later",
   ]) assert.ok(missionChoiceSource.includes(state), `expected ${state}`);
+  assert.match(missionChoiceSource, /data-pb002j-available-missions/);
 });
 
-test("no mission, Side Path, Builder, or Workshop interaction is fabricated", () => {
+test("no interaction is fabricated in the static shell outside the bounded PB-002J mount", () => {
   assert.doesNotMatch(missionChoiceSource,
     /<button|<a\s|href=|data-action=|data-form=|navigate\(|Builder|Workshop/);
   assert.doesNotMatch(missionChoiceSource,

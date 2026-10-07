@@ -88,6 +88,19 @@ test("student entry state cannot skip class and roster selection", () => {
   assert.equal(session.read().pendingStudentId, "student-preview-1");
 });
 
+test("fictional teacher and student previews can open without sign-in forms", () => {
+  for (const text of ["Open Teacher Preview — No Sign-In", "Open Student Preview — No Codes", "Uses fictional local preview data only"]) assert.match(appSource, new RegExp(text));
+  assert.match(appSource, /href="#\$\{ROUTES\.PREVIEW_TEACHER\}"/);
+  assert.match(appSource, /session\.signInTeacher\("teacher-preview-1"\)/);
+  assert.match(appSource, /href="#\$\{ROUTES\.PREVIEW_STUDENT\}"/);
+  assert.match(appSource, /session\.signInStudent\("class-preview-1", "student-preview-1"\)/);
+  assert.match(cssSource, /\.platform-preview-entry-button/);
+  assert.match(appSource, /PREVIEW_TEACHER: "\/preview\/teacher"/);
+  assert.match(appSource, /PREVIEW_STUDENT: "\/preview\/student"/);
+  assert.match(appSource, /requestedRoute === ROUTES\.PREVIEW_TEACHER/);
+  assert.match(appSource, /requestedRoute === ROUTES\.PREVIEW_STUDENT/);
+});
+
 test("platform declares all approved PB-001 routes and route guards", () => {
   for (const route of [
     "/welcome",
@@ -109,11 +122,10 @@ test("platform declares all approved PB-001 routes and route guards", () => {
   assert.match(appSource, /window\.addEventListener\("hashchange", render\)/);
 });
 
-test("dashboard areas remain honest future-build foundations", () => {
+test("dashboard areas keep only the approved future-build foundations", () => {
   for (const label of [
     "Teacher Feed",
     "Wins • Blockers • Next Steps",
-    "Reports",
     "Current Goal",
     "Yesterday's Wins",
     "Yesterday's Challenge",
@@ -124,6 +136,10 @@ test("dashboard areas remain honest future-build foundations", () => {
     "What I Learned Today",
   ]) {
     assert.ok(appSource.includes(label), `expected ${label}`);
+  }
+  const teacherView = appSource.slice(appSource.indexOf("function teacherDashboardView(state)"), appSource.indexOf("function teacherClassesView(state)"));
+  for (const hiddenDestination of ["Students", "Missions", "Reports", "Settings"]) {
+    assert.doesNotMatch(teacherView, new RegExp(`data-label="${hiddenDestination}"`));
   }
   assert.match(appSource, /No mission is ready to continue yet\./);
   assert.match(appSource, /No new missions are available right now\./);
