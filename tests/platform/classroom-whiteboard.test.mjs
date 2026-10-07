@@ -59,7 +59,9 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
     assert.match(app, new RegExp(`data-whiteboard-quick-tool="${tool}"`));
   }
   for (const menu of ["Pen", "Line", "Shapes", "3D Shapes"]) assert.match(app, new RegExp(`<small>${menu}</small>`));
-  assert.doesNotMatch(app, /data-whiteboard-quick-tool="ruler-adjust"/);
+  assert.doesNotMatch(app, /<select data-whiteboard-tool>/);
+  assert.match(app, /<input type="hidden" data-whiteboard-tool value="select">/);
+  assert.match(app, /data-whiteboard-quick-tool="ruler-adjust">Adjust Ruler/);
   assert.match(app, /action\.closest\("details"\)\?\.removeAttribute\("open"\)/);
   assert.match(app, /menu\.addEventListener\("mouseleave", \(\) => menu\.removeAttribute\("open"\)\)/);
   assert.match(app, /action\.dataset\.action === "whiteboard-quick-tool"/);

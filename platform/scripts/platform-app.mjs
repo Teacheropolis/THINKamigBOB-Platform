@@ -1682,7 +1682,7 @@ function teacherDashboardView(state) {
       <nav class="platform-whiteboard-quick-actions" aria-label="Whiteboard quick actions">
         <button type="button" data-action="whiteboard-tool-select" data-whiteboard-quick-tool="select" aria-pressed="true" title="Select and move"><span aria-hidden="true">➤</span><small>Select</small></button>
         <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="lasso-select" title="Lasso select for image"><span aria-hidden="true">⌁</span><small>Lasso</small></button>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="eraser" title="Erase an object"><span aria-hidden="true">◇</span><small>Eraser</small></button>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="eraser" title="Eraser object"><span aria-hidden="true">◇</span><small>Eraser</small></button>
         <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="fill" title="Paint can — fill shape"><span aria-hidden="true">◩</span><small>Paint</small></button>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">✎</span><small>Pen</small></summary><div>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pen">Pen</button>
@@ -1735,10 +1735,11 @@ function teacherDashboardView(state) {
       <div class="platform-whiteboard-toolbar" role="toolbar" aria-label="Whiteboard drawing tools">
         <label>Graph paper<select data-whiteboard-grid><option value="plain">Plain white</option><option value="inch">Inches</option><option value="cm">Centimeters</option><option value="mm">Millimeters</option></select></label>
         <label>Ruler<select data-whiteboard-ruler><option value="none">No ruler</option><option value="english">English ruler — inches</option><option value="metric">Metric ruler — centimeters</option></select></label>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="ruler-adjust">Adjust Ruler — Move, rotate, or extend ruler</button>
         <label>Ruler markings<select data-whiteboard-ruler-sides><option value="both">Both sides</option><option value="top">One side</option></select></label>
         <label class="platform-whiteboard-compare-unit" data-whiteboard-compare-unit><span>“This is the same as…” unit</span><select data-whiteboard-dimension-compare disabled aria-label="Choose another unit for the selected measurement"><option value="mm">Millimeters</option><option value="cm">Centimeters</option><option value="m">Meters</option><option value="in">Inches</option><option value="ft">Feet</option><option value="yd">Yards</option></select></label>
         <label>Zoom<input type="range" data-whiteboard-zoom min="50" max="300" step="25" value="100"><output data-whiteboard-zoom-output>100%</output></label>
-        <label>Tool<select data-whiteboard-tool><option value="select">Select and move</option><option value="lasso-select">Lasso select for image</option><option value="emoji-stamp">Emoji stamp</option><option value="pull-3d">Pull selected 2D shape into 3D</option><option value="laser-dimension">Laser measure — select 2 points</option><option value="ruler-adjust">Move, rotate, or extend ruler</option><option value="pen">Pen</option><option value="calligraphy">Calligraphy pen</option><option value="brush">Brush strokes</option><option value="highlighter">Highlighter</option><option value="fill">Paint can — fill shape</option><option value="eraser">Eraser object</option><option value="line">Line</option><option value="arrow">Arrow</option><option value="rectangle">Rectangle</option><option value="ellipse">Circle or oval</option><option value="triangle">Triangle</option><optgroup label="3D shapes"><option value="cube">Cube</option><option value="rectangular-prism">Rectangular prism</option><option value="cylinder">Cylinder</option><option value="cone">Cone</option><option value="pyramid">Pyramid</option><option value="sphere">Sphere</option></optgroup></select></label>
+        <input type="hidden" data-whiteboard-tool value="select">
         <span class="platform-whiteboard-lasso-actions" data-whiteboard-lasso-actions hidden><strong>Selected image actions</strong><button type="button" data-action="whiteboard-remove-selection-background">Remove Selection Background</button><button type="button" data-action="whiteboard-download-selection">Download Selection PNG</button></span>
         <label>Color<input type="color" data-whiteboard-color value="#12384d"></label>
         <label data-whiteboard-emoji-label hidden>Emoji<select data-whiteboard-emoji aria-label="Choose an emoji stamp">${WHITEBOARD_EMOJI_STAMPS.map((group) => `<optgroup label="${escapeHtml(group.category)}">${group.emojis.map(([emoji, name]) => `<option value="${emoji}">${emoji} ${escapeHtml(name)}</option>`).join("")}</optgroup>`).join("")}</select></label>
@@ -4186,11 +4187,11 @@ function handleClick(event) {
   if (action.dataset.action === "whiteboard-quick-tool") {
     const tool = document.querySelector("[data-whiteboard-tool]");
     const nextTool = action.dataset.whiteboardQuickTool;
-    if (tool && [...tool.options].some((option) => option.value === nextTool)) {
+    if (tool && nextTool) {
       tool.value = nextTool;
       tool.dispatchEvent(new Event("change", { bubbles: true }));
       document.querySelectorAll("[data-whiteboard-quick-tool]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.whiteboardQuickTool === nextTool)));
-      const label = tool.options[tool.selectedIndex]?.textContent?.trim() || "Whiteboard tool";
+      const label = action.textContent?.trim() || action.title || "Whiteboard tool";
       setWhiteboardStatus(`${label} is active.`);
     }
     action.closest("details")?.removeAttribute("open");
