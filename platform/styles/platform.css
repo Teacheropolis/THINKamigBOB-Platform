@@ -1119,7 +1119,7 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-whiteboard-header-actions label { display: grid; gap: 0.15rem; font-size: 0.72rem; font-weight: 800; }
 .platform-whiteboard-header h2, .platform-whiteboard-header p, .platform-whiteboard-status { margin: 0; }
 .platform-whiteboard-controls { grid-area: controls; display: grid; gap: 0.55rem; max-height: min(34vh, 20rem); overflow: auto; }
-.platform-whiteboard-quick-actions { grid-area: quick; z-index: 12; display: flex; flex-wrap: nowrap; align-items: stretch; gap: 0.15rem; padding: 0.35rem; overflow-x: auto; border: 1px solid #c8d0d5; border-radius: 0.55rem; background: #f8f9fa; box-shadow: 0 0.2rem 0.55rem rgba(7,27,39,0.12); }
+.platform-whiteboard-quick-actions { position: relative; grid-area: quick; z-index: 40; display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.15rem; padding: 0.35rem; overflow: visible; border: 1px solid #c8d0d5; border-radius: 0.55rem; background: #f8f9fa; box-shadow: 0 0.2rem 0.55rem rgba(7,27,39,0.12); }
 .platform-whiteboard-quick-actions button { display: grid; min-width: 3.65rem; min-height: 3.1rem; place-items: center; gap: 0; padding: 0.25rem 0.45rem; border: 1px solid transparent; border-radius: 0.35rem; color: var(--platform-navy); background: transparent; }
 .platform-whiteboard-quick-actions button:hover, .platform-whiteboard-quick-actions button:focus-visible { border-color: #b8c6cd; background: #e9eef1; }
 .platform-whiteboard-quick-actions button[aria-pressed="true"] { border-color: var(--platform-blue-dark); color: #fff; background: var(--platform-blue-dark); }
