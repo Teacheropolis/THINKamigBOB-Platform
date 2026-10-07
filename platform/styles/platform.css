@@ -1126,6 +1126,13 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-whiteboard-quick-actions button:disabled { opacity: 0.4; }
 .platform-whiteboard-quick-actions button > span { font-size: 1.25rem; line-height: 1; }
 .platform-whiteboard-quick-actions button > small { font-size: 0.62rem; font-weight: 750; }
+.platform-whiteboard-quick-settings { display: contents; }
+.platform-whiteboard-quick-actions > .platform-whiteboard-quick-settings > label { display: grid; min-width: 7.5rem; align-content: center; gap: 0.15rem; padding: 0.2rem 0.35rem; font-size: 0.65rem; font-weight: 800; }
+.platform-whiteboard-quick-actions > .platform-whiteboard-quick-settings > label select,
+.platform-whiteboard-quick-actions > .platform-whiteboard-quick-settings > label input { min-height: 2rem; min-width: 0; }
+.platform-whiteboard-quick-actions > .platform-whiteboard-quick-settings > label input[type="color"] { width: 3.5rem; padding: 0.1rem; }
+.platform-whiteboard-quick-actions > .platform-whiteboard-quick-settings > label input[type="range"] { width: 7rem; }
+.platform-whiteboard-quick-actions .platform-whiteboard-object-actions { align-self: center; }
 .platform-whiteboard-quick-menu { position: relative; flex: 0 0 auto; }
 .platform-whiteboard-quick-menu[open] { z-index: 45; }
 .platform-whiteboard-quick-menu summary { display: grid; min-width: 4.6rem; min-height: 3.1rem; place-items: center; padding: 0.25rem 0.45rem; border: 1px solid transparent; border-radius: 0.35rem; cursor: pointer; list-style: none; }

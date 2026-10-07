@@ -3589,6 +3589,15 @@ function mountWhiteboard() {
   const canvas = whiteboardCanvas();
   if (!canvas || canvas.dataset.mounted === "true") return;
   canvas.dataset.mounted = "true";
+  const quickActions = document.querySelector(".platform-whiteboard-quick-actions");
+  const drawingToolbar = document.querySelector(".platform-whiteboard-toolbar");
+  if (quickActions && drawingToolbar) {
+    const settings = document.createElement("span");
+    settings.className = "platform-whiteboard-quick-settings";
+    settings.append(...drawingToolbar.children);
+    quickActions.append(settings);
+    drawingToolbar.remove();
+  }
   document.querySelectorAll(".platform-whiteboard-quick-menu").forEach((menu) => {
     menu.addEventListener("mouseleave", () => menu.removeAttribute("open"));
   });

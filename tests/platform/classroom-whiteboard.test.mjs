@@ -85,6 +85,10 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   assert.match(app, /data-rich-size/);
   assert.match(app, /whiteboardRichTextRuns/);
   assert.match(css, /\.platform-whiteboard-rich-editor/);
+  assert.match(app, /settings\.append\(\.\.\.drawingToolbar\.children\)/);
+  assert.match(app, /quickActions\.append\(settings\)/);
+  assert.match(app, /drawingToolbar\.remove\(\)/);
+  assert.match(css, /\.platform-whiteboard-quick-settings \{ display: contents; \}/);
   assert.match(css, /\.platform-whiteboard-quick-menu\[open\] \{ z-index: 45; \}/);
 });
 
