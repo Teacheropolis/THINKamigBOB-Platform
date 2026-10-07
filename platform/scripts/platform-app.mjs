@@ -1680,7 +1680,21 @@ function teacherDashboardView(state) {
       </header>
       <button class="platform-whiteboard-exit-presentation" type="button" data-action="whiteboard-exit-presentation" hidden>Exit Presentation</button>
       <nav class="platform-whiteboard-quick-actions" aria-label="Whiteboard quick actions">
-        <button type="button" data-action="whiteboard-tool-select" title="Select and move"><span aria-hidden="true">➤</span><small>Select</small></button>
+        <button type="button" data-action="whiteboard-tool-select" data-whiteboard-quick-tool="select" aria-pressed="true" title="Select and move"><span aria-hidden="true">➤</span><small>Select</small></button>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pen" title="Pen"><span aria-hidden="true">✎</span><small>Pen</small></button>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="calligraphy" title="Calligraphy pen"><span aria-hidden="true">✒</span><small>Script</small></button>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="brush" title="Brush strokes"><span aria-hidden="true">🖌</span><small>Brush</small></button>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="highlighter" title="Highlighter"><span aria-hidden="true">▰</span><small>Highlight</small></button>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="eraser" title="Erase an object"><span aria-hidden="true">◇</span><small>Eraser</small></button>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="line" title="Line"><span aria-hidden="true">╱</span><small>Line</small></button>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="arrow" title="Arrow"><span aria-hidden="true">↗</span><small>Arrow</small></button>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="rectangle" title="Rectangle"><span aria-hidden="true">□</span><small>Box</small></button>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="ellipse" title="Circle or oval"><span aria-hidden="true">○</span><small>Circle</small></button>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="triangle" title="Triangle"><span aria-hidden="true">△</span><small>Triangle</small></button>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="emoji-stamp" title="Emoji stamp"><span aria-hidden="true">☺</span><small>Emoji</small></button>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="lasso-select" title="Lasso select for image"><span aria-hidden="true">⌁</span><small>Lasso</small></button>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="laser-dimension" title="Laser measure — select 2 points"><span aria-hidden="true">↔</span><small>Measure</small></button>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="ruler-adjust" title="Move, rotate, or extend ruler"><span aria-hidden="true">📏</span><small>Ruler</small></button>
         <button type="button" data-action="whiteboard-undo" title="Undo"><span aria-hidden="true">↶</span><small>Undo</small></button>
         <button type="button" data-action="whiteboard-redo" title="Redo"><span aria-hidden="true">↷</span><small>Redo</small></button>
         <button type="button" data-action="whiteboard-copy" title="Copy — Ctrl+C or Command+C"><span aria-hidden="true">⧉</span><small>Copy</small></button>
@@ -4151,7 +4165,20 @@ function handleClick(event) {
     if (status) status.textContent = selected.length ? `${selected.length} webpage${selected.length === 1 ? " is" : "s are"} now available to students.` : "Catalog webpages were removed from the student page.";
     return;
   }
-  if (action.dataset.action === "whiteboard-tool-select") { const tool = document.querySelector("[data-whiteboard-tool]"); if (tool) { tool.value = "select"; tool.dispatchEvent(new Event("change", { bubbles: true })); } whiteboardCanvas()?.focus({ preventScroll: true }); setWhiteboardStatus("Select and move is active."); return; }
+  if (action.dataset.action === "whiteboard-quick-tool") {
+    const tool = document.querySelector("[data-whiteboard-tool]");
+    const nextTool = action.dataset.whiteboardQuickTool;
+    if (tool && [...tool.options].some((option) => option.value === nextTool)) {
+      tool.value = nextTool;
+      tool.dispatchEvent(new Event("change", { bubbles: true }));
+      document.querySelectorAll("[data-whiteboard-quick-tool]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.whiteboardQuickTool === nextTool)));
+      const label = tool.options[tool.selectedIndex]?.textContent?.trim() || "Whiteboard tool";
+      setWhiteboardStatus(`${label} is active.`);
+    }
+    whiteboardCanvas()?.focus({ preventScroll: true });
+    return;
+  }
+  if (action.dataset.action === "whiteboard-tool-select") { const tool = document.querySelector("[data-whiteboard-tool]"); if (tool) { tool.value = "select"; tool.dispatchEvent(new Event("change", { bubbles: true })); } document.querySelectorAll("[data-whiteboard-quick-tool]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.whiteboardQuickTool === "select"))); whiteboardCanvas()?.focus({ preventScroll: true }); setWhiteboardStatus("Select and move is active."); return; }
   if (action.dataset.action === "whiteboard-cut") { cutSelectedWhiteboardObject(); whiteboardCanvas()?.focus({ preventScroll: true }); return; }
   if (action.dataset.action === "whiteboard-copy-image") { const menu = document.querySelector("[data-whiteboard-context-menu]"); if (menu) menu.hidden = true; void copySelectedWhiteboardObjectAsImage(); return; }
   if (action.dataset.action === "whiteboard-cut-image") { const menu = document.querySelector("[data-whiteboard-context-menu]"); if (menu) menu.hidden = true; cutSelectedWhiteboardObject(); return; }
@@ -5308,6 +5335,7 @@ root.addEventListener("change", (event) => {
   }
   const whiteboardTool = event.target.closest("[data-whiteboard-tool]");
   if (whiteboardTool) {
+    document.querySelectorAll("[data-whiteboard-quick-tool]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.whiteboardQuickTool === whiteboardTool.value)));
     const emojiLabel = document.querySelector("[data-whiteboard-emoji-label]");
     if (emojiLabel) emojiLabel.hidden = whiteboardTool.value !== "emoji-stamp";
     const lassoActions = document.querySelector("[data-whiteboard-lasso-actions]");

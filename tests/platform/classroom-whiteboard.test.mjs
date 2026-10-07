@@ -54,6 +54,16 @@ test("whiteboard menus collapse and dock around the canvas", () => {
   assert.match(css, /data-controls-hidden="true"/);
 });
 
+test("hidden board menus retain a compact full drawing toolbox", () => {
+  for (const tool of ["select", "pen", "calligraphy", "brush", "highlighter", "eraser", "line", "arrow", "rectangle", "ellipse", "triangle", "emoji-stamp", "lasso-select", "laser-dimension", "ruler-adjust"]) {
+    assert.match(app, new RegExp(`data-whiteboard-quick-tool="${tool}"`));
+  }
+  assert.match(app, /action\.dataset\.action === "whiteboard-quick-tool"/);
+  assert.match(app, /button\.dataset\.whiteboardQuickTool === nextTool/);
+  assert.match(css, /data-controls-hidden="true"\] \.platform-whiteboard-quick-actions \{ flex-wrap: wrap;/);
+  assert.match(css, /button\[aria-pressed="true"\]/);
+});
+
 test("saved boards support repeating weekdays or a specific calendar date", () => {
   for (const text of ["No schedule", "Repeats weekly", "Specific date", "Choose the specific date before saving."]) assert.match(app, new RegExp(text.replace(/[.]/g, "\\.")));
   assert.match(app, /data-whiteboard-schedule-type/);
