@@ -3165,6 +3165,41 @@ function openWhiteboardTextEntry(point, canvas) {
   setWhiteboardStatus("Type directly on the board. Press Enter or click elsewhere to finish; Escape cancels.");
 }
 
+function whiteboardRichTextRuns(html, fallbackText, fallbackSize = 36, fallbackColor = "#12384d") {
+  if (!html) return [{ text: fallbackText ?? "", bold: true, italic: false, underline: false, size: fallbackSize, color: fallbackColor }];
+  const template = document.createElement("template");
+  template.innerHTML = html;
+  const runs = [];
+  const visit = (node, style) => {
+    if (node.nodeType === Node.TEXT_NODE && node.textContent) { runs.push({ ...style, text: node.textContent }); return; }
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const tag = node.tagName.toLowerCase(), next = { ...style };
+    if (["b", "strong"].includes(tag)) next.bold = true;
+    if (["i", "em"].includes(tag)) next.italic = true;
+    if (tag === "u") next.underline = true;
+    if (node.getAttribute("color")) next.color = node.getAttribute("color");
+    if (node.style?.color) next.color = node.style.color;
+    const size = Number(node.dataset?.textSize || node.style?.fontSize?.replace("px", "")); if (size) next.size = size;
+    node.childNodes.forEach((child) => visit(child, next));
+  };
+  template.content.childNodes.forEach((node) => visit(node, { bold: false, italic: false, underline: false, size: fallbackSize, color: fallbackColor }));
+  return runs.length ? runs : [{ text: fallbackText ?? "", bold: true, italic: false, underline: false, size: fallbackSize, color: fallbackColor }];
+}
+
+function openWhiteboardRichTextEditor(object, canvas) {
+  const surface = canvas.parentElement; if (!surface || object?.type !== "text" || object.emojiStamp) return;
+  surface.querySelector("[data-whiteboard-rich-editor]")?.remove();
+  const editor = document.createElement("section"); editor.className = "platform-whiteboard-rich-editor"; editor.dataset.whiteboardRichEditor = "true";
+  editor.style.left = `${Math.max(4, object.x * canvas.clientWidth / canvas.width)}px`; editor.style.top = `${Math.max(4, object.y * canvas.clientHeight / canvas.height)}px`;
+  editor.innerHTML = `<div class="platform-whiteboard-rich-toolbar"><button type="button" data-rich-command="bold"><b>B</b></button><button type="button" data-rich-command="italic"><i>I</i></button><button type="button" data-rich-command="underline"><u>U</u></button><label>Color <input type="color" data-rich-color value="${escapeHtml(object.color ?? "#12384d")}"></label><label>Size <select data-rich-size>${[18,24,30,36,48,60,72].map((size) => `<option value="${size}"${size === Math.round(object.fontSize ?? 36) ? " selected" : ""}>${size}</option>`).join("")}</select></label><button type="button" data-rich-done>Done</button></div><div class="platform-whiteboard-rich-content" contenteditable="true" role="textbox" aria-label="Edit and format whiteboard text"></div>`;
+  const content = editor.querySelector("[contenteditable]"); content.innerHTML = object.richHtml || escapeHtml(object.text);
+  editor.querySelectorAll("[data-rich-command]").forEach((button) => button.addEventListener("mousedown", (event) => { event.preventDefault(); document.execCommand(button.dataset.richCommand); content.focus(); }));
+  editor.querySelector("[data-rich-color]").addEventListener("input", (event) => { content.focus(); document.execCommand("foreColor", false, event.target.value); });
+  editor.querySelector("[data-rich-size]").addEventListener("change", (event) => { content.focus(); document.execCommand("fontSize", false, "7"); content.querySelectorAll('font[size="7"]').forEach((node) => { node.removeAttribute("size"); node.dataset.textSize = event.target.value; node.style.fontSize = `${event.target.value}px`; }); });
+  const save = () => { object.richHtml = content.innerHTML; object.text = content.textContent.trim().slice(0, 120); object.fontSize = Number(editor.querySelector("[data-rich-size]").value); object.height = Math.max(object.height, object.fontSize * 1.4); pushWhiteboardHistory(); editor.remove(); renderWhiteboardObjects(canvas); saveWhiteboard(canvas); setWhiteboardStatus("Formatted text saved."); canvas.focus(); };
+  editor.querySelector("[data-rich-done]").addEventListener("click", save); surface.append(editor); content.focus();
+}
+
 function drawWhiteboardGrid(context, canvas) {
   if (whiteboardGridUnit === "plain") return;
   const minor = whiteboardGridUnit === "inch" ? 24 : whiteboardGridUnit === "cm" ? 37.8 : 3.78;
@@ -3501,7 +3536,7 @@ function renderWhiteboardObjects(canvas = whiteboardCanvas()) {
     context.save(); context.globalAlpha = object.opacity ?? 1; context.strokeStyle = object.color ?? "#12384d"; context.fillStyle = object.color ?? "#12384d"; context.lineWidth = object.size ?? 6; context.lineCap = "round"; context.lineJoin = "round";
     if (object.rotation && !["text", "image", "path", "dimension"].includes(object.type)) { const bounds = objectBounds(object), centerX = bounds.x + bounds.width / 2, centerY = bounds.y + bounds.height / 2; context.translate(centerX, centerY); context.rotate(object.rotation); context.translate(-centerX, -centerY); }
     if (object.type === "path") drawWhiteboardPath(context, object);
-    else if (object.type === "text") { const angle = object.rotation ?? 0, background = whiteboardTextBackground(object.background); context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(angle); if (background) { context.fillStyle = background; context.fillRect(-object.width / 2 - 8, -object.height / 2 - 5, object.width + 16, object.height + 10); } context.fillStyle = object.background === "black" ? "#ffffff" : object.color ?? "#12384d"; context.font = `700 ${object.fontSize ?? 36}px sans-serif`; context.fillText(object.text, -object.width / 2, -object.height / 2 + (object.fontSize ?? 36), object.width); }
+    else if (object.type === "text") { const angle = object.rotation ?? 0, background = whiteboardTextBackground(object.background); context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(angle); if (background) { context.fillStyle = background; context.fillRect(-object.width / 2 - 8, -object.height / 2 - 5, object.width + 16, object.height + 10); } let cursorX = -object.width / 2; const baseline = -object.height / 2 + (object.fontSize ?? 36); whiteboardRichTextRuns(object.richHtml, object.text, object.fontSize, object.background === "black" ? "#ffffff" : object.color).forEach((run) => { context.font = `${run.italic ? "italic " : ""}${run.bold ? "700" : "400"} ${run.size}px sans-serif`; context.fillStyle = run.color; context.fillText(run.text, cursorX, baseline); const width = context.measureText(run.text).width; if (run.underline) context.fillRect(cursorX, baseline + 3, width, Math.max(1.5, run.size / 18)); cursorX += width; }); }
     else if (object.type === "image" && object.element) { context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(object.rotation ?? 0); context.drawImage(object.element, -object.width / 2, -object.height / 2, object.width, object.height); }
     else if (object.type === "dimension") drawWhiteboardDimension(context, object);
     else if (object.type === "line" || object.type === "arrow") { context.beginPath(); context.moveTo(object.x, object.y); context.lineTo(object.x + object.width, object.y + object.height); context.stroke(); if (object.type === "arrow") { const angle = Math.atan2(object.height, object.width); context.beginPath(); context.moveTo(object.x + object.width, object.y + object.height); context.lineTo(object.x + object.width - 18 * Math.cos(angle - 0.55), object.y + object.height - 18 * Math.sin(angle - 0.55)); context.moveTo(object.x + object.width, object.y + object.height); context.lineTo(object.x + object.width - 18 * Math.cos(angle + 0.55), object.y + object.height - 18 * Math.sin(angle + 0.55)); context.stroke(); } }
@@ -3676,6 +3711,7 @@ function mountWhiteboard() {
   };
   const end = () => { if (!whiteboardDrawing) return; const completedTool = whiteboardDrawing.tool; whiteboardDrawing = null; if (completedTool === "lasso-select") { updateWhiteboardLassoBounds(); renderWhiteboardObjects(canvas); setWhiteboardStatus(whiteboardLassoBounds ? "Selection ready. Remove its background or download it as a PNG." : "Draw a larger loop around the work you want to select."); return; } saveWhiteboard(canvas); setWhiteboardStatus("Board saved. Select any object to move, resize, copy, or delete it."); };
   canvas.addEventListener("pointerdown", start); canvas.addEventListener("pointermove", move); canvas.addEventListener("pointerup", end); canvas.addEventListener("pointercancel", end);
+  canvas.addEventListener("dblclick", (event) => { const selected = hitTestObjects(whiteboardObjects, whiteboardPoint(event, canvas)); if (selected?.type === "text" && !selected.emojiStamp) { event.preventDefault(); whiteboardSelectedObjectId = selected.id; openWhiteboardRichTextEditor(selected, canvas); } });
   canvas.addEventListener("contextmenu", (event) => {
     const point = whiteboardPoint(event, canvas), selected = hitTestObjects(whiteboardObjects, point);
     if (!selected && !whiteboardClipboard) return;
