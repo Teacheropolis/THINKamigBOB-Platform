@@ -1681,20 +1681,35 @@ function teacherDashboardView(state) {
       <button class="platform-whiteboard-exit-presentation" type="button" data-action="whiteboard-exit-presentation" hidden>Exit Presentation</button>
       <nav class="platform-whiteboard-quick-actions" aria-label="Whiteboard quick actions">
         <button type="button" data-action="whiteboard-tool-select" data-whiteboard-quick-tool="select" aria-pressed="true" title="Select and move"><span aria-hidden="true">➤</span><small>Select</small></button>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pen" title="Pen"><span aria-hidden="true">✎</span><small>Pen</small></button>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="calligraphy" title="Calligraphy pen"><span aria-hidden="true">✒</span><small>Script</small></button>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="brush" title="Brush strokes"><span aria-hidden="true">🖌</span><small>Brush</small></button>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="highlighter" title="Highlighter"><span aria-hidden="true">▰</span><small>Highlight</small></button>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="eraser" title="Erase an object"><span aria-hidden="true">◇</span><small>Eraser</small></button>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="line" title="Line"><span aria-hidden="true">╱</span><small>Line</small></button>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="arrow" title="Arrow"><span aria-hidden="true">↗</span><small>Arrow</small></button>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="rectangle" title="Rectangle"><span aria-hidden="true">□</span><small>Box</small></button>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="ellipse" title="Circle or oval"><span aria-hidden="true">○</span><small>Circle</small></button>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="triangle" title="Triangle"><span aria-hidden="true">△</span><small>Triangle</small></button>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="emoji-stamp" title="Emoji stamp"><span aria-hidden="true">☺</span><small>Emoji</small></button>
         <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="lasso-select" title="Lasso select for image"><span aria-hidden="true">⌁</span><small>Lasso</small></button>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="eraser" title="Erase an object"><span aria-hidden="true">◇</span><small>Eraser</small></button>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="fill" title="Paint can — fill shape"><span aria-hidden="true">◩</span><small>Paint</small></button>
+        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">✎</span><small>Pen</small></summary><div>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pen">Pen</button>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="calligraphy">Calligraphy pen</button>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="brush">Brush strokes</button>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="highlighter">Highlighter</button>
+        </div></details>
+        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">╱</span><small>Line</small></summary><div>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="line">Line</button>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="arrow">Arrow</button>
+        </div></details>
+        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">□○△</span><small>Shapes</small></summary><div>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="rectangle">Rectangle</button>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="ellipse">Circle or oval</button>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="triangle">Triangle</button>
+        </div></details>
+        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">◇</span><small>3D Shapes</small></summary><div>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="cube">Cube</button>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="rectangular-prism">Rectangular prism</button>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="cylinder">Cylinder</button>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="cone">Cone</button>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pyramid">Pyramid</button>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="sphere">Sphere</button>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pull-3d">Pull selected 2D shape into 3D</button>
+        </div></details>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="emoji-stamp" title="Emoji stamp"><span aria-hidden="true">☺</span><small>Emoji</small></button>
         <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="laser-dimension" title="Laser measure — select 2 points"><span aria-hidden="true">↔</span><small>Measure</small></button>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="ruler-adjust" title="Move, rotate, or extend ruler"><span aria-hidden="true">📏</span><small>Ruler</small></button>
         <button type="button" data-action="whiteboard-undo" title="Undo"><span aria-hidden="true">↶</span><small>Undo</small></button>
         <button type="button" data-action="whiteboard-redo" title="Redo"><span aria-hidden="true">↷</span><small>Redo</small></button>
         <button type="button" data-action="whiteboard-copy" title="Copy — Ctrl+C or Command+C"><span aria-hidden="true">⧉</span><small>Copy</small></button>
@@ -4175,6 +4190,7 @@ function handleClick(event) {
       const label = tool.options[tool.selectedIndex]?.textContent?.trim() || "Whiteboard tool";
       setWhiteboardStatus(`${label} is active.`);
     }
+    action.closest("details")?.removeAttribute("open");
     whiteboardCanvas()?.focus({ preventScroll: true });
     return;
   }

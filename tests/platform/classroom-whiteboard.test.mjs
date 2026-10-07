@@ -55,13 +55,17 @@ test("whiteboard menus collapse and dock around the canvas", () => {
 });
 
 test("hidden board menus retain a compact full drawing toolbox", () => {
-  for (const tool of ["select", "pen", "calligraphy", "brush", "highlighter", "eraser", "line", "arrow", "rectangle", "ellipse", "triangle", "emoji-stamp", "lasso-select", "laser-dimension", "ruler-adjust"]) {
+  for (const tool of ["select", "lasso-select", "eraser", "fill", "pen", "calligraphy", "brush", "highlighter", "line", "arrow", "rectangle", "ellipse", "triangle", "cube", "rectangular-prism", "cylinder", "cone", "pyramid", "sphere", "pull-3d", "emoji-stamp", "laser-dimension"]) {
     assert.match(app, new RegExp(`data-whiteboard-quick-tool="${tool}"`));
   }
+  for (const menu of ["Pen", "Line", "Shapes", "3D Shapes"]) assert.match(app, new RegExp(`<small>${menu}</small>`));
+  assert.doesNotMatch(app, /data-whiteboard-quick-tool="ruler-adjust"/);
+  assert.match(app, /action\.closest\("details"\)\?\.removeAttribute\("open"\)/);
   assert.match(app, /action\.dataset\.action === "whiteboard-quick-tool"/);
   assert.match(app, /button\.dataset\.whiteboardQuickTool === nextTool/);
   assert.match(css, /data-controls-hidden="true"\] \.platform-whiteboard-quick-actions \{ flex-wrap: wrap;/);
   assert.match(css, /button\[aria-pressed="true"\]/);
+  assert.match(css, /\.platform-whiteboard-quick-menu > div/);
 });
 
 test("saved boards support repeating weekdays or a specific calendar date", () => {

@@ -1126,6 +1126,15 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-whiteboard-quick-actions button:disabled { opacity: 0.4; }
 .platform-whiteboard-quick-actions button > span { font-size: 1.25rem; line-height: 1; }
 .platform-whiteboard-quick-actions button > small { font-size: 0.62rem; font-weight: 750; }
+.platform-whiteboard-quick-menu { position: relative; flex: 0 0 auto; }
+.platform-whiteboard-quick-menu summary { display: grid; min-width: 4.6rem; min-height: 3.1rem; place-items: center; padding: 0.25rem 0.45rem; border: 1px solid transparent; border-radius: 0.35rem; cursor: pointer; list-style: none; }
+.platform-whiteboard-quick-menu summary::-webkit-details-marker { display: none; }
+.platform-whiteboard-quick-menu summary::after { position: absolute; right: 0.22rem; bottom: 0.1rem; content: "▾"; font-size: 0.65rem; }
+.platform-whiteboard-quick-menu summary > span { font-size: 1.1rem; line-height: 1; }
+.platform-whiteboard-quick-menu summary > small { font-size: 0.62rem; font-weight: 750; }
+.platform-whiteboard-quick-menu summary:hover, .platform-whiteboard-quick-menu summary:focus-visible, .platform-whiteboard-quick-menu[open] summary { border-color: #b8c6cd; background: #e9eef1; }
+.platform-whiteboard-quick-menu > div { position: absolute; z-index: 30; top: calc(100% + 0.3rem); left: 0; display: grid; min-width: 12rem; gap: 0.2rem; padding: 0.35rem; border: 2px solid var(--platform-blue); border-radius: 0.55rem; background: #fff; box-shadow: 0 0.65rem 1.4rem rgba(7,27,39,0.28); }
+.platform-whiteboard-quick-menu > div button { display: block; min-width: 0; min-height: 2.35rem; padding: 0.45rem 0.6rem; text-align: left; }
 .platform-whiteboard-library { display: flex; flex-wrap: wrap; align-items: end; gap: 0.5rem; padding: 0.55rem; border: 1px solid var(--platform-border); border-radius: 0.65rem; background: #f7fbfc; }
 .platform-whiteboard-library label { display: grid; flex: 1 1 10rem; gap: 0.2rem; font-size: 0.72rem; font-weight: 800; }
 .platform-whiteboard-library label[hidden] { display: none !important; }
@@ -1173,6 +1182,7 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-classroom-whiteboard[data-controls-hidden="true"] .platform-whiteboard-controls { display: none; }
 .platform-classroom-whiteboard[data-controls-hidden="true"] .platform-whiteboard-quick-actions { flex-wrap: wrap; overflow-x: visible; }
 .platform-classroom-whiteboard[data-controls-hidden="true"] .platform-whiteboard-quick-actions button { flex: 1 1 3.65rem; }
+.platform-classroom-whiteboard[data-controls-hidden="true"] .platform-whiteboard-quick-menu { flex: 1 1 4.6rem; }
 .platform-classroom-whiteboard[data-controls-dock="bottom"] { grid-template-areas: "header" "quick" "surface" "controls" "status"; grid-template-rows: auto auto minmax(0, 1fr) auto auto; }
 .platform-classroom-whiteboard[data-controls-dock="left"], .platform-classroom-whiteboard[data-controls-dock="right"] { grid-template-columns: minmax(17rem, 23rem) minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; }
 .platform-classroom-whiteboard[data-controls-dock="left"] { grid-template-areas: "header header" "quick quick" "controls surface" "status status"; }
