@@ -3129,6 +3129,36 @@ function whiteboardPoint(event, canvas) {
   return { x: (event.clientX - bounds.left) * canvas.width / bounds.width, y: (event.clientY - bounds.top) * canvas.height / bounds.height };
 }
 
+function openWhiteboardTextEntry(point, canvas) {
+  const surface = canvas.parentElement;
+  if (!surface) return;
+  surface.querySelector("[data-whiteboard-text-entry]")?.remove();
+  const entry = document.createElement("form");
+  entry.className = "platform-whiteboard-text-entry";
+  entry.dataset.whiteboardTextEntry = "true";
+  entry.innerHTML = '<label>Text<textarea maxlength="120" placeholder="Type text for the board" required></textarea></label><div><button type="button" data-whiteboard-text-cancel>Cancel</button><button type="submit">Add Text</button></div>';
+  const scaleX = canvas.clientWidth / canvas.width;
+  const scaleY = canvas.clientHeight / canvas.height;
+  entry.style.left = `${Math.max(4, Math.min(canvas.clientWidth - 328, point.x * scaleX))}px`;
+  entry.style.top = `${Math.max(4, Math.min(canvas.clientHeight - 150, point.y * scaleY))}px`;
+  const textarea = entry.querySelector("textarea");
+  const close = () => { entry.remove(); canvas.focus({ preventScroll: true }); };
+  entry.addEventListener("submit", (event) => {
+    event.preventDefault();
+    const value = textarea.value.trim().slice(0, 120);
+    if (!value) return;
+    pushWhiteboardHistory();
+    const size = Math.max(22, Number(document.querySelector("[data-whiteboard-size]")?.value ?? 6) * 5);
+    const object = createWhiteboardObject("text", { text: value, x: point.x, y: point.y, width: Math.min(canvas.width - point.x, Math.max(180, value.length * size * 0.55)), height: size * 1.3, fontSize: size, color: document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d", background: document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent", rotation: 0 });
+    whiteboardObjects.push(object); whiteboardSelectedObjectId = object.id; close(); renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls(); setWhiteboardStatus("Text added at the selected spot. Drag it to reposition it.");
+  });
+  entry.querySelector("[data-whiteboard-text-cancel]").addEventListener("click", () => { close(); setWhiteboardStatus("Text placement canceled."); });
+  textarea.addEventListener("keydown", (event) => { if (event.key === "Escape") { event.preventDefault(); close(); setWhiteboardStatus("Text placement canceled."); } else if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) entry.requestSubmit(); });
+  surface.append(entry);
+  textarea.focus();
+  setWhiteboardStatus("Type in the text box, then choose Add Text. Use Ctrl+Enter or Command+Enter as a shortcut.");
+}
+
 function drawWhiteboardGrid(context, canvas) {
   if (whiteboardGridUnit === "plain") return;
   const minor = whiteboardGridUnit === "inch" ? 24 : whiteboardGridUnit === "cm" ? 37.8 : 3.78;
@@ -3544,14 +3574,7 @@ function mountWhiteboard() {
       }
     }
     if (tool === "text") {
-      const text = window.prompt("Text to add at this spot:", "");
-      if (!text?.trim()) { setWhiteboardStatus("Text placement canceled. Click another blank spot to try again."); return; }
-      pushWhiteboardHistory();
-      const size = Math.max(22, Number(document.querySelector("[data-whiteboard-size]")?.value ?? 6) * 5);
-      const value = text.trim().slice(0, 120);
-      const object = createWhiteboardObject("text", { text: value, x: point.x, y: point.y, width: Math.min(canvas.width - point.x, Math.max(180, value.length * size * 0.55)), height: size * 1.3, fontSize: size, color: document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d", background: document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent", rotation: 0 });
-      whiteboardObjects.push(object); whiteboardSelectedObjectId = object.id; renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls();
-      setWhiteboardStatus("Text added at the selected spot. Drag it to reposition it."); return;
+      openWhiteboardTextEntry(point, canvas); return;
     }
     if (directTools && tool !== "select" && selected) {
       pushWhiteboardHistory(); whiteboardSelectedObjectId = selected.id;

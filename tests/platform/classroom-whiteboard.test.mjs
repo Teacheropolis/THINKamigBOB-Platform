@@ -66,7 +66,9 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   assert.match(app, /menu\.addEventListener\("mouseleave", \(\) => menu\.removeAttribute\("open"\)\)/);
   assert.match(app, /action\.dataset\.action === "whiteboard-quick-tool"/);
   assert.match(app, /data-whiteboard-quick-tool="text"/);
-  assert.match(app, /Text to add at this spot:/);
+  assert.match(app, /openWhiteboardTextEntry\(point, canvas\)/);
+  assert.match(app, /data-whiteboard-text-entry/);
+  assert.match(app, /Type in the text box, then choose Add Text/);
   assert.match(app, /Text added at the selected spot\. Drag it to reposition it\./);
   assert.ok(app.indexOf('if (tool === "text")') < app.indexOf('if (directTools && tool !== "select" && selected)'), "Text placement must take priority over background objects");
   assert.match(app, /button\.dataset\.whiteboardQuickTool === nextTool/);
@@ -74,6 +76,7 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   assert.match(css, /\.platform-whiteboard-quick-actions \{ position: relative;[^}]*z-index: 40;[^}]*flex-wrap: wrap;[^}]*overflow: visible;/);
   assert.match(css, /button\[aria-pressed="true"\]/);
   assert.match(css, /\.platform-whiteboard-quick-menu > div/);
+  assert.match(css, /\.platform-whiteboard-text-entry/);
   assert.match(css, /\.platform-whiteboard-quick-menu\[open\] \{ z-index: 45; \}/);
 });
 
@@ -184,7 +187,7 @@ test("measurement view can zoom and the ruler can move, rotate, extend, and chan
   assert.match(app, /whiteboardRuler\.angle = Math\.atan2/);
   assert.match(app, /whiteboardRuler\.length = Math\.max/);
   assert.match(app, /Ruler selected directly\. Drag to place it where you want/);
-  assert.match(css, /\.platform-whiteboard-surface \{ grid-area: surface; min-height: 0; overflow: auto;/);
+  assert.match(css, /\.platform-whiteboard-surface \{ position: relative; grid-area: surface; min-height: 0; overflow: auto;/);
 });
 
 test("images and text rotate while text supports solid and highlighter backgrounds", () => {
