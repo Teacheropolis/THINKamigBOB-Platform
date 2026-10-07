@@ -65,9 +65,9 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   assert.match(app, /action\.closest\("details"\)\?\.removeAttribute\("open"\)/);
   assert.match(app, /menu\.addEventListener\("mouseleave", \(\) => menu\.removeAttribute\("open"\)\)/);
   assert.match(app, /action\.dataset\.action === "whiteboard-quick-tool"/);
-  assert.match(app, /data-action="whiteboard-quick-text"/);
-  assert.match(app, /Text to add to the whiteboard:/);
-  assert.match(app, /Text added\. Drag the selected text to position it\./);
+  assert.match(app, /data-whiteboard-quick-tool="text"/);
+  assert.match(app, /Text to add at this spot:/);
+  assert.match(app, /Text added at the selected spot\. Drag it to reposition it\./);
   assert.match(app, /button\.dataset\.whiteboardQuickTool === nextTool/);
   assert.match(css, /data-controls-hidden="true"\] \.platform-whiteboard-quick-actions \{ flex-wrap: wrap; overflow: visible;/);
   assert.match(css, /\.platform-whiteboard-quick-actions \{ position: relative;[^}]*z-index: 40;[^}]*flex-wrap: wrap;[^}]*overflow: visible;/);

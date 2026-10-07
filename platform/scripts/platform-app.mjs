@@ -1684,7 +1684,7 @@ function teacherDashboardView(state) {
         <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="lasso-select" title="Lasso select for image"><span aria-hidden="true">⌁</span><small>Lasso</small></button>
         <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="eraser" title="Eraser object"><span aria-hidden="true">◇</span><small>Eraser</small></button>
         <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="fill" title="Paint can — fill shape"><span aria-hidden="true">◩</span><small>Paint</small></button>
-        <button type="button" data-action="whiteboard-quick-text" title="Add text"><span aria-hidden="true">T</span><small>Text</small></button>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="text" title="Click a blank place on the board to add text"><span aria-hidden="true">T</span><small>Text</small></button>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">✎</span><small>Pen</small></summary><div>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pen">Pen</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="calligraphy">Calligraphy pen</button>
@@ -3550,6 +3550,16 @@ function mountWhiteboard() {
       syncWhiteboardDimensionCompareControl(); renderWhiteboardObjects(canvas); canvas.setPointerCapture?.(event.pointerId);
       setWhiteboardStatus(selected.type === "dimension" ? "Measurement selected directly. Drag its red line or label to reposition it." : "Object selected directly. Drag to move it without changing tools."); return;
     }
+    if (tool === "text") {
+      const text = window.prompt("Text to add at this spot:", "");
+      if (!text?.trim()) { setWhiteboardStatus("Text placement canceled. Click another blank spot to try again."); return; }
+      pushWhiteboardHistory();
+      const size = Math.max(22, Number(document.querySelector("[data-whiteboard-size]")?.value ?? 6) * 5);
+      const value = text.trim().slice(0, 120);
+      const object = createWhiteboardObject("text", { text: value, x: point.x, y: point.y, width: Math.min(canvas.width - point.x, Math.max(180, value.length * size * 0.55)), height: size * 1.3, fontSize: size, color: document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d", background: document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent", rotation: 0 });
+      whiteboardObjects.push(object); whiteboardSelectedObjectId = object.id; renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls();
+      setWhiteboardStatus("Text added at the selected spot. Drag it to reposition it."); return;
+    }
     if (tool === "lasso-select") {
       whiteboardLassoPoints = [point]; whiteboardLassoBounds = null; whiteboardSelectionDownload = "";
       whiteboardDrawing = { tool, start: point }; canvas.setPointerCapture?.(event.pointerId); renderWhiteboardObjects(canvas); setWhiteboardStatus("Drag around the work you want to turn into an image."); return;
@@ -4196,16 +4206,6 @@ function handleClick(event) {
       setWhiteboardStatus(`${label} is active.`);
     }
     action.closest("details")?.removeAttribute("open");
-    whiteboardCanvas()?.focus({ preventScroll: true });
-    return;
-  }
-  if (action.dataset.action === "whiteboard-quick-text") {
-    const field = document.querySelector("[data-whiteboard-text]");
-    const text = window.prompt("Text to add to the whiteboard:", field?.value ?? "");
-    if (!text?.trim() || !field) return;
-    field.value = text.trim().slice(0, 120);
-    document.querySelector('[data-action="whiteboard-add-text"]')?.click();
-    setWhiteboardStatus("Text added. Drag the selected text to position it.");
     whiteboardCanvas()?.focus({ preventScroll: true });
     return;
   }
