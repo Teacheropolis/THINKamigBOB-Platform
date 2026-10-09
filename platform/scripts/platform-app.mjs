@@ -1683,8 +1683,8 @@ function teacherDashboardView(state) {
         <button type="button" data-action="whiteboard-tool-select" data-whiteboard-quick-tool="select" aria-pressed="true" title="Select and move"><span aria-hidden="true">➤</span><small>Select</small></button>
         <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="lasso-select" title="Lasso select for image"><span aria-hidden="true">⌁</span><small>Lasso</small></button>
         <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="eraser" title="Eraser object"><span aria-hidden="true">◇</span><small>Eraser</small></button>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="fill" title="Paint can — fill shape"><span aria-hidden="true">◩</span><small>Paint</small></button>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="text" title="Click a blank place on the board to add text"><span aria-hidden="true">T</span><small>Text</small></button>
+        <button type="button" data-action="whiteboard-delete-object" title="Delete — Backspace or Delete"><span aria-hidden="true">⌫</span><small>Delete</small></button>
+        <span class="platform-whiteboard-tool-divider" aria-hidden="true"></span>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">✎</span><small>Pen</small></summary><div>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pen">Pen</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="calligraphy">Calligraphy pen</button>
@@ -1709,16 +1709,24 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="sphere">Sphere</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pull-3d">Pull selected 2D shape into 3D</button>
         </div></details>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="text" title="Click a blank place on the board to add text"><span aria-hidden="true">T</span><small>Text</small></button>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="fill" title="Paint can — fill shape"><span aria-hidden="true">◩</span><small>Paint</small></button>
         <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="emoji-stamp" title="Emoji stamp"><span aria-hidden="true">☺</span><small>Emoji</small></button>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="laser-dimension" title="Laser measure — select 2 points"><span aria-hidden="true">↔</span><small>Measure</small></button>
+        <span class="platform-whiteboard-tool-divider" aria-hidden="true"></span>
+        <details class="platform-whiteboard-quick-menu" data-whiteboard-measure-menu><summary><span aria-hidden="true">↔</span><small>Measure</small></summary><div data-whiteboard-measure-panel>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="laser-dimension">Laser measure — select 2 points</button>
+        </div></details>
+        <span class="platform-whiteboard-tool-divider" aria-hidden="true"></span>
         <button type="button" data-action="whiteboard-undo" title="Undo"><span aria-hidden="true">↶</span><small>Undo</small></button>
         <button type="button" data-action="whiteboard-redo" title="Redo"><span aria-hidden="true">↷</span><small>Redo</small></button>
+        <span class="platform-whiteboard-tool-divider" aria-hidden="true"></span>
         <button type="button" data-action="whiteboard-copy" title="Copy — Ctrl+C or Command+C"><span aria-hidden="true">⧉</span><small>Copy</small></button>
         <button type="button" data-action="whiteboard-cut" title="Cut — Ctrl+X or Command+X"><span aria-hidden="true">✂</span><small>Cut</small></button>
         <button type="button" data-action="whiteboard-paste" title="Paste — Ctrl+V or Command+V"><span aria-hidden="true">▣</span><small>Paste</small></button>
         <button type="button" data-action="whiteboard-duplicate" title="Duplicate — Ctrl+D or Command+D"><span aria-hidden="true">⧉+</span><small>Duplicate</small></button>
-        <button type="button" data-action="whiteboard-delete-object" title="Delete — Backspace or Delete"><span aria-hidden="true">⌫</span><small>Delete</small></button>
+        <span class="platform-whiteboard-tool-divider" aria-hidden="true"></span>
         <button type="button" data-action="whiteboard-keyboard-help" title="Show keyboard and Chromebook shortcuts"><span aria-hidden="true">?</span><small>Help</small></button>
+        <details class="platform-whiteboard-quick-menu" data-whiteboard-more-menu><summary><span aria-hidden="true">•••</span><small>More</small></summary><div class="platform-whiteboard-more-panel" data-whiteboard-more-panel></div></details>
       </nav>
       <div class="platform-whiteboard-controls" data-whiteboard-controls>
       <div class="platform-whiteboard-library" aria-label="Saved whiteboards">
@@ -3592,10 +3600,18 @@ function mountWhiteboard() {
   const quickActions = document.querySelector(".platform-whiteboard-quick-actions");
   const drawingToolbar = document.querySelector(".platform-whiteboard-toolbar");
   if (quickActions && drawingToolbar) {
-    const settings = document.createElement("span");
-    settings.className = "platform-whiteboard-quick-settings";
-    settings.append(...drawingToolbar.children);
-    quickActions.append(settings);
+    const measurePanel = quickActions.querySelector("[data-whiteboard-measure-panel]");
+    const morePanel = quickActions.querySelector("[data-whiteboard-more-panel]");
+    const measurementControls = [
+      drawingToolbar.querySelector("[data-whiteboard-grid]")?.closest("label"),
+      drawingToolbar.querySelector("[data-whiteboard-ruler]")?.closest("label"),
+      drawingToolbar.querySelector('[data-whiteboard-quick-tool="ruler-adjust"]'),
+      drawingToolbar.querySelector("[data-whiteboard-ruler-sides]")?.closest("label"),
+      drawingToolbar.querySelector("[data-whiteboard-compare-unit]"),
+      drawingToolbar.querySelector("[data-whiteboard-zoom]")?.closest("label")
+    ].filter(Boolean);
+    measurePanel?.append(...measurementControls);
+    morePanel?.append(...drawingToolbar.children);
     drawingToolbar.remove();
   }
   document.querySelectorAll(".platform-whiteboard-quick-menu").forEach((menu) => {
