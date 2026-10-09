@@ -1722,14 +1722,14 @@ function teacherDashboardView(state) {
       </nav>
       <div class="platform-whiteboard-controls" data-whiteboard-controls>
       <div class="platform-whiteboard-library" aria-label="Saved whiteboards">
-        <label>Board name<input type="text" data-whiteboard-title maxlength="60" placeholder="Example: Monday warm-up"></label>
-        <label>Class<select data-whiteboard-class><option value="all">All classes</option>${pilotTeacherClasses.map((item) => `<option value="${escapeHtml(item.id)}"${item.id === classRecord?.id ? " selected" : ""}>${escapeHtml(item.displayName)}</option>`).join("")}</select></label>
-        <label>Schedule<select data-whiteboard-schedule-type><option value="none">No schedule</option><option value="weekly">Repeats weekly</option><option value="date">Specific date</option></select></label>
+        <label class="platform-whiteboard-library-primary">Board name<input type="text" data-whiteboard-title maxlength="60" placeholder="Example: Monday warm-up"></label>
+        <label class="platform-whiteboard-library-primary">Class<select data-whiteboard-class><option value="all">All classes</option>${pilotTeacherClasses.map((item) => `<option value="${escapeHtml(item.id)}"${item.id === classRecord?.id ? " selected" : ""}>${escapeHtml(item.displayName)}</option>`).join("")}</select></label>
+        <label class="platform-whiteboard-library-primary">Schedule<select data-whiteboard-schedule-type><option value="none">No schedule</option><option value="weekly">Repeats weekly</option><option value="date">Specific date</option></select></label>
         <label data-whiteboard-weekday-label hidden>Day<select data-whiteboard-day>${WEEKDAYS.map((day) => `<option value="${day}">${day}</option>`).join("")}</select></label>
         <label data-whiteboard-date-label hidden>Date<input type="date" data-whiteboard-date></label>
         <label class="platform-whiteboard-display-option"><input type="checkbox" data-whiteboard-student-display> Automatically show this board on the Student Display when its schedule begins</label>
         <button type="button" data-action="whiteboard-save-named">Save Board</button>
-        <label>Saved boards<select data-whiteboard-saved><option value="">Choose a saved board</option>${savedWhiteboards.map((board) => `<option value="${escapeHtml(board.id)}">${escapeHtml(board.title)} · ${escapeHtml(whiteboardScheduleLabel(board))}${board.studentDisplay ? " · Student Display" : ""}</option>`).join("")}</select></label>
+        <label class="platform-whiteboard-saved-list">Saved boards<select data-whiteboard-saved><option value="">Choose a saved board</option>${savedWhiteboards.map((board) => `<option value="${escapeHtml(board.id)}">${escapeHtml(board.title)} · ${escapeHtml(whiteboardScheduleLabel(board))}${board.studentDisplay ? " · Student Display" : ""}</option>`).join("")}</select></label>
         <button type="button" data-action="whiteboard-load">Load</button>
         <button type="button" data-action="whiteboard-delete">Delete</button>
       </div>

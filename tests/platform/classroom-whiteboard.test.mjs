@@ -41,6 +41,8 @@ test("whiteboard supports reusable boards, images, export, and presentation", ()
   assert.match(app, /link\.download/);
   assert.match(css, /data-presentation="true"/);
   assert.match(css, /\.platform-whiteboard-library/);
+  assert.match(css, /\.platform-whiteboard-library \.platform-whiteboard-library-primary \{ grid-column: span 4; \}/);
+  assert.match(css, /\.platform-whiteboard-library \.platform-whiteboard-display-option \{[^}]*grid-column: span 4;/);
 });
 
 test("whiteboard menus collapse and dock around the canvas", () => {
