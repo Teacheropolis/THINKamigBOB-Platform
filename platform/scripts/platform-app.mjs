@@ -1770,7 +1770,7 @@ function teacherDashboardView(state) {
         <button type="button" data-action="whiteboard-clear">Clear</button>
       </div>
       </div>
-      <div class="platform-whiteboard-surface"><canvas data-whiteboard-canvas tabindex="0" aria-label="Teacher classroom whiteboard drawing surface"></canvas><nav class="platform-whiteboard-pages" data-whiteboard-pages aria-label="Whiteboard pages"><button type="button" data-action="whiteboard-page-previous" title="Previous page">‹</button><span data-whiteboard-page-count>1 / 1</span><div data-whiteboard-page-tabs></div><button type="button" data-action="whiteboard-page-next" title="Next page">›</button><button type="button" data-action="whiteboard-page-add">+ Add Page</button><button type="button" data-action="whiteboard-page-duplicate">Duplicate</button><button type="button" data-action="whiteboard-page-rename">Rename</button><button type="button" data-action="whiteboard-page-left" title="Move page left">←</button><button type="button" data-action="whiteboard-page-right" title="Move page right">→</button><button type="button" data-action="whiteboard-page-delete">Delete Page</button></nav></div>
+      <div class="platform-whiteboard-surface"><canvas data-whiteboard-canvas tabindex="0" aria-label="Teacher classroom whiteboard drawing surface"></canvas><nav class="platform-whiteboard-pages" data-whiteboard-pages aria-label="Whiteboard pages"><button type="button" data-action="whiteboard-page-previous" title="Previous page">‹</button><span data-whiteboard-page-count>1 / 1</span><div data-whiteboard-page-tabs></div><button type="button" data-action="whiteboard-page-next" title="Next page">›</button><button type="button" data-action="whiteboard-page-add">+ Add Page</button><button type="button" data-action="whiteboard-page-duplicate">Duplicate</button><button type="button" data-action="whiteboard-page-rename">Rename</button><span class="platform-whiteboard-page-rename" data-whiteboard-page-rename hidden><label>Page name<input type="text" data-whiteboard-page-name maxlength="40"></label><button type="button" data-action="whiteboard-page-rename-save">Save</button><button type="button" data-action="whiteboard-page-rename-cancel">Cancel</button></span><button type="button" data-action="whiteboard-page-left" title="Move page left">←</button><button type="button" data-action="whiteboard-page-right" title="Move page right">→</button><button type="button" data-action="whiteboard-page-delete">Delete Page</button></nav></div>
       <p class="platform-whiteboard-status" data-whiteboard-status role="status" aria-live="polite">Drawings are saved in this browser session.</p>
       <div class="platform-whiteboard-context-menu" data-whiteboard-context-menu role="menu" hidden><button type="button" role="menuitem" data-action="whiteboard-copy-image">Copy Image</button><button type="button" role="menuitem" data-action="whiteboard-cut-image">Cut Image</button><button type="button" role="menuitem" data-action="whiteboard-paste-image">Paste Image</button><button type="button" role="menuitem" data-action="whiteboard-close-context-menu">Cancel</button></div>
       <aside class="platform-whiteboard-keyboard-help" data-whiteboard-keyboard-help role="dialog" aria-modal="true" aria-labelledby="whiteboard-keyboard-help-title" hidden>
@@ -4542,8 +4542,20 @@ function handleClick(event) {
   }
   if (action.dataset.action === "whiteboard-page-rename") {
     const page = whiteboardPages[whiteboardCurrentPageIndex];
-    const title = window.prompt("Page name", page.title)?.trim().slice(0, 40);
-    if (title) { page.title = title; renderWhiteboardPageStrip(); saveWhiteboard(); setWhiteboardStatus(`Page renamed to ${title}.`); }
+    const rename = document.querySelector("[data-whiteboard-page-rename]");
+    const input = rename?.querySelector("[data-whiteboard-page-name]");
+    if (rename && input) { rename.hidden = false; input.value = page.title; input.focus(); input.select(); }
+    return;
+  }
+  if (action.dataset.action === "whiteboard-page-rename-save") {
+    const rename = document.querySelector("[data-whiteboard-page-rename]");
+    const title = rename?.querySelector("[data-whiteboard-page-name]")?.value.trim().slice(0, 40);
+    if (title) { whiteboardPages[whiteboardCurrentPageIndex].title = title; rename.hidden = true; renderWhiteboardPageStrip(); saveWhiteboard(); setWhiteboardStatus(`Page renamed to ${title}.`); }
+    return;
+  }
+  if (action.dataset.action === "whiteboard-page-rename-cancel") {
+    const rename = document.querySelector("[data-whiteboard-page-rename]");
+    if (rename) rename.hidden = true;
     return;
   }
   if (action.dataset.action === "whiteboard-page-left" || action.dataset.action === "whiteboard-page-right") {
