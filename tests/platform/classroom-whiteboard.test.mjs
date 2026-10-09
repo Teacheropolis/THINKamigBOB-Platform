@@ -48,6 +48,16 @@ test("whiteboard supports reusable boards, images, export, and presentation", ()
   assert.match(css, /\.platform-whiteboard-library \.platform-whiteboard-display-option \{[^}]*grid-column: span 4;/);
 });
 
+test("whiteboard supports named, saved, and presentable pages", () => {
+  for (const text of ["+ Add Page", "Duplicate", "Rename", "Delete Page", "Previous page", "Next page"]) assert.match(app, new RegExp(text.replace(/[+]/g, "\\+")));
+  assert.match(app, /WHITEBOARD_PAGES_SESSION_KEY/);
+  assert.match(app, /function openWhiteboardPage/);
+  assert.match(app, /pages: structuredClone\(whiteboardPages\)/);
+  assert.match(app, /data-whiteboard-page-tabs/);
+  assert.match(css, /\.platform-whiteboard-pages/);
+  assert.match(css, /button\[aria-current="page"\]/);
+});
+
 test("whiteboard menus collapse and dock around the canvas", () => {
   for (const text of ["Menu position", "Top", "Left side", "Right side", "Bottom", "Hide Board Menus", "Show Board Menus"]) assert.match(app, new RegExp(text));
   assert.match(app, /data-whiteboard-controls/);

@@ -1179,6 +1179,12 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-whiteboard-measurement-tip { padding: 0.7rem; border-left: 5px solid #d39a00; border-radius: 0.4rem; background: #fff7cf; font-weight: 800; }
 .platform-whiteboard-surface { position: relative; grid-area: surface; min-height: 0; overflow: auto; border: 4px solid var(--platform-navy); border-radius: 0.75rem; background: #fff; box-shadow: 0 0.7rem 2rem rgba(7, 27, 39, 0.18); }
 .platform-whiteboard-surface canvas { display: block; width: 100%; height: 100%; cursor: crosshair; touch-action: none; }
+.platform-whiteboard-pages { position: absolute; z-index: 24; right: 0.5rem; bottom: 0.5rem; left: 0.5rem; display: flex; align-items: center; gap: 0.3rem; min-height: 2.8rem; padding: 0.3rem; overflow-x: auto; border: 1px solid #b8c6cd; border-radius: 0.55rem; background: rgba(248, 249, 250, 0.96); box-shadow: 0 0.25rem 0.75rem rgba(7,27,39,0.2); }
+.platform-whiteboard-pages > span { flex: 0 0 auto; min-width: 2.8rem; font-size: 0.7rem; font-weight: 900; text-align: center; }
+.platform-whiteboard-pages > div { display: flex; gap: 0.25rem; }
+.platform-whiteboard-pages button { flex: 0 0 auto; min-height: 2.1rem; padding: 0.3rem 0.55rem; border: 1px solid #aebdc5; border-radius: 0.35rem; background: #fff; font-size: 0.7rem; font-weight: 800; }
+.platform-whiteboard-pages button[aria-current="page"] { border-color: var(--platform-blue-dark); color: #fff; background: var(--platform-blue-dark); }
+.platform-whiteboard-pages button:disabled { opacity: 0.38; }
 .platform-whiteboard-text-entry { position: absolute; z-index: 25; width: min(14rem, calc(100% - 0.5rem)); min-height: 3rem; padding: 0.35rem 0.45rem; overflow: hidden; resize: none; border: 2px dashed var(--platform-blue-dark); border-radius: 0.25rem; color: var(--platform-navy); background: rgba(255,255,255,0.94); box-shadow: 0 0.25rem 0.7rem rgba(7,27,39,0.2); font: 700 1.05rem/1.3 Lexend, system-ui, sans-serif; }
 .platform-whiteboard-rich-editor { position: absolute; z-index: 28; width: min(30rem, calc(100% - 0.5rem)); padding: 0.4rem; border: 2px solid var(--platform-blue-dark); border-radius: 0.45rem; background: #fff; box-shadow: 0 0.7rem 1.5rem rgba(7,27,39,0.3); }
 .platform-whiteboard-rich-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin-bottom: 0.35rem; }

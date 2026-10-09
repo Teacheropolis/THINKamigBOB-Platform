@@ -137,6 +137,7 @@ const PRESENTATION_TIMER_VIEW_KEY = "thinkamigbob.presentation-timer-view.v1";
 const STUDENT_DISPLAY_VOICE_METER_SESSION_KEY = "thinkamigbob.student-display.voice-meter.v1";
 const WHITEBOARD_SESSION_KEY = "thinkamigbob.classroom-whiteboard.v1";
 const WHITEBOARD_OBJECT_SESSION_KEY = "thinkamigbob.classroom-whiteboard-objects.v1";
+const WHITEBOARD_PAGES_SESSION_KEY = "thinkamigbob.classroom-whiteboard-pages.v1";
 const WHITEBOARD_VIEW_SESSION_KEY = "thinkamigbob.classroom-whiteboard-view.v1";
 const WHITEBOARD_LIBRARY_KEY = "thinkamigbob.classroom-whiteboard-library.v1";
 const WHITEBOARD_BOB_MEASUREMENT_COACH_KEY = "thinkamigbob.whiteboard-bob-measurement-coach.v1";
@@ -189,6 +190,8 @@ let whiteboardUndoStack = [];
 let whiteboardRedoStack = [];
 let whiteboardDrawing = null;
 let whiteboardObjects = [];
+let whiteboardPages = [];
+let whiteboardCurrentPageIndex = 0;
 let whiteboardSelectedObjectId = "";
 let whiteboardClipboard = null;
 let whiteboardGridUnit = "plain";
@@ -1767,7 +1770,7 @@ function teacherDashboardView(state) {
         <button type="button" data-action="whiteboard-clear">Clear</button>
       </div>
       </div>
-      <div class="platform-whiteboard-surface"><canvas data-whiteboard-canvas tabindex="0" aria-label="Teacher classroom whiteboard drawing surface"></canvas></div>
+      <div class="platform-whiteboard-surface"><canvas data-whiteboard-canvas tabindex="0" aria-label="Teacher classroom whiteboard drawing surface"></canvas><nav class="platform-whiteboard-pages" data-whiteboard-pages aria-label="Whiteboard pages"><button type="button" data-action="whiteboard-page-previous" title="Previous page">‹</button><span data-whiteboard-page-count>1 / 1</span><div data-whiteboard-page-tabs></div><button type="button" data-action="whiteboard-page-next" title="Next page">›</button><button type="button" data-action="whiteboard-page-add">+ Add Page</button><button type="button" data-action="whiteboard-page-duplicate">Duplicate</button><button type="button" data-action="whiteboard-page-rename">Rename</button><button type="button" data-action="whiteboard-page-left" title="Move page left">←</button><button type="button" data-action="whiteboard-page-right" title="Move page right">→</button><button type="button" data-action="whiteboard-page-delete">Delete Page</button></nav></div>
       <p class="platform-whiteboard-status" data-whiteboard-status role="status" aria-live="polite">Drawings are saved in this browser session.</p>
       <div class="platform-whiteboard-context-menu" data-whiteboard-context-menu role="menu" hidden><button type="button" role="menuitem" data-action="whiteboard-copy-image">Copy Image</button><button type="button" role="menuitem" data-action="whiteboard-cut-image">Cut Image</button><button type="button" role="menuitem" data-action="whiteboard-paste-image">Paste Image</button><button type="button" role="menuitem" data-action="whiteboard-close-context-menu">Cancel</button></div>
       <aside class="platform-whiteboard-keyboard-help" data-whiteboard-keyboard-help role="dialog" aria-modal="true" aria-labelledby="whiteboard-keyboard-help-title" hidden>
@@ -3122,6 +3125,45 @@ function serializableWhiteboardObjects() {
   return whiteboardObjects.map(({ element, ...object }) => object);
 }
 
+function newWhiteboardPage(title = "") {
+  return { id: globalThis.crypto?.randomUUID?.() ?? `page-${Date.now()}-${Math.random()}`, title: title || `Page ${whiteboardPages.length + 1}`, objects: [] };
+}
+
+function syncCurrentWhiteboardPage() {
+  if (!whiteboardPages.length) whiteboardPages = [newWhiteboardPage("Page 1")];
+  const page = whiteboardPages[whiteboardCurrentPageIndex] ?? whiteboardPages[0];
+  page.objects = structuredClone(serializableWhiteboardObjects());
+}
+
+function renderWhiteboardPageStrip() {
+  const strip = document.querySelector("[data-whiteboard-pages]");
+  if (!strip) return;
+  strip.querySelector("[data-whiteboard-page-tabs]").innerHTML = whiteboardPages.map((page, index) => `<button type="button" data-action="whiteboard-page-select" data-whiteboard-page-index="${index}" aria-current="${index === whiteboardCurrentPageIndex ? "page" : "false"}">${escapeHtml(page.title || `Page ${index + 1}`)}</button>`).join("");
+  const count = strip.querySelector("[data-whiteboard-page-count]");
+  if (count) count.textContent = `${whiteboardCurrentPageIndex + 1} / ${whiteboardPages.length}`;
+  strip.querySelector('[data-action="whiteboard-page-previous"]').disabled = whiteboardCurrentPageIndex === 0;
+  strip.querySelector('[data-action="whiteboard-page-next"]').disabled = whiteboardCurrentPageIndex >= whiteboardPages.length - 1;
+  strip.querySelector('[data-action="whiteboard-page-left"]').disabled = whiteboardCurrentPageIndex === 0;
+  strip.querySelector('[data-action="whiteboard-page-right"]').disabled = whiteboardCurrentPageIndex >= whiteboardPages.length - 1;
+  strip.querySelector('[data-action="whiteboard-page-delete"]').disabled = whiteboardPages.length <= 1;
+}
+
+function openWhiteboardPage(index, { save = true } = {}) {
+  if (!Number.isInteger(index) || index < 0 || index >= whiteboardPages.length || index === whiteboardCurrentPageIndex) return;
+  if (save) syncCurrentWhiteboardPage();
+  whiteboardCurrentPageIndex = index;
+  whiteboardObjects = structuredClone(whiteboardPages[index].objects ?? []);
+  whiteboardSelectedObjectId = "";
+  whiteboardUndoStack = [];
+  whiteboardRedoStack = [];
+  hydrateWhiteboardImages(() => renderWhiteboardObjects());
+  renderWhiteboardObjects();
+  renderWhiteboardPageStrip();
+  saveWhiteboard();
+  updateWhiteboardHistoryControls();
+  setWhiteboardStatus(`Showing ${whiteboardPages[index].title}.`);
+}
+
 function cloneEditableWhiteboardObject(object) {
   if (!object) return null;
   const { element, ...editable } = object;
@@ -3131,8 +3173,10 @@ function cloneEditableWhiteboardObject(object) {
 function saveWhiteboard(canvas = whiteboardCanvas()) {
   if (!canvas) return;
   try {
+    syncCurrentWhiteboardPage();
     window.sessionStorage.setItem(WHITEBOARD_SESSION_KEY, whiteboardSnapshot(canvas));
     window.sessionStorage.setItem(WHITEBOARD_OBJECT_SESSION_KEY, JSON.stringify(serializableWhiteboardObjects()));
+    window.sessionStorage.setItem(WHITEBOARD_PAGES_SESSION_KEY, JSON.stringify({ currentPageIndex: whiteboardCurrentPageIndex, pages: whiteboardPages }));
     window.sessionStorage.setItem(WHITEBOARD_VIEW_SESSION_KEY, JSON.stringify({ gridUnit: whiteboardGridUnit, rulerUnit: whiteboardRulerUnit, zoom: whiteboardZoom, ruler: whiteboardRuler, title: whiteboardDrawingTitle, controlsDock: whiteboardControlsDock, controlsHidden: whiteboardControlsHidden }));
   } catch {
     const status = document.querySelector("[data-whiteboard-status]");
@@ -3651,11 +3695,22 @@ function mountWhiteboard() {
     });
   });
   const surface = canvas.parentElement; canvas.width = Math.max(900, Math.round(surface.clientWidth || 900)); canvas.height = Math.max(520, Math.round(surface.clientHeight || 520));
-  try { whiteboardObjects = JSON.parse(window.sessionStorage.getItem(WHITEBOARD_OBJECT_SESSION_KEY) ?? "[]"); } catch { whiteboardObjects = []; }
+  try {
+    const pageState = JSON.parse(window.sessionStorage.getItem(WHITEBOARD_PAGES_SESSION_KEY) ?? "null");
+    if (Array.isArray(pageState?.pages) && pageState.pages.length) {
+      whiteboardPages = pageState.pages.map((page, index) => ({ id: page.id || `page-${index}`, title: String(page.title || `Page ${index + 1}`).slice(0, 40), objects: Array.isArray(page.objects) ? page.objects : [] }));
+      whiteboardCurrentPageIndex = Math.min(Math.max(0, Number(pageState.currentPageIndex) || 0), whiteboardPages.length - 1);
+      whiteboardObjects = structuredClone(whiteboardPages[whiteboardCurrentPageIndex].objects);
+    } else {
+      whiteboardObjects = JSON.parse(window.sessionStorage.getItem(WHITEBOARD_OBJECT_SESSION_KEY) ?? "[]");
+      whiteboardPages = [{ ...newWhiteboardPage("Page 1"), objects: structuredClone(whiteboardObjects) }];
+      whiteboardCurrentPageIndex = 0;
+    }
+  } catch { whiteboardObjects = []; whiteboardPages = [newWhiteboardPage("Page 1")]; whiteboardCurrentPageIndex = 0; }
   try { const view = JSON.parse(window.sessionStorage.getItem(WHITEBOARD_VIEW_SESSION_KEY) ?? "{}"); whiteboardGridUnit = ["plain", "inch", "cm", "mm"].includes(view.gridUnit) ? view.gridUnit : "plain"; whiteboardRulerUnit = ["none", "english", "metric"].includes(view.rulerUnit) ? view.rulerUnit : "none"; whiteboardZoom = Math.min(300, Math.max(50, Number(view.zoom) || 100)); whiteboardRuler = view.ruler && typeof view.ruler === "object" ? { ...whiteboardRuler, ...view.ruler } : { ...whiteboardRuler, y: canvas.height - 92 }; whiteboardDrawingTitle = String(view.title || "Workshop Drawing").slice(0, 60); whiteboardControlsDock = ["top", "left", "right", "bottom"].includes(view.controlsDock) ? view.controlsDock : "top"; whiteboardControlsHidden = Boolean(view.controlsHidden); } catch { whiteboardGridUnit = "plain"; whiteboardRulerUnit = "none"; whiteboardZoom = 100; whiteboardDrawingTitle = "Workshop Drawing"; whiteboardControlsDock = "top"; whiteboardControlsHidden = false; }
   const gridControl = document.querySelector("[data-whiteboard-grid]"); const rulerControl = document.querySelector("[data-whiteboard-ruler]"); const rulerSides = document.querySelector("[data-whiteboard-ruler-sides]"); if (gridControl) gridControl.value = whiteboardGridUnit; if (rulerControl) rulerControl.value = whiteboardRulerUnit; if (rulerSides) rulerSides.value = whiteboardRuler.sides; applyWhiteboardControlsLayout({ resizeCanvas: true }); applyWhiteboardZoom(canvas);
   if (!whiteboardObjects.length) { let legacy = ""; try { legacy = window.sessionStorage.getItem(WHITEBOARD_SESSION_KEY) ?? ""; } catch {} if (legacy) whiteboardObjects = [createWhiteboardObject("image", { x: 0, y: 0, width: canvas.width, height: canvas.height, src: legacy })]; }
-  hydrateWhiteboardImages(() => renderWhiteboardObjects(canvas)); renderWhiteboardObjects(canvas);
+  renderWhiteboardPageStrip(); hydrateWhiteboardImages(() => renderWhiteboardObjects(canvas)); renderWhiteboardObjects(canvas);
   try { if (window.sessionStorage.getItem(WHITEBOARD_BOB_MEASUREMENT_COACH_KEY) === "seen") showWhiteboardBobMeasurementCoach(); } catch {}
   const start = (event) => {
     if (event.button !== undefined && event.button !== 0) return; event.preventDefault(); canvas.focus({ preventScroll: true });
@@ -4461,6 +4516,54 @@ function handleClick(event) {
     }
     return;
   }
+  if (action.dataset.action === "whiteboard-page-select") {
+    openWhiteboardPage(Number(action.dataset.whiteboardPageIndex));
+    return;
+  }
+  if (action.dataset.action === "whiteboard-page-previous" || action.dataset.action === "whiteboard-page-next") {
+    openWhiteboardPage(whiteboardCurrentPageIndex + (action.dataset.action === "whiteboard-page-next" ? 1 : -1));
+    return;
+  }
+  if (action.dataset.action === "whiteboard-page-add") {
+    syncCurrentWhiteboardPage();
+    whiteboardPages.push(newWhiteboardPage());
+    openWhiteboardPage(whiteboardPages.length - 1, { save: false });
+    setWhiteboardStatus("A new blank page was added.");
+    return;
+  }
+  if (action.dataset.action === "whiteboard-page-duplicate") {
+    syncCurrentWhiteboardPage();
+    const source = whiteboardPages[whiteboardCurrentPageIndex];
+    const copy = { id: globalThis.crypto?.randomUUID?.() ?? `page-${Date.now()}`, title: `${source.title} copy`.slice(0, 40), objects: structuredClone(source.objects) };
+    whiteboardPages.splice(whiteboardCurrentPageIndex + 1, 0, copy);
+    openWhiteboardPage(whiteboardCurrentPageIndex + 1, { save: false });
+    setWhiteboardStatus("The current page was duplicated.");
+    return;
+  }
+  if (action.dataset.action === "whiteboard-page-rename") {
+    const page = whiteboardPages[whiteboardCurrentPageIndex];
+    const title = window.prompt("Page name", page.title)?.trim().slice(0, 40);
+    if (title) { page.title = title; renderWhiteboardPageStrip(); saveWhiteboard(); setWhiteboardStatus(`Page renamed to ${title}.`); }
+    return;
+  }
+  if (action.dataset.action === "whiteboard-page-left" || action.dataset.action === "whiteboard-page-right") {
+    syncCurrentWhiteboardPage();
+    const destination = whiteboardCurrentPageIndex + (action.dataset.action === "whiteboard-page-right" ? 1 : -1);
+    if (destination < 0 || destination >= whiteboardPages.length) return;
+    [whiteboardPages[whiteboardCurrentPageIndex], whiteboardPages[destination]] = [whiteboardPages[destination], whiteboardPages[whiteboardCurrentPageIndex]];
+    whiteboardCurrentPageIndex = destination;
+    renderWhiteboardPageStrip(); saveWhiteboard(); setWhiteboardStatus("Page order updated.");
+    return;
+  }
+  if (action.dataset.action === "whiteboard-page-delete") {
+    if (whiteboardPages.length <= 1 || !window.confirm(`Delete ${whiteboardPages[whiteboardCurrentPageIndex].title}?`)) return;
+    whiteboardPages.splice(whiteboardCurrentPageIndex, 1);
+    whiteboardCurrentPageIndex = Math.min(whiteboardCurrentPageIndex, whiteboardPages.length - 1);
+    whiteboardObjects = structuredClone(whiteboardPages[whiteboardCurrentPageIndex].objects ?? []);
+    whiteboardSelectedObjectId = ""; whiteboardUndoStack = []; whiteboardRedoStack = [];
+    hydrateWhiteboardImages(() => renderWhiteboardObjects()); renderWhiteboardObjects(); renderWhiteboardPageStrip(); saveWhiteboard(); updateWhiteboardHistoryControls(); setWhiteboardStatus("Page deleted.");
+    return;
+  }
   if (action.dataset.action === "whiteboard-save-named") {
     const canvas = whiteboardCanvas();
     const titleField = document.querySelector("[data-whiteboard-title]");
@@ -4473,8 +4576,9 @@ function handleClick(event) {
     if (studentDisplay && scheduleType === "none") { setWhiteboardStatus("Choose a weekly schedule or specific date for automatic Student Display use."); return; }
     whiteboardDrawingTitle = title;
     renderWhiteboardObjects(canvas);
+    syncCurrentWhiteboardPage();
     const boards = readWhiteboardLibrary();
-    const board = { id: globalThis.crypto?.randomUUID?.() ?? `board-${Date.now()}`, title, classId: document.querySelector("[data-whiteboard-class]")?.value ?? "all", scheduleType, day: scheduleType === "weekly" ? (document.querySelector("[data-whiteboard-day]")?.value ?? WEEKDAYS[0]) : "", date: scheduleType === "date" ? date : "", studentDisplay, gridUnit: whiteboardGridUnit, rulerUnit: whiteboardRulerUnit, ruler: structuredClone(whiteboardRuler), image: whiteboardSnapshot(canvas), displayImage: studentDisplay ? whiteboardStudentDisplayImage(canvas) : "", objects: serializableWhiteboardObjects(), savedAt: Date.now() };
+    const board = { id: globalThis.crypto?.randomUUID?.() ?? `board-${Date.now()}`, title, classId: document.querySelector("[data-whiteboard-class]")?.value ?? "all", scheduleType, day: scheduleType === "weekly" ? (document.querySelector("[data-whiteboard-day]")?.value ?? WEEKDAYS[0]) : "", date: scheduleType === "date" ? date : "", studentDisplay, gridUnit: whiteboardGridUnit, rulerUnit: whiteboardRulerUnit, ruler: structuredClone(whiteboardRuler), image: whiteboardSnapshot(canvas), displayImage: studentDisplay ? whiteboardStudentDisplayImage(canvas) : "", objects: serializableWhiteboardObjects(), pages: structuredClone(whiteboardPages), currentPageIndex: whiteboardCurrentPageIndex, savedAt: Date.now() };
     boards.unshift(board);
     if (!writeWhiteboardLibrary(boards)) { setWhiteboardStatus("This board is too large for browser storage. Export it as a PNG instead."); return; }
     refreshWhiteboardLibraryOptions(board.id);
@@ -4487,14 +4591,22 @@ function handleClick(event) {
     const board = readWhiteboardLibrary().find((item) => item.id === id);
     if (!board) { setWhiteboardStatus("Choose a saved board to load."); return; }
     pushWhiteboardHistory();
-    whiteboardObjects = Array.isArray(board.objects) && board.objects.length ? structuredClone(board.objects) : [createWhiteboardObject("image", { x: 0, y: 0, width: whiteboardCanvas().width, height: whiteboardCanvas().height, src: board.image })];
+    if (Array.isArray(board.pages) && board.pages.length) {
+      whiteboardPages = structuredClone(board.pages);
+      whiteboardCurrentPageIndex = Math.min(Math.max(0, Number(board.currentPageIndex) || 0), whiteboardPages.length - 1);
+      whiteboardObjects = structuredClone(whiteboardPages[whiteboardCurrentPageIndex].objects ?? []);
+    } else {
+      whiteboardObjects = Array.isArray(board.objects) && board.objects.length ? structuredClone(board.objects) : [createWhiteboardObject("image", { x: 0, y: 0, width: whiteboardCanvas().width, height: whiteboardCanvas().height, src: board.image })];
+      whiteboardPages = [{ ...newWhiteboardPage("Page 1"), objects: structuredClone(whiteboardObjects) }];
+      whiteboardCurrentPageIndex = 0;
+    }
     whiteboardGridUnit = ["plain", "inch", "cm", "mm"].includes(board.gridUnit) ? board.gridUnit : "plain";
     whiteboardRulerUnit = ["none", "english", "metric"].includes(board.rulerUnit) ? board.rulerUnit : "none";
     whiteboardRuler = board.ruler && typeof board.ruler === "object" ? { ...whiteboardRuler, ...board.ruler } : whiteboardRuler;
     whiteboardDrawingTitle = board.title || "Workshop Drawing";
     const gridControl = document.querySelector("[data-whiteboard-grid]"); const rulerControl = document.querySelector("[data-whiteboard-ruler]"); const rulerSides = document.querySelector("[data-whiteboard-ruler-sides]");
     if (gridControl) gridControl.value = whiteboardGridUnit; if (rulerControl) rulerControl.value = whiteboardRulerUnit; if (rulerSides) rulerSides.value = whiteboardRuler.sides;
-    whiteboardSelectedObjectId = ""; hydrateWhiteboardImages(() => { renderWhiteboardObjects(); saveWhiteboard(); }); renderWhiteboardObjects();
+    whiteboardSelectedObjectId = ""; renderWhiteboardPageStrip(); hydrateWhiteboardImages(() => { renderWhiteboardObjects(); saveWhiteboard(); }); renderWhiteboardObjects();
     const title = document.querySelector("[data-whiteboard-title]");
     if (title) title.value = board.title;
     const scheduleType = document.querySelector("[data-whiteboard-schedule-type]");
