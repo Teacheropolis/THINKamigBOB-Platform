@@ -1676,7 +1676,7 @@ function teacherDashboardView(state) {
     <section id="platform-classroom-whiteboard" class="platform-classroom-whiteboard" role="dialog" aria-modal="true" aria-labelledby="classroom-whiteboard-title" tabindex="-1" hidden>
       <header class="platform-whiteboard-header">
         <div><p class="platform-command-label">Classroom tool</p><h2 id="classroom-whiteboard-title">Whiteboard</h2></div>
-        <div class="platform-whiteboard-header-actions"><label>Menu position<select data-whiteboard-controls-dock><option value="top">Top</option><option value="left">Left side</option><option value="right">Right side</option><option value="bottom">Bottom</option></select></label><button type="button" data-action="whiteboard-toggle-controls" aria-expanded="true">Hide Board Menus</button><button type="button" data-action="whiteboard-present">Present Board</button><button type="button" data-action="close-whiteboard">Close Whiteboard</button></div>
+        <div class="platform-whiteboard-header-actions"><label>Menu position<select data-whiteboard-controls-dock><option value="top">Top</option><option value="left">Left side</option><option value="right">Right side</option><option value="bottom">Bottom</option></select></label><button type="button" data-action="whiteboard-toggle-controls" aria-expanded="true">Hide Board Menus</button><button type="button" data-action="whiteboard-present" title="Show full-screen on this teacher device">Present Board</button><button type="button" data-action="whiteboard-show-students" title="Send the current board to the separate classroom display">Show on Student Display</button><button type="button" data-action="close-whiteboard">Close Whiteboard</button></div>
       </header>
       <button class="platform-whiteboard-exit-presentation" type="button" data-action="whiteboard-exit-presentation" hidden>Exit Presentation</button>
       <nav class="platform-whiteboard-quick-actions" aria-label="Whiteboard quick actions">
@@ -2197,6 +2197,33 @@ function syncClassroomPresentationWindow() {
   });
   documentRef.querySelectorAll("[data-timer-warning]").forEach((warning) => { warning.hidden = !visual.fiveMinuteWarning; });
   documentRef.querySelectorAll("[data-student-memo-text]").forEach((element) => { element.innerHTML = teacherMemo.read().text ? memoSegmentsMarkup(teacherMemo.read()) : "No message is ready yet."; });
+  const memoState = teacherMemo.read();
+  const selectedMode = studentDisplayMode.read({ hasMemo: Boolean(memoState.text || todaysMission.read().title) });
+  const showTimer = selectedMode !== STUDENT_DISPLAY_MODES.MESSAGE;
+  const showMemo = Boolean(memoState.text) && selectedMode !== STUDENT_DISPLAY_MODES.TIMER;
+  const studentDisplay = documentRef.querySelector("#platform-second-window-display");
+  const studentTimer = documentRef.querySelector("[data-student-engineering-time]");
+  const studentMemo = documentRef.querySelector("[data-student-memo]");
+  const imageSlot = documentRef.querySelector("[data-student-image-slot]");
+  let studentImage = documentRef.querySelector(".platform-student-memo-image");
+  if (memoState.image && !studentImage && studentMemo) {
+    studentImage = documentRef.createElement("img");
+    studentImage.className = "platform-student-memo-image";
+    studentImage.alt = "Teacher whiteboard shared with students";
+  }
+  if (studentImage && memoState.image) studentImage.src = memoState.image;
+  if (studentImage && !memoState.image) studentImage.remove();
+  if (studentTimer) studentTimer.hidden = !showTimer;
+  if (studentMemo) studentMemo.hidden = !showMemo;
+  if (studentDisplay) {
+    studentDisplay.classList.toggle("platform-student-display-combined", showTimer && showMemo);
+    studentDisplay.classList.toggle("platform-student-display-message-only", !showTimer && showMemo);
+    studentDisplay.classList.toggle("platform-student-display-timer-only", showTimer && !showMemo);
+  }
+  if (studentImage && studentMemo) {
+    (showTimer && imageSlot ? imageSlot : studentMemo).append(studentImage);
+    if (imageSlot) imageSlot.hidden = !showTimer;
+  }
   const mission = todaysMission.read();
   documentRef.querySelectorAll("[data-student-mission-title]").forEach((element) => { element.textContent = mission.title; });
   documentRef.querySelectorAll("[data-student-mission-focus]").forEach((element) => { element.textContent = mission.focus; });
@@ -4407,6 +4434,20 @@ function handleClick(event) {
     if (display) display.hidden = true;
     whiteboardDisplayTrigger?.focus();
     whiteboardDisplayTrigger = null;
+    return;
+  }
+  if (action.dataset.action === "whiteboard-show-students") {
+    const canvas = whiteboardCanvas();
+    if (!canvas) return;
+    const title = document.querySelector("[data-whiteboard-title]")?.value.trim() || "Whiteboard";
+    const currentMemo = teacherMemo.read();
+    const result = teacherMemo.save(title, { ...currentMemo, image: whiteboardStudentDisplayImage(canvas) });
+    if (!result.ok || !result.state.image) { setWhiteboardStatus("The board could not be prepared for the Student Display. Try exporting it as a PNG."); return; }
+    studentDisplayMode.select(STUDENT_DISPLAY_MODES.MESSAGE, { hasMemo: true });
+    syncTeacherMemoPresentation();
+    openClassroomPresentationWindow();
+    syncClassroomPresentationWindow();
+    setWhiteboardStatus("The current board is now showing on the Student Display. Click again after drawing to update it.");
     return;
   }
   if (action.dataset.action === "whiteboard-present" || action.dataset.action === "whiteboard-exit-presentation") {

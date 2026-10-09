@@ -34,12 +34,15 @@ test("whiteboard explains student Chromebook and teacher cross-platform commands
 });
 
 test("whiteboard supports reusable boards, images, export, and presentation", () => {
-  for (const text of ["Save Board", "Saved boards", "Load", "Delete", "Export PNG", "Present Board", "Exit Presentation"]) assert.match(app, new RegExp(text));
+  for (const text of ["Save Board", "Saved boards", "Load", "Delete", "Export PNG", "Present Board", "Show on Student Display", "Exit Presentation"]) assert.match(app, new RegExp(text));
   assert.match(app, /WHITEBOARD_LIBRARY_KEY/);
   assert.match(app, /data-whiteboard-image/);
   assert.match(app, /image\/\*/);
   assert.match(app, /link\.download/);
   assert.match(css, /data-presentation="true"/);
+  assert.match(app, /action\.dataset\.action === "whiteboard-show-students"/);
+  assert.match(app, /studentDisplayMode\.select\(STUDENT_DISPLAY_MODES\.MESSAGE, \{ hasMemo: true \}\)/);
+  assert.match(app, /openClassroomPresentationWindow\(\)/);
   assert.match(css, /\.platform-whiteboard-library/);
   assert.match(css, /\.platform-whiteboard-library \.platform-whiteboard-library-primary \{ grid-column: span 4; \}/);
   assert.match(css, /\.platform-whiteboard-library \.platform-whiteboard-display-option \{[^}]*grid-column: span 4;/);
