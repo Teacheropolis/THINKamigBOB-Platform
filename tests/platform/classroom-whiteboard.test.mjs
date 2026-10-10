@@ -119,7 +119,8 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   assert.match(app, /data-rich-color/);
   assert.match(app, /data-rich-size/);
   assert.match(app, /data-rich-font/);
-  for (const font of ["Arial", "Georgia", "Verdana", "Trebuchet MS", "Courier New", "Comic Sans MS"]) assert.match(app, new RegExp(font));
+  for (const font of ["Arial", "Verdana", "Courier New", "Comic Sans MS"]) assert.match(app, new RegExp(font));
+  assert.doesNotMatch(app, /data-text-font="Georgia"|data-text-font="Trebuchet MS"/);
   assert.match(app, /whiteboardRichTextRuns/);
   assert.match(css, /\.platform-whiteboard-rich-editor/);
   assert.match(app, /measurePanel\?\.append\(\.\.\.measurementControls\)/);
@@ -249,6 +250,14 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /object\.type === "text" && !object\.emojiStamp/);
   assert.match(app, /resized\.textScale = Math\.max/);
   assert.match(app, /run\.size \* textScale/);
+});
+
+test("dragging a selected object corner resizes regardless of the active tool", () => {
+  assert.match(app, /const activeSelected = whiteboardObjects\.find\(\(object\) => object\.id === whiteboardSelectedObjectId\)/);
+  assert.match(app, /const activeResizeCorner = activeSelected\?\.type !== "dimension" \? whiteboardResizeCorner/);
+  assert.match(app, /if \(!whiteboardDeleteNextObject && activeSelected && activeResizeCorner\)/);
+  assert.match(app, /resize: true, resizeCorner: activeResizeCorner/);
+  assert.match(app, /Drag the selected corner to resize the object\./);
 });
 
 test("color toolbar circle matches the selected drawing color", () => {
