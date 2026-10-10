@@ -192,6 +192,7 @@ let whiteboardDrawing = null;
 let whiteboardObjects = [];
 let whiteboardPages = [];
 let whiteboardCurrentPageIndex = 0;
+let whiteboardPageDock = "left";
 let whiteboardSelectedObjectId = "";
 let whiteboardClipboard = null;
 let whiteboardGridUnit = "plain";
@@ -1676,7 +1677,7 @@ function teacherDashboardView(state) {
         <button type="button" data-action="close-voice-meter-display">Close Class Voice Meter</button>
       </div>
     </section>
-    <section id="platform-classroom-whiteboard" class="platform-classroom-whiteboard" role="dialog" aria-modal="true" aria-labelledby="classroom-whiteboard-title" tabindex="-1" hidden>
+    <section id="platform-classroom-whiteboard" class="platform-classroom-whiteboard" data-page-dock="left" role="dialog" aria-modal="true" aria-labelledby="classroom-whiteboard-title" tabindex="-1" hidden>
       <header class="platform-whiteboard-header">
         <div><p class="platform-command-label">Classroom tool</p><h2 id="classroom-whiteboard-title">Whiteboard</h2></div>
         <div class="platform-whiteboard-header-actions"><label>Menu position<select data-whiteboard-controls-dock><option value="top">Top</option><option value="left">Left side</option><option value="right">Right side</option><option value="bottom">Bottom</option></select></label><button type="button" data-action="whiteboard-toggle-controls" aria-expanded="true">Hide Board Menus</button><button type="button" data-action="whiteboard-present" title="Show full-screen on this teacher device">Present Board</button><button type="button" data-action="whiteboard-show-students" title="Send the current board to the separate classroom display">Show on Student Display</button><button type="button" data-action="close-whiteboard">Close Whiteboard</button></div>
@@ -1770,7 +1771,7 @@ function teacherDashboardView(state) {
         <button type="button" data-action="whiteboard-clear">Clear</button>
       </div>
       </div>
-      <div class="platform-whiteboard-surface"><canvas data-whiteboard-canvas tabindex="0" aria-label="Teacher classroom whiteboard drawing surface"></canvas><nav class="platform-whiteboard-pages" data-whiteboard-pages aria-label="Whiteboard pages"><button type="button" data-action="whiteboard-page-previous" title="Previous page">‹</button><span data-whiteboard-page-count>1 / 1</span><div data-whiteboard-page-tabs></div><button type="button" data-action="whiteboard-page-next" title="Next page">›</button><button type="button" data-action="whiteboard-page-add">+ Add Page</button><button type="button" data-action="whiteboard-page-duplicate">Duplicate</button><button type="button" data-action="whiteboard-page-rename">Rename</button><span class="platform-whiteboard-page-rename" data-whiteboard-page-rename hidden><label>Page name<input type="text" data-whiteboard-page-name maxlength="40"></label><button type="button" data-action="whiteboard-page-rename-save">Save</button><button type="button" data-action="whiteboard-page-rename-cancel">Cancel</button></span><button type="button" data-action="whiteboard-page-left" title="Move page left">←</button><button type="button" data-action="whiteboard-page-right" title="Move page right">→</button><button type="button" data-action="whiteboard-page-delete">Delete Page</button></nav></div>
+      <aside class="platform-whiteboard-pages" data-whiteboard-pages aria-label="Whiteboard pages"><label>Page thumbnails<select data-whiteboard-page-dock><option value="left">Left side</option><option value="right">Right side</option><option value="hidden">Hidden</option></select></label><div class="platform-whiteboard-page-heading"><button type="button" data-action="whiteboard-page-previous" title="Previous page">‹</button><span data-whiteboard-page-count>1 / 1</span><button type="button" data-action="whiteboard-page-next" title="Next page">›</button></div><div data-whiteboard-page-tabs></div><button type="button" data-action="whiteboard-page-add">+ Add Page</button><button type="button" data-action="whiteboard-page-duplicate">Duplicate</button><button type="button" data-action="whiteboard-page-rename">Rename</button><span class="platform-whiteboard-page-rename" data-whiteboard-page-rename hidden><label>Page name<input type="text" data-whiteboard-page-name maxlength="40"></label><button type="button" data-action="whiteboard-page-rename-save">Save</button><button type="button" data-action="whiteboard-page-rename-cancel">Cancel</button></span><span class="platform-whiteboard-page-order"><button type="button" data-action="whiteboard-page-left" title="Move page left">← Move</button><button type="button" data-action="whiteboard-page-right" title="Move page right">Move →</button></span><button type="button" data-action="whiteboard-page-delete">Delete Page</button></aside><div class="platform-whiteboard-surface"><canvas data-whiteboard-canvas tabindex="0" aria-label="Teacher classroom whiteboard drawing surface"></canvas></div>
       <p class="platform-whiteboard-status" data-whiteboard-status role="status" aria-live="polite">Drawings are saved in this browser session.</p>
       <div class="platform-whiteboard-context-menu" data-whiteboard-context-menu role="menu" hidden><button type="button" role="menuitem" data-action="whiteboard-copy-image">Copy Image</button><button type="button" role="menuitem" data-action="whiteboard-cut-image">Cut Image</button><button type="button" role="menuitem" data-action="whiteboard-paste-image">Paste Image</button><button type="button" role="menuitem" data-action="whiteboard-close-context-menu">Cancel</button></div>
       <aside class="platform-whiteboard-keyboard-help" data-whiteboard-keyboard-help role="dialog" aria-modal="true" aria-labelledby="whiteboard-keyboard-help-title" hidden>
@@ -3133,12 +3134,18 @@ function syncCurrentWhiteboardPage() {
   if (!whiteboardPages.length) whiteboardPages = [newWhiteboardPage("Page 1")];
   const page = whiteboardPages[whiteboardCurrentPageIndex] ?? whiteboardPages[0];
   page.objects = structuredClone(serializableWhiteboardObjects());
+  const canvas = whiteboardCanvas();
+  if (canvas) {
+    const preview = document.createElement("canvas"); preview.width = 160; preview.height = 90;
+    const context = preview.getContext("2d"); context.fillStyle = "#fff"; context.fillRect(0, 0, preview.width, preview.height); context.drawImage(canvas, 0, 0, preview.width, preview.height);
+    page.thumbnail = preview.toDataURL("image/jpeg", 0.68);
+  }
 }
 
 function renderWhiteboardPageStrip() {
   const strip = document.querySelector("[data-whiteboard-pages]");
   if (!strip) return;
-  strip.querySelector("[data-whiteboard-page-tabs]").innerHTML = whiteboardPages.map((page, index) => `<button type="button" data-action="whiteboard-page-select" data-whiteboard-page-index="${index}" aria-current="${index === whiteboardCurrentPageIndex ? "page" : "false"}">${escapeHtml(page.title || `Page ${index + 1}`)}</button>`).join("");
+  strip.querySelector("[data-whiteboard-page-tabs]").innerHTML = whiteboardPages.map((page, index) => `<button type="button" data-action="whiteboard-page-select" data-whiteboard-page-index="${index}" aria-current="${index === whiteboardCurrentPageIndex ? "page" : "false"}">${page.thumbnail ? `<img src="${escapeHtml(page.thumbnail)}" alt="">` : `<span class="platform-whiteboard-page-blank" aria-hidden="true"></span>`}<strong>${escapeHtml(page.title || `Page ${index + 1}`)}</strong></button>`).join("");
   const count = strip.querySelector("[data-whiteboard-page-count]");
   if (count) count.textContent = `${whiteboardCurrentPageIndex + 1} / ${whiteboardPages.length}`;
   strip.querySelector('[data-action="whiteboard-page-previous"]').disabled = whiteboardCurrentPageIndex === 0;
@@ -3177,7 +3184,8 @@ function saveWhiteboard(canvas = whiteboardCanvas()) {
     window.sessionStorage.setItem(WHITEBOARD_SESSION_KEY, whiteboardSnapshot(canvas));
     window.sessionStorage.setItem(WHITEBOARD_OBJECT_SESSION_KEY, JSON.stringify(serializableWhiteboardObjects()));
     window.sessionStorage.setItem(WHITEBOARD_PAGES_SESSION_KEY, JSON.stringify({ currentPageIndex: whiteboardCurrentPageIndex, pages: whiteboardPages }));
-    window.sessionStorage.setItem(WHITEBOARD_VIEW_SESSION_KEY, JSON.stringify({ gridUnit: whiteboardGridUnit, rulerUnit: whiteboardRulerUnit, zoom: whiteboardZoom, ruler: whiteboardRuler, title: whiteboardDrawingTitle, controlsDock: whiteboardControlsDock, controlsHidden: whiteboardControlsHidden }));
+    window.sessionStorage.setItem(WHITEBOARD_VIEW_SESSION_KEY, JSON.stringify({ gridUnit: whiteboardGridUnit, rulerUnit: whiteboardRulerUnit, zoom: whiteboardZoom, ruler: whiteboardRuler, title: whiteboardDrawingTitle, controlsDock: whiteboardControlsDock, controlsHidden: whiteboardControlsHidden, pageDock: whiteboardPageDock }));
+    renderWhiteboardPageStrip();
   } catch {
     const status = document.querySelector("[data-whiteboard-status]");
     if (status) status.textContent = "The board is working, but this browser could not save a recovery copy.";
@@ -3653,7 +3661,9 @@ function applyWhiteboardControlsLayout({ resizeCanvas = false } = {}) {
   if (!display) return;
   display.dataset.controlsDock = whiteboardControlsDock;
   display.dataset.controlsHidden = String(whiteboardControlsHidden);
+  display.dataset.pageDock = whiteboardPageDock;
   const dock = display.querySelector("[data-whiteboard-controls-dock]"); if (dock) dock.value = whiteboardControlsDock;
+  const pageDock = display.querySelector("[data-whiteboard-page-dock]"); if (pageDock) pageDock.value = whiteboardPageDock;
   const toggle = display.querySelector('[data-action="whiteboard-toggle-controls"]');
   if (toggle) { toggle.textContent = whiteboardControlsHidden ? "Show Board Menus" : "Hide Board Menus"; toggle.setAttribute("aria-expanded", String(!whiteboardControlsHidden)); }
   if (resizeCanvas) window.requestAnimationFrame(() => {
@@ -3707,7 +3717,7 @@ function mountWhiteboard() {
       whiteboardCurrentPageIndex = 0;
     }
   } catch { whiteboardObjects = []; whiteboardPages = [newWhiteboardPage("Page 1")]; whiteboardCurrentPageIndex = 0; }
-  try { const view = JSON.parse(window.sessionStorage.getItem(WHITEBOARD_VIEW_SESSION_KEY) ?? "{}"); whiteboardGridUnit = ["plain", "inch", "cm", "mm"].includes(view.gridUnit) ? view.gridUnit : "plain"; whiteboardRulerUnit = ["none", "english", "metric"].includes(view.rulerUnit) ? view.rulerUnit : "none"; whiteboardZoom = Math.min(300, Math.max(50, Number(view.zoom) || 100)); whiteboardRuler = view.ruler && typeof view.ruler === "object" ? { ...whiteboardRuler, ...view.ruler } : { ...whiteboardRuler, y: canvas.height - 92 }; whiteboardDrawingTitle = String(view.title || "Workshop Drawing").slice(0, 60); whiteboardControlsDock = ["top", "left", "right", "bottom"].includes(view.controlsDock) ? view.controlsDock : "top"; whiteboardControlsHidden = Boolean(view.controlsHidden); } catch { whiteboardGridUnit = "plain"; whiteboardRulerUnit = "none"; whiteboardZoom = 100; whiteboardDrawingTitle = "Workshop Drawing"; whiteboardControlsDock = "top"; whiteboardControlsHidden = false; }
+  try { const view = JSON.parse(window.sessionStorage.getItem(WHITEBOARD_VIEW_SESSION_KEY) ?? "{}"); whiteboardGridUnit = ["plain", "inch", "cm", "mm"].includes(view.gridUnit) ? view.gridUnit : "plain"; whiteboardRulerUnit = ["none", "english", "metric"].includes(view.rulerUnit) ? view.rulerUnit : "none"; whiteboardZoom = Math.min(300, Math.max(50, Number(view.zoom) || 100)); whiteboardRuler = view.ruler && typeof view.ruler === "object" ? { ...whiteboardRuler, ...view.ruler } : { ...whiteboardRuler, y: canvas.height - 92 }; whiteboardDrawingTitle = String(view.title || "Workshop Drawing").slice(0, 60); whiteboardControlsDock = ["top", "left", "right", "bottom"].includes(view.controlsDock) ? view.controlsDock : "top"; whiteboardControlsHidden = Boolean(view.controlsHidden); whiteboardPageDock = ["left", "right", "hidden"].includes(view.pageDock) ? view.pageDock : "left"; } catch { whiteboardGridUnit = "plain"; whiteboardRulerUnit = "none"; whiteboardZoom = 100; whiteboardDrawingTitle = "Workshop Drawing"; whiteboardControlsDock = "top"; whiteboardControlsHidden = false; whiteboardPageDock = "left"; }
   const gridControl = document.querySelector("[data-whiteboard-grid]"); const rulerControl = document.querySelector("[data-whiteboard-ruler]"); const rulerSides = document.querySelector("[data-whiteboard-ruler-sides]"); if (gridControl) gridControl.value = whiteboardGridUnit; if (rulerControl) rulerControl.value = whiteboardRulerUnit; if (rulerSides) rulerSides.value = whiteboardRuler.sides; applyWhiteboardControlsLayout({ resizeCanvas: true }); applyWhiteboardZoom(canvas);
   if (!whiteboardObjects.length) { let legacy = ""; try { legacy = window.sessionStorage.getItem(WHITEBOARD_SESSION_KEY) ?? ""; } catch {} if (legacy) whiteboardObjects = [createWhiteboardObject("image", { x: 0, y: 0, width: canvas.width, height: canvas.height, src: legacy })]; }
   renderWhiteboardPageStrip(); hydrateWhiteboardImages(() => renderWhiteboardObjects(canvas)); renderWhiteboardObjects(canvas);
@@ -5624,6 +5634,11 @@ root.addEventListener("change", (event) => {
   if (controlsDock) {
     whiteboardControlsDock = ["top", "left", "right", "bottom"].includes(controlsDock.value) ? controlsDock.value : "top";
     applyWhiteboardControlsLayout({ resizeCanvas: true }); saveWhiteboard(); setWhiteboardStatus(`Board menus moved to the ${whiteboardControlsDock}.`); return;
+  }
+  const pageDock = event.target.closest("[data-whiteboard-page-dock]");
+  if (pageDock) {
+    whiteboardPageDock = ["left", "right", "hidden"].includes(pageDock.value) ? pageDock.value : "left";
+    applyWhiteboardControlsLayout({ resizeCanvas: true }); saveWhiteboard(); setWhiteboardStatus(whiteboardPageDock === "hidden" ? "Page thumbnails hidden." : `Page thumbnails moved to the ${whiteboardPageDock}.`); return;
   }
   const whiteboardTool = event.target.closest("[data-whiteboard-tool]");
   if (whiteboardTool) {

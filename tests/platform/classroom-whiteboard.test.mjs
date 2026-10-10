@@ -54,10 +54,16 @@ test("whiteboard supports named, saved, and presentable pages", () => {
   assert.match(app, /function openWhiteboardPage/);
   assert.match(app, /pages: structuredClone\(whiteboardPages\)/);
   assert.match(app, /data-whiteboard-page-tabs/);
+  assert.match(app, /data-whiteboard-page-dock/);
+  assert.match(app, /Page thumbnails/);
+  assert.match(app, /page\.thumbnail = preview\.toDataURL/);
   assert.match(app, /data-whiteboard-page-name/);
   assert.match(app, /whiteboard-page-rename-save/);
   assert.doesNotMatch(app, /window\.prompt\("Page name"/);
   assert.match(css, /\.platform-whiteboard-pages/);
+  assert.match(css, /grid-area: pages/);
+  assert.match(css, /data-page-dock="right"/);
+  assert.match(css, /data-page-dock="hidden"/);
   assert.match(css, /\.platform-whiteboard-page-rename\[hidden\]/);
   assert.match(css, /button\[aria-current="page"\]/);
 });
