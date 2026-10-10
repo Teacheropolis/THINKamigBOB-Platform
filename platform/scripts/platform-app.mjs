@@ -3284,7 +3284,13 @@ function showWhiteboardCursiveModel(text, object, canvas) {
   const surface = canvas.parentElement;
   if (!surface || !text) return;
   surface.querySelector("[data-whiteboard-cursive-model]")?.remove();
-  const modeledLetters = [...text].filter((character) => /^[A-Za-z]$/.test(character));
+  const modeledLetters = [...text].reduce((letters, character, sourceIndex, sourceCharacters) => {
+    if (/^[A-Za-z]$/.test(character)) letters.push({
+      character,
+      connectsFromPrevious: sourceIndex > 0 && /^[A-Za-z]$/.test(sourceCharacters[sourceIndex - 1]),
+    });
+    return letters;
+  }, []);
   if (!modeledLetters.length) return;
   const model = document.createElement("aside");
   model.className = "platform-whiteboard-cursive-model"; model.dataset.whiteboardCursiveModel = "true";
@@ -3294,7 +3300,7 @@ function showWhiteboardCursiveModel(text, object, canvas) {
   surface.append(model);
   const modelTitle = model.querySelector("[data-whiteboard-cursive-model-title]");
   const modelSvg = model.querySelector("[data-whiteboard-cursive-model-svg]");
-  const strokeDuration = 600;
+  const strokeDuration = 900;
   const playLetter = (index) => {
     if (!model.isConnected || !modelTitle || !modelSvg) return;
     if (index >= modeledLetters.length) {
@@ -3303,17 +3309,22 @@ function showWhiteboardCursiveModel(text, object, canvas) {
       if (replay) showWhiteboardCursiveModel(text, object, canvas);
       return;
     }
-    const character = modeledLetters[index];
+    const { character, connectsFromPrevious } = modeledLetters[index];
     const isUppercase = /^[A-Z]$/.test(character);
     const glyph = isUppercase ? null : CURSIVE_STROKE_LETTERS[character];
-    const strokes = isUppercase
-      ? `<text class="platform-whiteboard-cursive-capital" x="0" y="25" style="--stroke-order:0">${escapeHtml(character)}</text>`
+    const incomingStroke = connectsFromPrevious
+      ? `<path class="platform-whiteboard-cursive-incoming" pathLength="1" d="M -6 8 C -4 8, -2 6, 0 4" style="--stroke-order:0"/>`
+      : "";
+    const firstLetterStrokeOrder = connectsFromPrevious ? 1 : 0;
+    const letterStrokes = isUppercase
+      ? `<text class="platform-whiteboard-cursive-capital" x="0" y="25" style="--stroke-order:${firstLetterStrokeOrder}">${escapeHtml(character)}</text>`
       : glyph?.paths.map((path, strokeOrder) => path.dot
-        ? `<circle class="platform-whiteboard-cursive-dot" cx="${path.dot.cx}" cy="${path.dot.cy}" r="${path.dot.r}" style="--stroke-order:${strokeOrder}"/>`
-        : `<path pathLength="1" d="${path.d}" style="--stroke-order:${strokeOrder}"/>`).join("") || "";
-    const strokeCount = isUppercase ? 1 : Math.max(1, glyph?.paths.length || 1);
+        ? `<circle class="platform-whiteboard-cursive-dot" cx="${path.dot.cx}" cy="${path.dot.cy}" r="${path.dot.r}" style="--stroke-order:${strokeOrder + firstLetterStrokeOrder}"/>`
+        : `<path pathLength="1" d="${path.d}" style="--stroke-order:${strokeOrder + firstLetterStrokeOrder}"/>`).join("") || "";
+    const strokes = `${incomingStroke}${letterStrokes}`;
+    const strokeCount = (connectsFromPrevious ? 1 : 0) + (isUppercase ? 1 : Math.max(1, glyph?.paths.length || 1));
     modelTitle.textContent = `Letter ${index + 1} of ${modeledLetters.length}: ${character}`;
-    modelSvg.setAttribute("aria-label", `How to form the cursive letter ${character}`);
+    modelSvg.setAttribute("aria-label", `${connectsFromPrevious ? "How to connect into and form" : "How to form"} the cursive letter ${character}`);
     modelSvg.innerHTML = `<g transform="translate(3 8)">${strokes}</g>`;
     window.setTimeout(() => playLetter(index + 1), strokeCount * strokeDuration);
   };

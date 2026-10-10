@@ -299,7 +299,11 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /function showWhiteboardCursiveModel/);
   assert.match(app, /platform-whiteboard-cursive-model/);
   assert.doesNotMatch(app, /platform-whiteboard-cursive-connector/);
-  assert.match(app, /const modeledLetters = \[\.\.\.text\]\.filter/);
+  assert.match(app, /const modeledLetters = \[\.\.\.text\]\.reduce/);
+  assert.match(app, /connectsFromPrevious: sourceIndex > 0/);
+  assert.match(app, /platform-whiteboard-cursive-incoming/);
+  assert.match(app, /M -6 8 C -4 8, -2 6, 0 4/);
+  assert.match(app, /const strokeDuration = 900/);
   assert.match(app, /const playLetter = \(index\) =>/);
   assert.match(app, /Letter \$\{index \+ 1\} of \$\{modeledLetters\.length\}/);
   assert.match(app, /modelSvg\.innerHTML =/);
@@ -313,7 +317,7 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /Open the pencil grip tutorial/);
   assert.match(app, /How to hold a pencil for cursive writing/);
   assert.match(app, /pathLength="1"/);
-  assert.match(css, /animation: platform-cursive-pen-stroke 0\.6s linear calc\(var\(--stroke-order\) \* 0\.6s\)/);
+  assert.match(css, /animation: platform-cursive-pen-stroke 0\.9s linear calc\(var\(--stroke-order\) \* 0\.9s\)/);
   assert.match(css, /stroke-dashoffset: 1; opacity: 0; animation: platform-cursive-pen-stroke/);
   assert.match(css, /from \{ opacity: 1; stroke-dashoffset: 1; \} to \{ opacity: 1; stroke-dashoffset: 0; \}/);
   assert.match(app, /10000/);
