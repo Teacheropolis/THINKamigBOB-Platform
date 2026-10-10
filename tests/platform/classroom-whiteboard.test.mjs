@@ -209,6 +209,14 @@ test("eraser removes only its stroke area with its own adjustable thickness", ()
   assert.match(app, />Delete selected object<\/button>/);
 });
 
+test("erase object removes a connected drawing or filled shape with one click", () => {
+  assert.match(app, /data-whiteboard-quick-tool="erase-object">Erase object/);
+  assert.match(app, /tool === "erase-object"/);
+  assert.match(app, /whiteboardObjects = whiteboardObjects\.filter\(\(object\) => object\.id !== selected\.id\)/);
+  assert.match(app, /Entire connected object erased\. Use Undo to restore it\./);
+  assert.match(app, /Click a connected drawing, line, or filled shape to erase the whole object\./);
+});
+
 test("whiteboard provides a categorized movable emoji stamp tool", () => {
   for (const text of ["Choose an emoji stamp", "Faces and feelings", "STEM and school", "Animals", "Marks and symbols", "emoji stamped"]) assert.match(app, new RegExp(text));
   assert.match(app, /WHITEBOARD_EMOJI_STAMPS/);

@@ -1692,6 +1692,7 @@ function teacherDashboardView(state) {
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">⌫</span><small>Erase</small></summary><div>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="eraser">Eraser</button>
           <label>Eraser thickness<input type="range" data-whiteboard-eraser-size min="12" max="140" value="40"><output data-whiteboard-eraser-size-output>40</output></label>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="erase-object">Erase object</button>
           <button type="button" data-action="whiteboard-delete-object">Delete selected object</button>
         </div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">✎</span><small>Pen</small></summary><div data-whiteboard-pen-panel>
@@ -3750,7 +3751,7 @@ function mountWhiteboard() {
     if (event.button !== undefined && event.button !== 0) return; event.preventDefault(); canvas.focus({ preventScroll: true });
     const point = whiteboardPoint(event, canvas), tool = document.querySelector("[data-whiteboard-tool]")?.value ?? "select";
     const selected = hitTestObjects(whiteboardObjects.filter((object) => object.strokeStyle !== "eraser"), point);
-    const directTools = !["lasso-select", "emoji-stamp", "pull-3d", "laser-dimension", "fill", "eraser"].includes(tool);
+    const directTools = !["lasso-select", "emoji-stamp", "pull-3d", "laser-dimension", "fill", "eraser", "erase-object"].includes(tool);
     if (directTools && whiteboardRulerUnit !== "none") {
       const local = whiteboardRulerLocalPoint(point);
       const nearExtend = Math.hypot(local.x - whiteboardRuler.length, local.y - 31) < 28;
@@ -3811,6 +3812,11 @@ function mountWhiteboard() {
     }
     if (tool === "select") { whiteboardSelectedObjectId = selected?.id ?? ""; if (selected) { pushWhiteboardHistory(); const bounds = objectBounds(selected); const resizeCorner = selected.type !== "dimension" ? whiteboardResizeCorner(bounds, point) : ""; whiteboardDrawing = { tool, objectId: selected.id, start: point, original: cloneEditableWhiteboardObject(selected), resize: Boolean(resizeCorner), resizeCorner }; if (selected.type === "dimension") setWhiteboardStatus("Drag the red measurement to the object perimeter, or choose its comparison unit above."); } syncWhiteboardDimensionCompareControl(); renderWhiteboardObjects(canvas); return; }
     if (tool === "fill") { if (selected && ["rectangle", "ellipse", "triangle", "cube", "rectangular-prism", "cylinder", "cone", "pyramid", "sphere"].includes(selected.type)) { pushWhiteboardHistory(); selected.fillColor = document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d"; whiteboardSelectedObjectId = selected.id; renderWhiteboardObjects(canvas); saveWhiteboard(canvas); setWhiteboardStatus("Shape filled. Use Undo to restore its previous color."); } else setWhiteboardStatus("Use the Paint Can on a closed 2D or 3D shape."); return; }
+    if (tool === "erase-object") {
+      if (!selected) { setWhiteboardStatus("Click a connected drawing, line, or filled shape to erase the whole object."); return; }
+      pushWhiteboardHistory(); whiteboardObjects = whiteboardObjects.filter((object) => object.id !== selected.id); whiteboardSelectedObjectId = "";
+      renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls(); setWhiteboardStatus("Entire connected object erased. Use Undo to restore it."); return;
+    }
     if (tool === "eraser") {
       pushWhiteboardHistory();
       const size = Number(document.querySelector("[data-whiteboard-eraser-size]")?.value ?? 40);
