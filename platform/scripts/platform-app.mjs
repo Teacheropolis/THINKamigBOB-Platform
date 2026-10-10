@@ -3313,17 +3313,15 @@ function showWhiteboardCursiveModel(text, object, canvas) {
     const { character, connectsFromPrevious } = modeledLetters[index];
     const isUppercase = /^[A-Z]$/.test(character);
     const glyph = isUppercase ? null : CURSIVE_STROKE_LETTERS[character];
-    const incomingStroke = connectsFromPrevious
-      ? `<path class="platform-whiteboard-cursive-incoming" pathLength="1" d="M -6 4 C -4 4, -2 5, 0 4"/>`
-      : "";
+    const baselineEntryStroke = `<path class="platform-whiteboard-cursive-entry${connectsFromPrevious ? " platform-whiteboard-cursive-incoming" : ""}" pathLength="1" d="M -6 9 C -4 9, -2 7, 0 4"/>`;
     const letterStrokes = isUppercase
       ? `<text class="platform-whiteboard-cursive-capital" x="0" y="9">${escapeHtml(character)}</text>`
       : glyph?.paths.map((path) => path.dot
         ? `<circle class="platform-whiteboard-cursive-dot" cx="${path.dot.cx}" cy="${path.dot.cy}" r="${path.dot.r}"/>`
         : `<path pathLength="1" d="${path.d}"/>`).join("") || "";
-    const strokes = `${incomingStroke}${letterStrokes}`;
+    const strokes = `${baselineEntryStroke}${letterStrokes}`;
     modelTitle.textContent = `Letter ${index + 1} of ${modeledLetters.length}: ${character}`;
-    modelSvg.setAttribute("aria-label", `${connectsFromPrevious ? "How to connect into and form" : "How to form"} the cursive letter ${character}`);
+    modelSvg.setAttribute("aria-label", `${connectsFromPrevious ? "How to connect from the baseline into and form" : "How to begin at the baseline and form"} the cursive letter ${character}`);
     const previousLetter = modelSvg.querySelector("[data-cursive-letter-active]");
     if (previousLetter) {
       const previousBounds = previousLetter.getBBox();

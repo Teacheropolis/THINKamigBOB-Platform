@@ -301,8 +301,10 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.doesNotMatch(app, /platform-whiteboard-cursive-connector/);
   assert.match(app, /const modeledLetters = \[\.\.\.text\]\.reduce/);
   assert.match(app, /connectsFromPrevious: sourceIndex > 0/);
+  assert.match(app, /platform-whiteboard-cursive-entry/);
   assert.match(app, /platform-whiteboard-cursive-incoming/);
-  assert.match(app, /M -6 4 C -4 4, -2 5, 0 4/);
+  assert.match(app, /M -6 9 C -4 9, -2 7, 0 4/);
+  assert.match(app, /How to begin at the baseline and form/);
   assert.match(app, /platform-whiteboard-cursive-guides/);
   assert.match(app, /y1="-4" y2="-4"/);
   assert.match(app, /y1="8" y2="8"/);
