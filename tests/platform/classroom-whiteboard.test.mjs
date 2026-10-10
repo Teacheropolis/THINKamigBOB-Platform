@@ -307,6 +307,9 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /M -6 9 C -4 9, -2 7, 0 4/);
   assert.match(app, /const baselineEntryStroke = isUppercase \? ""/);
   assert.match(app, /platform-whiteboard-cursive-exit/);
+  assert.match(app, /const baselineTouchX = exitStartX \+ 4/);
+  assert.match(app, /const exitEndX = exitStartX \+ 10/);
+  assert.match(app, /L \$\{exitEndX\} 9/);
   assert.match(app, /getPointAtLength\(lastDrawnPath\.getTotalLength\(\)\)/);
   assert.match(app, /currentLetter\.dataset\.cursiveExitX/);
   assert.match(app, /How to begin at the baseline and form/);

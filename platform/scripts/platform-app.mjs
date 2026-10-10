@@ -3341,8 +3341,9 @@ function showWhiteboardCursiveModel(text, object, canvas) {
       const pathEndpoint = lastDrawnPath?.getPointAtLength(lastDrawnPath.getTotalLength());
       const exitStartX = pathEndpoint?.x ?? (capitalBounds ? capitalBounds.x + capitalBounds.width : 0);
       const exitStartY = pathEndpoint?.y ?? 9;
-      const exitEndX = exitStartX + 6;
-      currentLetter.insertAdjacentHTML("beforeend", `<path class="platform-whiteboard-cursive-exit" pathLength="1" d="M ${exitStartX} ${exitStartY} C ${exitStartX + 2} ${exitStartY}, ${exitEndX - 2} 9, ${exitEndX} 9"/>`);
+      const baselineTouchX = exitStartX + 4;
+      const exitEndX = exitStartX + 10;
+      currentLetter.insertAdjacentHTML("beforeend", `<path class="platform-whiteboard-cursive-exit" pathLength="1" d="M ${exitStartX} ${exitStartY} C ${exitStartX + 2} ${exitStartY}, ${baselineTouchX - 1} 9, ${baselineTouchX} 9 L ${exitEndX} 9"/>`);
       currentLetter.dataset.cursiveExitX = String(exitEndX);
     }
     let elapsedDrawingTime = 0;
