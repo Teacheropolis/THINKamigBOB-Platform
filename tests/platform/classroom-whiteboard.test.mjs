@@ -461,9 +461,16 @@ test("a line through a closed 2D or 3D shape bisects it into two editable fragme
 test("chosen built-in 3D face colors use transparent fills with strong outlines", () => {
   assert.match(app, /if \(object\.faceColors\?\.\[face\]\)/);
   assert.match(app, /context\.globalAlpha = 0\.2/);
-  assert.match(app, /context\.fillStyle = color; context\.fill\(\)/);
+  assert.match(app, /context\.fillStyle = color; context\.beginPath\(\); fillTrace\(\); context\.fill\(\)/);
   assert.match(app, /context\.strokeStyle = color/);
-  assert.match(app, /const strokeFace = \(face, trace\)/);
+  assert.match(app, /const strokeFace = \(face, trace, fillTrace = trace\)/);
+});
+
+test("round 3D face fills do not add straight top or bottom seams", () => {
+  assert.match(app, /const strokeFace = \(face, trace, fillTrace = trace\)/);
+  assert.match(app, /context\.beginPath\(\); fillTrace\(\); context\.fill\(\)/);
+  assert.match(app, /context\.moveTo\(x \+ width, y \+ depth \/ 2\); context\.lineTo\(x \+ width, y \+ height - depth \/ 2\); \}, \(\) =>/);
+  assert.match(app, /context\.moveTo\(x \+ width \/ 2, y\); context\.lineTo\(x \+ width, y \+ height - depth \/ 2\); \}, \(\) =>/);
 });
 
 test("3D shapes use gradient line layers without solid fills", () => {
