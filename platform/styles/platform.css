@@ -1246,6 +1246,28 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-whiteboard-cursive-model g.is-fading { animation: platform-cursive-letter-fade 0.8s ease-out forwards; }
 @keyframes platform-cursive-letter-fade { from { opacity: 1; } to { opacity: 0.12; } }
 .platform-whiteboard-return-reminder { position: absolute; z-index: 31; margin: 0; padding: 0.45rem 0.65rem; border: 2px solid #b65f00; border-radius: 0.45rem; color: #6b3500; background: #fff4d8; box-shadow: 0 0.35rem 0.8rem rgba(7,27,39,0.18); font-size: 0.75rem; font-weight: 850; }
+.platform-whiteboard-touch-practice-choice { grid-template-columns: auto 1fr !important; align-items: center; }
+.platform-whiteboard-touch-practice-choice input { min-height: 1.25rem !important; width: 1.25rem; }
+.platform-cursive-touch-practice { position: fixed; z-index: 500; inset: 0; overflow: auto; color: var(--platform-navy); background: #edf5f8; }
+.platform-cursive-touch-practice > header { position: sticky; z-index: 2; top: 0; display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.7rem 1rem; border-bottom: 3px solid var(--platform-blue); background: #fff; }
+.platform-cursive-touch-practice h2, .platform-cursive-touch-practice p { margin: 0; }
+.platform-cursive-touch-practice > main { display: grid; gap: 0.7rem; width: min(100%, 90rem); margin: auto; padding: 0.75rem; }
+.platform-cursive-touch-model { display: grid; min-height: 9rem; place-items: center; padding: 0.5rem; border: 3px solid var(--platform-navy); border-radius: 0.8rem; background: #fff; }
+.platform-cursive-touch-model span { justify-self: start; font-weight: 850; }
+.platform-cursive-touch-model strong { font: 400 clamp(3rem, 9vw, 7rem)/1.2 "School Cursive", cursive; }
+.platform-cursive-touch-model strong.is-replaying { animation: platform-cursive-stroke-reveal 3s linear; }
+.platform-cursive-touch-options, .platform-cursive-touch-actions { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 0.55rem; }
+.platform-cursive-touch-options label { display: grid; gap: 0.2rem; font-weight: 850; }
+.platform-cursive-touch-pages { min-height: 23rem; border: 3px solid var(--platform-blue); border-radius: 0.8rem; background: #fff; box-shadow: 0 0.6rem 1.4rem rgba(7,27,39,0.16); }
+.platform-cursive-touch-pages canvas { display: block; width: 100%; height: min(42vh, 23rem); cursor: crosshair; touch-action: none; }
+.platform-cursive-touch-result { display: grid; gap: 0.7rem; padding: 0.8rem; border: 3px solid var(--platform-green); border-radius: 0.8rem; background: #fff; }
+.platform-cursive-touch-submission { display: grid; gap: 0.55rem; }
+.platform-cursive-touch-submission figure { margin: 0; }
+.platform-cursive-touch-submission img { display: block; width: 100%; border: 2px solid var(--platform-border); }
+.platform-cursive-touch-submission figcaption { font-weight: 800; }
+.platform-cursive-touch-bob { display: grid; gap: 0.55rem; padding: 0.8rem; border-left: 6px solid var(--platform-blue); border-radius: 0.55rem; background: #fff7cf; }
+.platform-cursive-touch-bob strong { font-size: 1.1rem; }
+.platform-cursive-touch-success { font-weight: 850; }
 @keyframes platform-cursive-capital-reveal { from { opacity: 0; clip-path: inset(-0.3em 100% -0.4em 0); } to { opacity: 1; clip-path: inset(-0.3em 0 -0.4em 0); } }
 .platform-whiteboard-rich-editor { position: absolute; z-index: 28; width: min(30rem, calc(100% - 0.5rem)); padding: 0.4rem; border: 2px solid var(--platform-blue-dark); border-radius: 0.45rem; background: #fff; box-shadow: 0 0.7rem 1.5rem rgba(7,27,39,0.3); }
 .platform-whiteboard-rich-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.3rem; margin-bottom: 0.35rem; }

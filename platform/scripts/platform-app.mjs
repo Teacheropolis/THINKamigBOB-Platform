@@ -1773,6 +1773,7 @@ function teacherDashboardView(state) {
         <label>Text background<select data-whiteboard-text-background><option value="transparent">Transparent</option><option value="white">White</option><option value="black">Black</option><option value="highlight-yellow">Yellow highlighter</option><option value="highlight-green">Green highlighter</option><option value="highlight-pink">Pink highlighter</option><option value="highlight-blue">Blue highlighter</option></select></label>
         <label>Cursive writing lines<select data-whiteboard-cursive-lines><option value="none">No lines</option><option value="wide">Wide ruled</option><option value="practice">Handwriting practice — 3 lines</option></select></label>
         <label>Cursive Coach<select data-whiteboard-cursive-coach><option value="off">Off</option><option value="letter">Model strokes after typing</option></select></label>
+        <label class="platform-whiteboard-touch-practice-choice"><input type="checkbox" data-whiteboard-touch-practice> Let the student write this word by touch after typing</label>
         <label>Image<input type="file" data-whiteboard-image accept="image/*"></label>
         <span class="platform-whiteboard-object-actions" role="group" aria-label="Selected object actions">
           <button type="button" data-action="whiteboard-copy">Copy</button><button type="button" data-action="whiteboard-paste">Paste</button><button type="button" data-action="whiteboard-duplicate">Duplicate</button><span class="platform-whiteboard-push-help-wrap"><button type="button" data-action="whiteboard-push-2d">Push Back to 2D</button><span class="platform-whiteboard-push-help" data-whiteboard-push-help role="status" hidden>Select the 3D shape, then use this button to return it to its original 2D shape.</span></span><button type="button" data-action="whiteboard-rotate-left">Rotate left</button><button type="button" data-action="whiteboard-rotate-right">Rotate right</button>
@@ -3365,6 +3366,56 @@ function showWhiteboardCursiveModel(text, object, canvas) {
   playLetter(0);
 }
 
+function openCursiveTouchPractice(text) {
+  document.querySelector("[data-cursive-touch-practice]")?.remove();
+  const practice = document.createElement("section");
+  practice.className = "platform-cursive-touch-practice";
+  practice.dataset.cursiveTouchPractice = "true";
+  practice.setAttribute("role", "dialog"); practice.setAttribute("aria-modal", "true"); practice.setAttribute("aria-labelledby", "cursive-touch-title");
+  practice.innerHTML = `<header><div><p class="platform-command-label">Touch Writing Practice</p><h2 id="cursive-touch-title">Write “${escapeHtml(text)}”</h2></div><button type="button" data-touch-close aria-label="Close touch writing practice">Close</button></header><main><section class="platform-cursive-touch-model"><span>Your cursive model</span><strong data-touch-model>${escapeHtml(text)}</strong></section><div class="platform-cursive-touch-options"><label>Writing paper<select data-touch-paper><option value="wide" selected>Wide ruled</option><option value="practice">Handwriting practice — 3 lines</option><option value="none">No lines</option></select></label><button type="button" data-touch-previous>← Previous space</button><span data-touch-page-count>Page 1 of 1</span><button type="button" data-touch-next>Next space →</button><button type="button" data-touch-add-page>+ New writing space</button></div><section class="platform-cursive-touch-pages" data-touch-pages aria-label="Finger writing area"></section><div class="platform-cursive-touch-actions"><button type="button" data-touch-clear>Clear this page</button><button type="button" class="platform-button-primary" data-touch-finish>I'm done writing</button></div><section class="platform-cursive-touch-result" data-touch-result hidden></section></main>`;
+  document.body.append(practice);
+  const pages = [];
+  let currentPageIndex = 0, activeStroke = null, paper = "wide", traceMode = false;
+  const pagesRegion = practice.querySelector("[data-touch-pages]");
+  const pageCount = practice.querySelector("[data-touch-page-count]");
+  const drawPaper = (context, canvas) => {
+    context.clearRect(0, 0, canvas.width, canvas.height); context.fillStyle = "#fff"; context.fillRect(0, 0, canvas.width, canvas.height);
+    if (paper === "wide") { context.strokeStyle = "#8bc4dc"; context.lineWidth = 3; [115, 225, 335].forEach((y) => { context.beginPath(); context.moveTo(0, y); context.lineTo(canvas.width, y); context.stroke(); }); }
+    if (paper === "practice") { [28, 142, 256].forEach((top) => { context.strokeStyle = "#76b6d0"; context.lineWidth = 2; context.setLineDash([]); context.beginPath(); context.moveTo(0, top); context.lineTo(canvas.width, top); context.moveTo(0, top + 76); context.lineTo(canvas.width, top + 76); context.stroke(); context.setLineDash([10, 9]); context.beginPath(); context.moveTo(0, top + 38); context.lineTo(canvas.width, top + 38); context.stroke(); }); context.setLineDash([]); }
+    if (traceMode) { context.save(); context.globalAlpha = 0.16; context.fillStyle = "#12384d"; context.font = '110px "School Cursive", cursive'; context.fillText(text, 35, 215); context.restore(); }
+  };
+  const renderPage = (page) => {
+    const context = page.canvas.getContext("2d"); drawPaper(context, page.canvas); context.strokeStyle = "#12384d"; context.lineWidth = 8; context.lineCap = "round"; context.lineJoin = "round";
+    page.strokes.forEach((stroke) => { if (!stroke.length) return; context.beginPath(); context.moveTo(stroke[0].x, stroke[0].y); stroke.slice(1).forEach((point) => context.lineTo(point.x, point.y)); context.stroke(); });
+  };
+  const showPage = (index) => { currentPageIndex = index; pages.forEach((page, pageIndex) => { page.canvas.hidden = pageIndex !== index; }); pageCount.textContent = `Page ${index + 1} of ${pages.length}`; practice.querySelector("[data-touch-previous]").disabled = index === 0; practice.querySelector("[data-touch-next]").disabled = index === pages.length - 1; };
+  const addPage = () => {
+    const canvas = document.createElement("canvas"); canvas.width = 1200; canvas.height = 370; canvas.setAttribute("aria-label", `Touch writing page ${pages.length + 1}`); canvas.style.touchAction = "none";
+    const page = { canvas, strokes: [], inkLength: 0, minX: Infinity, maxX: -Infinity }; pages.push(page); pagesRegion.append(canvas); renderPage(page); showPage(pages.length - 1);
+    const pointFromEvent = (event) => { const rect = canvas.getBoundingClientRect(); return { x: (event.clientX - rect.left) * canvas.width / rect.width, y: (event.clientY - rect.top) * canvas.height / rect.height }; };
+    canvas.addEventListener("pointerdown", (event) => { event.preventDefault(); canvas.setPointerCapture(event.pointerId); activeStroke = [pointFromEvent(event)]; page.strokes.push(activeStroke); });
+    canvas.addEventListener("pointermove", (event) => { if (!activeStroke) return; event.preventDefault(); const point = pointFromEvent(event), previous = activeStroke.at(-1); activeStroke.push(point); page.inkLength += Math.hypot(point.x - previous.x, point.y - previous.y); page.minX = Math.min(page.minX, point.x); page.maxX = Math.max(page.maxX, point.x); renderPage(page); if (point.x > canvas.width - 18) { activeStroke = null; addPage(); } });
+    const stop = () => { activeStroke = null; }; canvas.addEventListener("pointerup", stop); canvas.addEventListener("pointercancel", stop);
+  };
+  addPage();
+  practice.querySelector("[data-touch-paper]").addEventListener("change", (event) => { paper = event.target.value; pages.forEach(renderPage); });
+  practice.querySelector("[data-touch-previous]").addEventListener("click", () => showPage(Math.max(0, currentPageIndex - 1)));
+  practice.querySelector("[data-touch-next]").addEventListener("click", () => showPage(Math.min(pages.length - 1, currentPageIndex + 1)));
+  practice.querySelector("[data-touch-add-page]").addEventListener("click", addPage);
+  practice.querySelector("[data-touch-clear]").addEventListener("click", () => { const page = pages[currentPageIndex]; page.strokes = []; page.inkLength = 0; page.minX = Infinity; page.maxX = -Infinity; renderPage(page); });
+  practice.querySelector("[data-touch-finish]").addEventListener("click", () => {
+    const totalInk = pages.reduce((sum, page) => sum + page.inkLength, 0); const writtenWidth = pages.reduce((sum, page) => sum + Math.max(0, page.maxX - page.minX), 0);
+    const difficultToRead = totalInk < Math.max(180, text.length * 24) || writtenWidth < Math.min(280, text.length * 20);
+    const result = practice.querySelector("[data-touch-result]");
+    result.hidden = false; result.innerHTML = `<h3>Your writing</h3><div class="platform-cursive-touch-submission">${pages.map((page, index) => `<figure><img src="${page.canvas.toDataURL("image/png")}" alt="Touch writing page ${index + 1}"><figcaption>Page ${index + 1}</figcaption></figure>`).join("")}</div>${difficultToRead ? `<aside class="platform-cursive-touch-bob"><strong>Bob's suggestion</strong><p>Some of this writing is difficult to read. Rewatch how the model is written, trace the typed cursive once, and then try writing it again.</p><button type="button" data-touch-rewatch>Rewatch model writing</button><button type="button" data-touch-trace>Trace the typed writing</button></aside>` : `<p class="platform-cursive-touch-success">Your touch writing is saved below the cursive model.</p>`}`;
+    practice.querySelector("[data-touch-rewatch]")?.addEventListener("click", () => { const model = practice.querySelector("[data-touch-model]"); model.classList.remove("is-replaying"); window.requestAnimationFrame(() => model.classList.add("is-replaying")); });
+    practice.querySelector("[data-touch-trace]")?.addEventListener("click", () => { traceMode = true; addPage(); result.hidden = true; });
+    result.scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  practice.querySelector("[data-touch-close]").addEventListener("click", () => practice.remove());
+  practice.focus();
+}
+
 function openWhiteboardTextEntry(point, canvas) {
   const surface = canvas.parentElement;
   if (!surface) return;
@@ -3404,6 +3455,7 @@ function openWhiteboardTextEntry(point, canvas) {
     const shouldModelCursive = object.fontFamily === "School Cursive" && document.querySelector("[data-whiteboard-cursive-coach]")?.value !== "off";
     whiteboardObjects.push(object); whiteboardSelectedObjectId = object.id; close(); renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls(); setWhiteboardStatus(shouldModelCursive ? "Text added. Watch each cursive stroke and letter connection." : "Text added at the selected spot. Drag it to reposition it.");
     if (shouldModelCursive) window.requestAnimationFrame(() => showWhiteboardCursiveModel(value, object, canvas));
+    if (object.fontFamily === "School Cursive" && document.querySelector("[data-whiteboard-touch-practice]")?.checked) window.requestAnimationFrame(() => openCursiveTouchPractice(value));
   };
   entry.addEventListener("blur", (event) => {
     if (entry.value.trim()) { commit(); return; }
@@ -4178,7 +4230,7 @@ function mountWhiteboard() {
     const shapeControls = [drawingToolbar.querySelector(".platform-whiteboard-push-help-wrap")].filter(Boolean);
     const colorControls = [drawingToolbar.querySelector("[data-whiteboard-color]")?.closest("label")].filter(Boolean);
     const penControls = [drawingToolbar.querySelector("[data-whiteboard-size]")?.closest("label")].filter(Boolean);
-    const textControls = [drawingToolbar.querySelector("[data-whiteboard-text-background]")?.closest("label"), drawingToolbar.querySelector("[data-whiteboard-cursive-lines]")?.closest("label"), drawingToolbar.querySelector("[data-whiteboard-cursive-coach]")?.closest("label")].filter(Boolean);
+    const textControls = [drawingToolbar.querySelector("[data-whiteboard-text-background]")?.closest("label"), drawingToolbar.querySelector("[data-whiteboard-cursive-lines]")?.closest("label"), drawingToolbar.querySelector("[data-whiteboard-cursive-coach]")?.closest("label"), drawingToolbar.querySelector("[data-whiteboard-touch-practice]")?.closest("label")].filter(Boolean);
     const emojiControls = [drawingToolbar.querySelector("[data-whiteboard-emoji-label]")].filter(Boolean);
     drawingToolbar.querySelectorAll('[data-action="whiteboard-undo"], [data-action="whiteboard-redo"]').forEach((button) => button.remove());
     selectPanel?.append(...selectControls);

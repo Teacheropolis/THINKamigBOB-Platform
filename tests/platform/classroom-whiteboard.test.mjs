@@ -356,6 +356,20 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /action\.dataset\.action === "whiteboard-tool-select"\) \{ cancelPendingWhiteboardTextEntry\(\)/);
 });
 
+test("students can practice typed cursive by touch in a full-screen lined workspace", () => {
+  for (const text of ["Let the student write this word by touch after typing", "Touch Writing Practice", "Wide ruled", "Handwriting practice — 3 lines", "No lines", "Your cursive model", "Previous space", "Next space", "I'm done writing", "Your writing", "Bob's suggestion", "Rewatch model writing", "Trace the typed writing"]) assert.match(app, new RegExp(text.replace(/[?]/g, "\\?")));
+  assert.match(app, /function openCursiveTouchPractice\(text\)/);
+  assert.match(app, /data-cursive-touch-practice/);
+  assert.match(app, /canvas\.addEventListener\("pointerdown"/);
+  assert.match(app, /canvas\.addEventListener\("pointermove"/);
+  assert.match(app, /point\.x > canvas\.width - 18/);
+  assert.match(app, /const difficultToRead = totalInk/);
+  assert.match(app, /difficultToRead \?/);
+  assert.match(app, /object\.fontFamily === "School Cursive" && document\.querySelector\("\[data-whiteboard-touch-practice\]"\)\?\.checked/);
+  assert.match(css, /\.platform-cursive-touch-practice \{ position: fixed; z-index: 500; inset: 0/);
+  assert.match(css, /\.platform-cursive-touch-pages canvas/);
+});
+
 test("dragging a selected object corner resizes regardless of the active tool", () => {
   assert.match(app, /activeSelected && activeSelected\.type !== "dimension"/);
   assert.match(app, /const activeSelected = whiteboardObjects\.find\(\(object\) => object\.id === whiteboardSelectedObjectId\)/);
