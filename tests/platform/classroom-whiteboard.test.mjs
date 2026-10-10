@@ -240,6 +240,7 @@ test("top toolbar starts with select erase color and paint can", () => {
 test("text tools provide fonts, formatting shortcuts, color, and corner scaling", () => {
   assert.match(app, /<select data-whiteboard-tool hidden/);
   assert.doesNotMatch(app, /<input type="hidden" data-whiteboard-tool/);
+  assert.match(app, /requestAnimationFrame\(\(\) => \{ if \(entry\.isConnected\) entry\.focus\(\{ preventScroll: true \}\); \}\)/);
   assert.match(app, /data-whiteboard-text-font/);
   assert.match(app, /data-whiteboard-text-color/);
   assert.match(app, /platform-whiteboard-font-examples/);

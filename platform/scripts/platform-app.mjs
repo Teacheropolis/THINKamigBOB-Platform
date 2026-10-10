@@ -3258,7 +3258,7 @@ function openWhiteboardTextEntry(point, canvas) {
     else if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); commit(); }
   });
   surface.append(entry);
-  entry.focus();
+  window.requestAnimationFrame(() => { if (entry.isConnected) entry.focus({ preventScroll: true }); });
   setWhiteboardStatus("Type directly on the board. Press Enter or click elsewhere to finish; Escape cancels.");
 }
 
