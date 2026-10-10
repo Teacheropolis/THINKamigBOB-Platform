@@ -390,6 +390,14 @@ test("whiteboard embeds movable and resizable YouTube videos", () => {
   assert.match(css, /\[data-youtube-resize\]/);
 });
 
+test("whiteboard can display protected YouTube search results and insert a selected video", () => {
+  for (const text of ["YouTube search results", "Insert Video", "Preview", "Searching YouTube"] ) assert.match(app, new RegExp(text));
+  assert.match(app, /thinkamigbob-youtube-search-endpoint/);
+  assert.match(app, /whiteboardYouTubeSearchEndpoint/);
+  assert.match(app, /whiteboard-insert-youtube-result/);
+  assert.match(css, /\.platform-whiteboard-youtube-results/);
+});
+
 test("dragging a selected object corner resizes regardless of the active tool", () => {
   assert.match(app, /activeSelected && activeSelected\.type !== "dimension"/);
   assert.match(app, /const activeSelected = whiteboardObjects\.find\(\(object\) => object\.id === whiteboardSelectedObjectId\)/);
