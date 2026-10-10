@@ -5,6 +5,7 @@ import { customLetters as cursiveStrokeLetters } from "../../platform/scripts/cu
 
 const app = readFileSync(new URL("../../platform/scripts/platform-app.mjs", import.meta.url), "utf8");
 const css = readFileSync(new URL("../../platform/styles/platform.css", import.meta.url), "utf8");
+const objects = readFileSync(new URL("../../platform/scripts/whiteboard-objects.mjs", import.meta.url), "utf8");
 
 test("cursive coach covers every lowercase letter with ordered visible strokes", () => {
   assert.deepEqual(Object.keys(cursiveStrokeLetters), [..."abcdefghijklmnopqrstuvwxyz"]);
@@ -371,6 +372,20 @@ test("students can practice typed cursive by touch in a full-screen lined worksp
   assert.match(app, /object\.fontFamily === "School Cursive" && document\.querySelector\("\[data-whiteboard-touch-practice\]"\)\?\.checked/);
   assert.match(css, /\.platform-cursive-touch-practice \{ position: fixed; z-index: 500; inset: 0/);
   assert.match(css, /\.platform-cursive-touch-pages canvas/);
+});
+
+test("whiteboard embeds movable and resizable YouTube videos", () => {
+  for (const text of ["YouTube link", "Add YouTube Video", "YouTube Video", "Drag to move", "YouTube video added"]) assert.match(app, new RegExp(text));
+  assert.match(app, /function whiteboardYouTubeId\(value\)/);
+  assert.match(app, /host === "youtu\.be"/);
+  assert.match(app, /url\.searchParams\.get\("v"\)/);
+  assert.match(app, /youtube-nocookie\.com\/embed/);
+  assert.match(app, /allowfullscreen/);
+  assert.match(app, /function syncWhiteboardYouTubeOverlays/);
+  assert.match(app, /createWhiteboardObject\("youtube"/);
+  assert.match(objects, /"youtube"/);
+  assert.match(css, /\.platform-whiteboard-youtube-overlay/);
+  assert.match(css, /\[data-youtube-resize\]/);
 });
 
 test("dragging a selected object corner resizes regardless of the active tool", () => {

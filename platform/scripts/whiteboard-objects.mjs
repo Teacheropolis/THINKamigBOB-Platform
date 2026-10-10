@@ -1,4 +1,4 @@
-export const WHITEBOARD_OBJECT_TYPES = Object.freeze(["path", "line", "dimension", "rectangle", "ellipse", "triangle", "diamond", "pentagon", "hexagon", "star", "arrow", "cube", "rectangular-prism", "triangular-prism", "hexagonal-prism", "cylinder", "cone", "pyramid", "sphere", "hemisphere", "shape-fragment", "text", "image"]);
+export const WHITEBOARD_OBJECT_TYPES = Object.freeze(["path", "line", "dimension", "rectangle", "ellipse", "triangle", "diamond", "pentagon", "hexagon", "star", "arrow", "cube", "rectangular-prism", "triangular-prism", "hexagonal-prism", "cylinder", "cone", "pyramid", "sphere", "hemisphere", "shape-fragment", "text", "image", "youtube"]);
 
 export function createWhiteboardObject(type, values = {}) {
   if (!WHITEBOARD_OBJECT_TYPES.includes(type)) return null;

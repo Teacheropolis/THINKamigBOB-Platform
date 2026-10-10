@@ -1775,6 +1775,7 @@ function teacherDashboardView(state) {
         <label>Cursive Coach<select data-whiteboard-cursive-coach><option value="off">Off</option><option value="letter">Model strokes after typing</option></select></label>
         <label class="platform-whiteboard-touch-practice-choice"><input type="checkbox" data-whiteboard-touch-practice> Let the student write this word by touch after typing</label>
         <label>Image<input type="file" data-whiteboard-image accept="image/*"></label>
+        <span class="platform-whiteboard-youtube-control"><label>YouTube link<input type="url" data-whiteboard-youtube-url placeholder="https://www.youtube.com/watch?v=…"></label><button type="button" data-action="whiteboard-add-youtube">Add YouTube Video</button></span>
         <span class="platform-whiteboard-object-actions" role="group" aria-label="Selected object actions">
           <button type="button" data-action="whiteboard-copy">Copy</button><button type="button" data-action="whiteboard-paste">Paste</button><button type="button" data-action="whiteboard-duplicate">Duplicate</button><span class="platform-whiteboard-push-help-wrap"><button type="button" data-action="whiteboard-push-2d">Push Back to 2D</button><span class="platform-whiteboard-push-help" data-whiteboard-push-help role="status" hidden>Select the 3D shape, then use this button to return it to its original 2D shape.</span></span><button type="button" data-action="whiteboard-rotate-left">Rotate left</button><button type="button" data-action="whiteboard-rotate-right">Rotate right</button>
         </span>
@@ -3638,6 +3639,35 @@ function drawWhiteboardPath(context, object) {
   traceWhiteboardPath(context, points);
 }
 
+function whiteboardYouTubeId(value) {
+  try {
+    const url = new URL(String(value).trim());
+    const host = url.hostname.replace(/^www\./, "");
+    const candidate = host === "youtu.be" ? url.pathname.slice(1).split("/")[0] : host.endsWith("youtube.com") ? (url.searchParams.get("v") || url.pathname.match(/^\/(?:embed|shorts)\/([^/?#]+)/)?.[1]) : "";
+    return /^[A-Za-z0-9_-]{6,15}$/.test(candidate ?? "") ? candidate : "";
+  } catch { return ""; }
+}
+
+function syncWhiteboardYouTubeOverlays(canvas = whiteboardCanvas()) {
+  const surface = canvas?.parentElement;
+  if (!canvas || !surface) return;
+  surface.querySelectorAll("[data-whiteboard-youtube-overlay]").forEach((overlay) => overlay.remove());
+  const scaleX = canvas.clientWidth / canvas.width, scaleY = canvas.clientHeight / canvas.height;
+  whiteboardObjects.filter((object) => object.type === "youtube" && object.videoId).forEach((object) => {
+    const overlay = document.createElement("section"); overlay.className = "platform-whiteboard-youtube-overlay"; overlay.dataset.whiteboardYoutubeOverlay = object.id;
+    const place = () => { overlay.style.left = `${object.x * scaleX}px`; overlay.style.top = `${object.y * scaleY}px`; overlay.style.width = `${object.width * scaleX}px`; overlay.style.height = `${object.height * scaleY}px`; };
+    overlay.innerHTML = `<header data-youtube-drag><strong>YouTube Video</strong><span>Drag to move</span></header><iframe src="https://www.youtube-nocookie.com/embed/${escapeHtml(object.videoId)}" title="YouTube video on the whiteboard" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe><button type="button" data-youtube-resize aria-label="Resize YouTube video"></button>`;
+    place(); surface.append(overlay);
+    const begin = (event, mode) => { event.preventDefault(); const start = { x: event.clientX, y: event.clientY, objectX: object.x, objectY: object.y, width: object.width, height: object.height }; event.currentTarget.setPointerCapture(event.pointerId); whiteboardSelectedObjectId = object.id;
+      const move = (moveEvent) => { const dx = (moveEvent.clientX - start.x) / scaleX, dy = (moveEvent.clientY - start.y) / scaleY; if (mode === "move") { object.x = Math.max(0, start.objectX + dx); object.y = Math.max(0, start.objectY + dy); } else { object.width = Math.max(240, start.width + dx); object.height = Math.max(170, start.height + dy); } place(); };
+      const end = () => { event.currentTarget.removeEventListener("pointermove", move); event.currentTarget.removeEventListener("pointerup", end); saveWhiteboard(canvas); renderWhiteboardObjects(canvas); };
+      event.currentTarget.addEventListener("pointermove", move); event.currentTarget.addEventListener("pointerup", end);
+    };
+    overlay.querySelector("[data-youtube-drag]").addEventListener("pointerdown", (event) => begin(event, "move"));
+    overlay.querySelector("[data-youtube-resize]").addEventListener("pointerdown", (event) => begin(event, "resize"));
+  });
+}
+
 function traceWhiteboardPolygon(context, object, sides, innerRatio = 1) {
   const centerX = object.x + object.width / 2, centerY = object.y + object.height / 2;
   const points = innerRatio < 1 ? sides * 2 : sides;
@@ -4158,6 +4188,7 @@ function renderWhiteboardObjects(canvas = whiteboardCanvas()) {
     if (object.type === "path") drawWhiteboardPath(context, object);
     else if (object.type === "text") { const angle = object.rotation ?? 0, background = whiteboardTextBackground(object.background), textScale = object.textScale ?? 1; context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(angle); if (background) { context.fillStyle = background; context.fillRect(-object.width / 2 - 8, -object.height / 2 - 5, object.width + 16, object.height + 10); } drawWhiteboardCursiveGuides(context, object); let cursorX = -object.width / 2; const baseline = object.height / 2 - Math.max(3, (object.fontSize ?? 36) * textScale * 0.12); whiteboardRichTextRuns(object.richHtml, object.text, object.fontSize, object.background === "black" ? "#ffffff" : object.color, object.fontFamily ?? "Arial").forEach((run) => { const runSize = run.size * textScale, runFont = run.fontFamily || object.fontFamily || "Arial"; context.font = `${object.italic || run.italic ? "italic " : ""}${object.bold || run.bold ? "700" : "400"} ${runSize}px "${runFont}"`; context.fillStyle = run.color; context.fillText(run.text, cursorX, baseline); const width = context.measureText(run.text).width; if (object.underline || run.underline) context.fillRect(cursorX, baseline + 3, width, Math.max(1.5, runSize / 18)); cursorX += width; }); }
     else if (object.type === "image" && object.element) { context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(object.rotation ?? 0); context.drawImage(object.element, -object.width / 2, -object.height / 2, object.width, object.height); }
+    else if (object.type === "youtube") { context.fillStyle = "#111820"; context.fillRect(object.x, object.y, object.width, object.height); context.strokeStyle = "#ffffff"; context.lineWidth = 4; context.strokeRect(object.x + 2, object.y + 2, object.width - 4, object.height - 4); context.fillStyle = "#ff0033"; context.beginPath(); context.roundRect(object.x + object.width / 2 - 42, object.y + object.height / 2 - 30, 84, 60, 14); context.fill(); context.fillStyle = "#ffffff"; context.beginPath(); context.moveTo(object.x + object.width / 2 - 10, object.y + object.height / 2 - 18); context.lineTo(object.x + object.width / 2 + 22, object.y + object.height / 2); context.lineTo(object.x + object.width / 2 - 10, object.y + object.height / 2 + 18); context.closePath(); context.fill(); }
     else if (object.type === "dimension") drawWhiteboardDimension(context, object);
     else if (object.type === "line" || object.type === "arrow") { context.beginPath(); context.moveTo(object.x, object.y); context.lineTo(object.x + object.width, object.y + object.height); context.stroke(); if (object.type === "arrow") { const angle = Math.atan2(object.height, object.width); context.beginPath(); context.moveTo(object.x + object.width, object.y + object.height); context.lineTo(object.x + object.width - 18 * Math.cos(angle - 0.55), object.y + object.height - 18 * Math.sin(angle - 0.55)); context.moveTo(object.x + object.width, object.y + object.height); context.lineTo(object.x + object.width - 18 * Math.cos(angle + 0.55), object.y + object.height - 18 * Math.sin(angle + 0.55)); context.stroke(); } }
     else if (object.type === "shape-fragment") drawWhiteboardShapeFragment(context, object);
@@ -4171,6 +4202,7 @@ function renderWhiteboardObjects(canvas = whiteboardCanvas()) {
   drawWhiteboardRuler(context, canvas);
   drawWhiteboardLaserPreview(context);
   if (whiteboardLassoPoints.length) { context.save(); context.beginPath(); whiteboardLassoPoints.forEach((point, index) => index ? context.lineTo(point.x, point.y) : context.moveTo(point.x, point.y)); if (whiteboardLassoPoints.length > 2 && !whiteboardDrawing) context.closePath(); context.setLineDash([10, 7]); context.strokeStyle = "#d31324"; context.lineWidth = 3; context.shadowColor = "#ffffff"; context.shadowBlur = 4; context.stroke(); context.restore(); }
+  syncWhiteboardYouTubeOverlays(canvas);
 }
 
 function hydrateWhiteboardImages(after = null) {
@@ -4229,7 +4261,7 @@ function mountWhiteboard() {
       drawingToolbar.querySelector("[data-whiteboard-compare-unit]"),
       drawingToolbar.querySelector("[data-whiteboard-zoom]")?.closest("label")
     ].filter(Boolean);
-    const selectControls = [drawingToolbar.querySelector("[data-whiteboard-image]")?.closest("label"), drawingToolbar.querySelector(".platform-whiteboard-object-actions"), drawingToolbar.querySelector("[data-whiteboard-lasso-actions]")].filter(Boolean);
+    const selectControls = [drawingToolbar.querySelector("[data-whiteboard-image]")?.closest("label"), drawingToolbar.querySelector(".platform-whiteboard-youtube-control"), drawingToolbar.querySelector(".platform-whiteboard-object-actions"), drawingToolbar.querySelector("[data-whiteboard-lasso-actions]")].filter(Boolean);
     const shapeControls = [drawingToolbar.querySelector(".platform-whiteboard-push-help-wrap")].filter(Boolean);
     const colorControls = [drawingToolbar.querySelector("[data-whiteboard-color]")?.closest("label")].filter(Boolean);
     const penControls = [drawingToolbar.querySelector("[data-whiteboard-size]")?.closest("label")].filter(Boolean);
@@ -5018,6 +5050,12 @@ function handleClick(event) {
     return;
   }
   if (action.dataset.action === "whiteboard-tool-select") { cancelPendingWhiteboardTextEntry(); whiteboardDeleteNextObject = false; const tool = document.querySelector("[data-whiteboard-tool]"); if (tool) { tool.value = "select"; tool.dispatchEvent(new Event("change", { bubbles: true })); } document.querySelectorAll("[data-whiteboard-quick-tool]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.whiteboardQuickTool === "select"))); whiteboardCanvas()?.focus({ preventScroll: true }); setWhiteboardStatus("Select and move is active."); return; }
+  if (action.dataset.action === "whiteboard-add-youtube") {
+    const field = document.querySelector("[data-whiteboard-youtube-url]"), videoId = whiteboardYouTubeId(field?.value ?? ""), canvas = whiteboardCanvas();
+    if (!videoId || !canvas) { setWhiteboardStatus("Enter a valid YouTube video link, including youtube.com or youtu.be."); field?.focus(); return; }
+    pushWhiteboardHistory(); const width = Math.min(640, canvas.width * 0.7), height = width * 9 / 16; const object = createWhiteboardObject("youtube", { videoId, x: (canvas.width - width) / 2, y: Math.max(20, (canvas.height - height) / 2), width, height });
+    whiteboardObjects.push(object); whiteboardSelectedObjectId = object.id; if (field) field.value = ""; renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls(); setWhiteboardStatus("YouTube video added. Use its header to move it and the corner handle to resize it."); return;
+  }
   if (action.dataset.action === "whiteboard-cut") { cutSelectedWhiteboardObject(); whiteboardCanvas()?.focus({ preventScroll: true }); return; }
   if (action.dataset.action === "whiteboard-copy-image") { const menu = document.querySelector("[data-whiteboard-context-menu]"); if (menu) menu.hidden = true; void copySelectedWhiteboardObjectAsImage(); return; }
   if (action.dataset.action === "whiteboard-cut-image") { const menu = document.querySelector("[data-whiteboard-context-menu]"); if (menu) menu.hidden = true; cutSelectedWhiteboardObject(); return; }
