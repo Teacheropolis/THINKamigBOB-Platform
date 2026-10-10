@@ -1775,7 +1775,7 @@ function teacherDashboardView(state) {
         <label>Cursive Coach<select data-whiteboard-cursive-coach><option value="off">Off</option><option value="letter">Model strokes after typing</option></select></label>
         <label class="platform-whiteboard-touch-practice-choice"><input type="checkbox" data-whiteboard-touch-practice> Let the student write this word by touch after typing</label>
         <label>Image<input type="file" data-whiteboard-image accept="image/*"></label>
-        <span class="platform-whiteboard-youtube-control"><label>YouTube link<input type="url" data-whiteboard-youtube-url placeholder="https://www.youtube.com/watch?v=…"></label><button type="button" data-action="whiteboard-add-youtube">Add YouTube Video</button></span>
+        <span class="platform-whiteboard-youtube-control"><label>Search YouTube<input type="search" data-whiteboard-youtube-search placeholder="Example: phases of the moon for kids"></label><button type="button" data-action="whiteboard-search-youtube">Search YouTube</button><label>YouTube link<input type="url" data-whiteboard-youtube-url placeholder="Paste the chosen video link"></label><button type="button" data-action="whiteboard-paste-youtube">Paste Copied Link</button><button type="button" data-action="whiteboard-add-youtube">Add YouTube Video</button></span>
         <span class="platform-whiteboard-object-actions" role="group" aria-label="Selected object actions">
           <button type="button" data-action="whiteboard-copy">Copy</button><button type="button" data-action="whiteboard-paste">Paste</button><button type="button" data-action="whiteboard-duplicate">Duplicate</button><span class="platform-whiteboard-push-help-wrap"><button type="button" data-action="whiteboard-push-2d">Push Back to 2D</button><span class="platform-whiteboard-push-help" data-whiteboard-push-help role="status" hidden>Select the 3D shape, then use this button to return it to its original 2D shape.</span></span><button type="button" data-action="whiteboard-rotate-left">Rotate left</button><button type="button" data-action="whiteboard-rotate-right">Rotate right</button>
         </span>
@@ -5050,6 +5050,24 @@ function handleClick(event) {
     return;
   }
   if (action.dataset.action === "whiteboard-tool-select") { cancelPendingWhiteboardTextEntry(); whiteboardDeleteNextObject = false; const tool = document.querySelector("[data-whiteboard-tool]"); if (tool) { tool.value = "select"; tool.dispatchEvent(new Event("change", { bubbles: true })); } document.querySelectorAll("[data-whiteboard-quick-tool]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.whiteboardQuickTool === "select"))); whiteboardCanvas()?.focus({ preventScroll: true }); setWhiteboardStatus("Select and move is active."); return; }
+  if (action.dataset.action === "whiteboard-search-youtube") {
+    const field = document.querySelector("[data-whiteboard-youtube-search]"), query = field?.value.trim();
+    if (!query) { setWhiteboardStatus("Type what you want to find on YouTube first."); field?.focus(); return; }
+    window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`, "_blank", "noopener,noreferrer");
+    setWhiteboardStatus("YouTube search opened in a new tab. Copy a video's link, return here, and choose Paste Copied Link."); return;
+  }
+  if (action.dataset.action === "whiteboard-paste-youtube") {
+    const field = document.querySelector("[data-whiteboard-youtube-url]");
+      navigator.clipboard.readText().then((copied) => {
+        if (field) field.value = copied;
+        if (whiteboardYouTubeId(copied)) setWhiteboardStatus("YouTube link pasted. Choose Add YouTube Video.");
+        else setWhiteboardStatus("The copied text is not a recognized YouTube video link.");
+      }).catch(() => {
+        setWhiteboardStatus("Clipboard access was blocked. Paste the YouTube link into the link box instead.");
+        field?.focus();
+      });
+      return;
+  }
   if (action.dataset.action === "whiteboard-add-youtube") {
     const field = document.querySelector("[data-whiteboard-youtube-url]"), videoId = whiteboardYouTubeId(field?.value ?? ""), canvas = whiteboardCanvas();
     if (!videoId || !canvas) { setWhiteboardStatus("Enter a valid YouTube video link, including youtube.com or youtu.be."); field?.focus(); return; }

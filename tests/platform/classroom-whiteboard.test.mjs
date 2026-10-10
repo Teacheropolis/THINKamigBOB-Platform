@@ -375,11 +375,13 @@ test("students can practice typed cursive by touch in a full-screen lined worksp
 });
 
 test("whiteboard embeds movable and resizable YouTube videos", () => {
-  for (const text of ["YouTube link", "Add YouTube Video", "YouTube Video", "Drag to move", "YouTube video added"]) assert.match(app, new RegExp(text));
+  for (const text of ["Search YouTube", "Paste Copied Link", "YouTube link", "Add YouTube Video", "YouTube Video", "Drag to move", "YouTube video added"]) assert.match(app, new RegExp(text));
   assert.match(app, /function whiteboardYouTubeId\(value\)/);
   assert.match(app, /host === "youtu\.be"/);
   assert.match(app, /url\.searchParams\.get\("v"\)/);
   assert.match(app, /youtube-nocookie\.com\/embed/);
+  assert.match(app, /youtube\.com\/results\?search_query=/);
+  assert.match(app, /navigator\.clipboard\.readText\(\)/);
   assert.match(app, /allowfullscreen/);
   assert.match(app, /function syncWhiteboardYouTubeOverlays/);
   assert.match(app, /createWhiteboardObject\("youtube"/);
