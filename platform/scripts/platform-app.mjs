@@ -3662,6 +3662,11 @@ function resizeWhiteboardObjectFromCorner(object, corner, dx, dy) {
   if (corner.includes("e")) right = Math.max(left + 12, right + dx);
   if (corner.includes("n")) top = Math.min(bottom - 12, top + dy);
   if (corner.includes("s")) bottom = Math.max(top + 12, bottom + dy);
+  if (["ellipse", "sphere"].includes(object.type)) {
+    const side = Math.max(12, Math.max(right - left, bottom - top));
+    if (corner.includes("w")) left = right - side; else right = left + side;
+    if (corner.includes("n")) top = bottom - side; else bottom = top + side;
+  }
   let resized = resizeWhiteboardObject(object, right - left, bottom - top);
   if (object.type === "path") resized = moveWhiteboardObject(resized, left - bounds.x, top - bounds.y);
   else resized = { ...resized, x: left, y: top, width: right - left, height: bottom - top };
@@ -3673,25 +3678,26 @@ function drawWhiteboardSelectionMeasurements(context, object) {
   if (!bounds) return;
   const centerX = bounds.x + bounds.width / 2, centerY = bounds.y + bounds.height / 2;
   context.save(); context.strokeStyle = "#b52222"; context.fillStyle = "#b52222"; context.lineWidth = 2.5; context.font = "800 16px sans-serif";
+  const label = (text, x, y) => { const width = context.measureText(text).width + 12; context.fillStyle = "rgba(255,255,255,0.96)"; context.fillRect(x - width / 2, y - 16, width, 22); context.strokeStyle = "rgba(181,34,34,0.35)"; context.strokeRect(x - width / 2, y - 16, width, 22); context.fillStyle = "#b52222"; context.fillText(text, x - width / 2 + 6, y); };
   if (["ellipse", "sphere"].includes(object.type)) {
     const radius = Math.min(bounds.width, bounds.height) / 2;
     context.beginPath(); context.moveTo(centerX, centerY); context.lineTo(centerX + radius, centerY); context.stroke();
     context.beginPath(); context.arc(centerX, centerY, 4, 0, Math.PI * 2); context.fill();
-    context.fillStyle = "rgba(255,255,255,0.92)"; context.fillRect(centerX + radius / 2 - 5, centerY - 25, 64, 22); context.fillStyle = "#b52222"; context.fillText(`r = ${Math.round(radius)}`, centerX + radius / 2, centerY - 8);
+    label(`r = ${Math.round(radius)}`, centerX + radius / 2, centerY - 12);
   }
   if (object.type === "triangle") {
     const points = [{ x: 0, y: -bounds.height / 2 }, { x: bounds.width / 2, y: bounds.height / 2 }, { x: -bounds.width / 2, y: bounds.height / 2 }];
     const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
     const angleAt = (a, b, c) => Math.acos(Math.max(-1, Math.min(1, (distance(a, b) ** 2 + distance(a, c) ** 2 - distance(b, c) ** 2) / (2 * distance(a, b) * distance(a, c))))) * 180 / Math.PI;
     context.translate(centerX, centerY); context.rotate(object.rotation ?? 0);
-    points.forEach((point, index) => { const degrees = Math.round(angleAt(point, points[(index + 1) % 3], points[(index + 2) % 3])); const inwardX = -point.x * 0.16, inwardY = -point.y * 0.16; context.fillText(`${degrees}°`, point.x + inwardX - 13, point.y + inwardY + 6); });
+    points.forEach((point, index) => { const degrees = Math.round(angleAt(point, points[(index + 1) % 3], points[(index + 2) % 3])); const length = Math.max(1, Math.hypot(point.x, point.y)); const outwardX = point.x / length * 32, outwardY = point.y / length * 32; label(`${degrees}°`, point.x + outwardX, point.y + outwardY); });
   } else if (object.type === "rectangle") {
-    context.translate(centerX, centerY); context.rotate(object.rotation ?? 0); context.fillText("90°", -bounds.width / 2 + 8, -bounds.height / 2 + 22); context.fillText("90°", bounds.width / 2 - 40, bounds.height / 2 - 10);
+    context.translate(centerX, centerY); context.rotate(object.rotation ?? 0); label("90°", -bounds.width / 2 - 24, -bounds.height / 2 - 16); label("90°", bounds.width / 2 + 24, bounds.height / 2 + 28);
   }
   const rotationDegrees = Math.round((object.rotation ?? 0) * 180 / Math.PI);
   if (rotationDegrees && ["rectangle", "ellipse", "triangle", "cube", "rectangular-prism", "cylinder", "cone", "pyramid", "sphere"].includes(object.type)) {
     context.restore(); context.save(); context.strokeStyle = "#b52222"; context.fillStyle = "#b52222"; context.lineWidth = 2.5; context.font = "800 16px sans-serif";
-    const radius = Math.max(bounds.width, bounds.height) / 2 + 24; context.beginPath(); context.arc(centerX, centerY, radius, -Math.PI / 2, -Math.PI / 2 + (object.rotation ?? 0)); context.stroke(); context.fillText(`${rotationDegrees}°`, centerX + 8, centerY - radius - 6);
+    const radius = Math.max(bounds.width, bounds.height) / 2 + 24; context.beginPath(); context.arc(centerX, centerY, radius, -Math.PI / 2, -Math.PI / 2 + (object.rotation ?? 0)); context.stroke(); label(`${rotationDegrees}°`, centerX, centerY - radius - 14);
   }
   context.restore();
 }

@@ -345,11 +345,21 @@ test("selected shapes temporarily display angle and radius measurements", () => 
   assert.doesNotMatch(app, /data-whiteboard-circle-radius/);
   assert.match(app, /function drawWhiteboardSelectionMeasurements\(context, object\)/);
   assert.match(app, /\["ellipse", "sphere"\]\.includes\(object\.type\)/);
-  assert.match(app, /fillText\(`r = \$\{Math\.round\(radius\)\}`/);
+  assert.match(app, /label\(`r = \$\{Math\.round\(radius\)\}`/);
   assert.match(app, /object\.type === "triangle"/);
-  assert.match(app, /fillText\(`\$\{degrees\}°`/);
-  assert.match(app, /fillText\("90°"/);
+  assert.match(app, /label\(`\$\{degrees\}°`/);
+  assert.match(app, /label\("90°"/);
   assert.match(app, /drawWhiteboardSelectionMeasurements\(context, selected\)/);
+  assert.match(app, /rgba\(255,255,255,0\.96\)/);
+  assert.match(app, /const outwardX = point\.x \/ length \* 32/);
+  assert.match(app, /label\("90°", -bounds\.width \/ 2 - 24/);
+});
+
+test("selection corner handles update triangle angles and circle radius", () => {
+  assert.match(app, /\["ellipse", "sphere"\]\.includes\(object\.type\)/);
+  assert.match(app, /const side = Math\.max\(12, Math\.max\(right - left, bottom - top\)\)/);
+  assert.match(app, /if \(corner\.includes\("w"\)\) left = right - side/);
+  assert.match(app, /resizeWhiteboardObjectFromCorner\(whiteboardDrawing\.original, whiteboardDrawing\.resizeCorner, dx, dy\)/);
 });
 
 test("selected text drawings and lines can be made 3D and restored to 2D", () => {
