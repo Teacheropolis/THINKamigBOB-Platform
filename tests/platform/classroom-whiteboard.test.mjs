@@ -234,6 +234,14 @@ test("clicking blank whiteboard space clears the current object selection", () =
   assert.match(app, /whiteboardSelectedObjectId = ""; syncWhiteboardDimensionCompareControl\(\); renderWhiteboardObjects\(canvas\)/);
 });
 
+test("simple clicks do not leave accidental drawing dots", () => {
+  assert.match(app, /function isAccidentalWhiteboardDot\(object\)/);
+  assert.match(app, /object\.strokeStyle === "eraser" \|\| object\.emojiStamp/);
+  assert.match(app, /Math\.hypot\(Number\(object\.width \?\? 0\), Number\(object\.height \?\? 0\)\) < 5/);
+  assert.match(app, /whiteboardObjects = whiteboardObjects\.filter\(\(object\) => !isAccidentalWhiteboardDot\(object\)\)/);
+  assert.match(app, /No mark added\. Drag on the board to draw a line or shape\./);
+});
+
 test("delete selected arms a one-click delete when nothing is selected", () => {
   assert.match(app, /let whiteboardDeleteNextObject = false/);
   assert.match(app, /!selected && action\.dataset\.action === "whiteboard-delete-object"/);

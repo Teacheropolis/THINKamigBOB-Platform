@@ -3611,6 +3611,13 @@ function connectedWhiteboardObjectIds(seed) {
   return connected;
 }
 
+function isAccidentalWhiteboardDot(object) {
+  if (!object || object.strokeStyle === "eraser" || object.emojiStamp) return false;
+  if (object.type === "path") return (object.points?.length ?? 0) < 2;
+  if (["line", "arrow", "rectangle", "ellipse", "triangle", "cube", "rectangular-prism", "cylinder", "cone", "pyramid", "sphere"].includes(object.type)) return Math.hypot(Number(object.width ?? 0), Number(object.height ?? 0)) < 5;
+  return false;
+}
+
 function whiteboardRulerLocalPoint(point) {
   const dx = point.x - whiteboardRuler.x, dy = point.y - whiteboardRuler.y, cosine = Math.cos(-whiteboardRuler.angle), sine = Math.sin(-whiteboardRuler.angle);
   return { x: dx * cosine - dy * sine, y: dx * sine + dy * cosine };
@@ -3764,6 +3771,8 @@ function mountWhiteboard() {
   try { const view = JSON.parse(window.sessionStorage.getItem(WHITEBOARD_VIEW_SESSION_KEY) ?? "{}"); whiteboardGridUnit = ["plain", "inch", "cm", "mm"].includes(view.gridUnit) ? view.gridUnit : "plain"; whiteboardRulerUnit = ["none", "english", "metric"].includes(view.rulerUnit) ? view.rulerUnit : "none"; whiteboardZoom = Math.min(300, Math.max(50, Number(view.zoom) || 100)); whiteboardRuler = view.ruler && typeof view.ruler === "object" ? { ...whiteboardRuler, ...view.ruler } : { ...whiteboardRuler, y: canvas.height - 92 }; whiteboardDrawingTitle = String(view.title || "Workshop Drawing").slice(0, 60); whiteboardControlsDock = ["top", "left", "right", "bottom"].includes(view.controlsDock) ? view.controlsDock : "top"; whiteboardControlsHidden = Boolean(view.controlsHidden); whiteboardPageDock = ["left", "right", "hidden"].includes(view.pageDock) ? view.pageDock : "left"; } catch { whiteboardGridUnit = "plain"; whiteboardRulerUnit = "none"; whiteboardZoom = 100; whiteboardDrawingTitle = "Workshop Drawing"; whiteboardControlsDock = "top"; whiteboardControlsHidden = false; whiteboardPageDock = "left"; }
   const gridControl = document.querySelector("[data-whiteboard-grid]"); const rulerControl = document.querySelector("[data-whiteboard-ruler]"); const rulerSides = document.querySelector("[data-whiteboard-ruler-sides]"); if (gridControl) gridControl.value = whiteboardGridUnit; if (rulerControl) rulerControl.value = whiteboardRulerUnit; if (rulerSides) rulerSides.value = whiteboardRuler.sides; applyWhiteboardControlsLayout({ resizeCanvas: true }); applyWhiteboardZoom(canvas);
   if (!whiteboardObjects.length) { let legacy = ""; try { legacy = window.sessionStorage.getItem(WHITEBOARD_SESSION_KEY) ?? ""; } catch {} if (legacy) whiteboardObjects = [createWhiteboardObject("image", { x: 0, y: 0, width: canvas.width, height: canvas.height, src: legacy })]; }
+  whiteboardObjects = whiteboardObjects.filter((object) => !isAccidentalWhiteboardDot(object));
+  if (whiteboardPages[whiteboardCurrentPageIndex]) whiteboardPages[whiteboardCurrentPageIndex].objects = structuredClone(serializableWhiteboardObjects());
   renderWhiteboardPageStrip(); hydrateWhiteboardImages(() => renderWhiteboardObjects(canvas)); renderWhiteboardObjects(canvas);
   try { if (window.sessionStorage.getItem(WHITEBOARD_BOB_MEASUREMENT_COACH_KEY) === "seen") showWhiteboardBobMeasurementCoach(); } catch {}
   const start = (event) => {
@@ -3899,7 +3908,7 @@ function mountWhiteboard() {
     else { object.width = point.x - whiteboardDrawing.start.x; object.height = point.y - whiteboardDrawing.start.y; }
     renderWhiteboardObjects(canvas);
   };
-  const end = () => { if (!whiteboardDrawing) return; const completedTool = whiteboardDrawing.tool; whiteboardDrawing = null; if (completedTool === "lasso-select") { updateWhiteboardLassoBounds(); renderWhiteboardObjects(canvas); setWhiteboardStatus(whiteboardLassoBounds ? "Selection ready. Remove its background or download it as a PNG." : "Draw a larger loop around the work you want to select."); return; } saveWhiteboard(canvas); setWhiteboardStatus(completedTool === "eraser" ? "Eraser stroke saved. Use Undo to restore the erased area." : "Board saved. Select any object to move, resize, copy, or delete it."); };
+  const end = () => { if (!whiteboardDrawing) return; const completedTool = whiteboardDrawing.tool, completedObjectId = whiteboardDrawing.objectId; whiteboardDrawing = null; if (completedTool === "lasso-select") { updateWhiteboardLassoBounds(); renderWhiteboardObjects(canvas); setWhiteboardStatus(whiteboardLassoBounds ? "Selection ready. Remove its background or download it as a PNG." : "Draw a larger loop around the work you want to select."); return; } const completedObject = whiteboardObjects.find((object) => object.id === completedObjectId); if (isAccidentalWhiteboardDot(completedObject)) { whiteboardObjects = whiteboardObjects.filter((object) => object.id !== completedObjectId); whiteboardSelectedObjectId = ""; renderWhiteboardObjects(canvas); saveWhiteboard(canvas); setWhiteboardStatus("No mark added. Drag on the board to draw a line or shape."); return; } saveWhiteboard(canvas); setWhiteboardStatus(completedTool === "eraser" ? "Eraser stroke saved. Use Undo to restore the erased area." : "Board saved. Select any object to move, resize, copy, or delete it."); };
   canvas.addEventListener("pointerdown", start); canvas.addEventListener("pointermove", move); canvas.addEventListener("pointerup", end); canvas.addEventListener("pointercancel", end);
   canvas.addEventListener("dblclick", (event) => { const selected = hitTestObjects(whiteboardObjects.filter((object) => object.strokeStyle !== "eraser"), whiteboardPoint(event, canvas)); if (selected?.type === "text" && !selected.emojiStamp) { event.preventDefault(); whiteboardSelectedObjectId = selected.id; openWhiteboardRichTextEditor(selected, canvas); } });
   canvas.addEventListener("contextmenu", (event) => {
