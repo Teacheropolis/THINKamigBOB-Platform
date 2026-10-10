@@ -357,12 +357,15 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
 });
 
 test("students can practice typed cursive by touch in a full-screen lined workspace", () => {
-  for (const text of ["Let the student write this word by touch after typing", "Touch Writing Practice", "Wide ruled", "Handwriting practice — 3 lines", "No lines", "Your cursive model", "Previous space", "Next space", "I'm done writing", "Your writing", "Bob's suggestion", "Rewatch model writing", "Trace the typed writing"]) assert.match(app, new RegExp(text.replace(/[?]/g, "\\?")));
+  for (const text of ["Let the student write this word by touch after typing", "Touch Writing Practice", "Wide ruled", "Handwriting practice — 3 lines", "No lines", "Your cursive model", "Show the modeled writing while I write", "Try without help", "Choose writing help to unlock", "Previous space", "Next space", "I'm done writing", "Your writing", "Bob's suggestion", "Rewatch model writing", "Trace the typed writing"]) assert.match(app, new RegExp(text.replace(/[?]/g, "\\?")));
   assert.match(app, /function openCursiveTouchPractice\(text\)/);
   assert.match(app, /data-cursive-touch-practice/);
   assert.match(app, /canvas\.addEventListener\("pointerdown"/);
   assert.match(app, /canvas\.addEventListener\("pointermove"/);
-  assert.match(app, /point\.x > canvas\.width - 18/);
+  assert.match(app, /canvas\.width \+= 800/);
+  assert.match(app, /--touch-canvas-width/);
+  assert.match(app, /if \(!helpChoice\) return/);
+  assert.match(app, /showWhiteboardCursiveModel\(value, object, canvas, \(\) => openCursiveTouchPractice\(value\)\)/);
   assert.match(app, /const difficultToRead = totalInk/);
   assert.match(app, /difficultToRead \?/);
   assert.match(app, /object\.fontFamily === "School Cursive" && document\.querySelector\("\[data-whiteboard-touch-practice\]"\)\?\.checked/);

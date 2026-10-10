@@ -1258,8 +1258,9 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-cursive-touch-model strong.is-replaying { animation: platform-cursive-stroke-reveal 3s linear; }
 .platform-cursive-touch-options, .platform-cursive-touch-actions { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 0.55rem; }
 .platform-cursive-touch-options label { display: grid; gap: 0.2rem; font-weight: 850; }
-.platform-cursive-touch-pages { min-height: 23rem; border: 3px solid var(--platform-blue); border-radius: 0.8rem; background: #fff; box-shadow: 0 0.6rem 1.4rem rgba(7,27,39,0.16); }
-.platform-cursive-touch-pages canvas { display: block; width: 100%; height: min(42vh, 23rem); cursor: crosshair; touch-action: none; }
+.platform-cursive-touch-pages { min-height: 23rem; overflow-x: auto; border: 3px solid var(--platform-blue); border-radius: 0.8rem; background: #fff; box-shadow: 0 0.6rem 1.4rem rgba(7,27,39,0.16); }
+.platform-cursive-touch-pages.is-locked { opacity: 0.48; cursor: not-allowed; }
+.platform-cursive-touch-pages canvas { display: block; width: max(100%, var(--touch-canvas-width, 1200px)); height: min(42vh, 23rem); cursor: crosshair; touch-action: none; }
 .platform-cursive-touch-result { display: grid; gap: 0.7rem; padding: 0.8rem; border: 3px solid var(--platform-green); border-radius: 0.8rem; background: #fff; }
 .platform-cursive-touch-submission { display: grid; gap: 0.55rem; }
 .platform-cursive-touch-submission figure { margin: 0; }
