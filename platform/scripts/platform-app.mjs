@@ -3251,7 +3251,10 @@ function openWhiteboardTextEntry(point, canvas) {
     const object = createWhiteboardObject("text", { text: value, x: point.x, y: point.y, width: Math.min(canvas.width - point.x, Math.max(180, value.length * size * 0.55)), height: size * 1.3, fontSize: size, fontFamily: document.querySelector("[data-whiteboard-text-font]")?.value ?? "Arial", color: document.querySelector("[data-whiteboard-text-color]")?.value ?? document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d", background: document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent", cursiveGuide: document.querySelector("[data-whiteboard-cursive-lines]")?.value ?? "none", bold: document.querySelector('[data-text-command="bold"]')?.getAttribute("aria-pressed") === "true", italic: document.querySelector('[data-text-command="italic"]')?.getAttribute("aria-pressed") === "true", underline: document.querySelector('[data-text-command="underline"]')?.getAttribute("aria-pressed") === "true", rotation: 0 });
     whiteboardObjects.push(object); whiteboardSelectedObjectId = object.id; close(); renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls(); setWhiteboardStatus("Text added at the selected spot. Drag it to reposition it.");
   };
-  entry.addEventListener("blur", commit);
+  entry.addEventListener("blur", () => {
+    if (entry.value.trim()) { commit(); return; }
+    window.requestAnimationFrame(() => { if (entry.isConnected) entry.focus({ preventScroll: true }); });
+  });
   entry.addEventListener("input", () => { entry.style.height = "auto"; entry.style.height = `${Math.min(180, Math.max(48, entry.scrollHeight))}px`; });
   entry.addEventListener("keydown", (event) => {
     if (event.key === "Escape") { event.preventDefault(); close(); setWhiteboardStatus("Text placement canceled."); }

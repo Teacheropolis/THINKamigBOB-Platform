@@ -105,7 +105,7 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   assert.match(app, /openWhiteboardTextEntry\(point, canvas\)/);
   assert.match(app, /data-whiteboard-text-entry/);
   assert.match(app, /Type directly on the board\. Press Enter or click elsewhere to finish; Escape cancels\./);
-  assert.match(app, /entry\.addEventListener\("blur", commit\)/);
+  assert.match(app, /entry\.addEventListener\("blur", \(\) =>/);
   assert.match(app, /event\.key === "Enter" && !event\.shiftKey/);
   assert.match(app, /Text added at the selected spot\. Drag it to reposition it\./);
   assert.doesNotMatch(app, /directTools && tool !== "select" && selected/);
@@ -241,6 +241,7 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /<select data-whiteboard-tool hidden/);
   assert.doesNotMatch(app, /<input type="hidden" data-whiteboard-tool/);
   assert.match(app, /requestAnimationFrame\(\(\) => \{ if \(entry\.isConnected\) entry\.focus\(\{ preventScroll: true \}\); \}\)/);
+  assert.match(app, /if \(entry\.value\.trim\(\)\) \{ commit\(\); return; \}/);
   assert.match(app, /data-whiteboard-text-font/);
   assert.match(app, /data-whiteboard-text-color/);
   assert.match(app, /platform-whiteboard-font-examples/);
