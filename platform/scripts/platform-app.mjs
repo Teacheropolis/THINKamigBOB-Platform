@@ -3715,7 +3715,7 @@ function mountWhiteboard() {
       if (bounds && panel) {
         const panelWidth = Math.min(menu.matches("[data-whiteboard-more-menu]") ? 448 : 240, window.innerWidth - 16);
         menu.style.setProperty("--quick-menu-left", `${Math.max(8, Math.min(window.innerWidth - panelWidth - 8, bounds.left))}px`);
-        menu.style.setProperty("--quick-menu-top", `${bounds.bottom + 5}px`);
+        menu.style.setProperty("--quick-menu-top", `${bounds.bottom - 1}px`);
       }
     });
   });
@@ -4408,7 +4408,6 @@ function handleClick(event) {
       const label = action.textContent?.trim() || action.title || "Whiteboard tool";
       setWhiteboardStatus(`${label} is active.`);
     }
-    action.closest("details")?.removeAttribute("open");
     whiteboardCanvas()?.focus({ preventScroll: true });
     return;
   }

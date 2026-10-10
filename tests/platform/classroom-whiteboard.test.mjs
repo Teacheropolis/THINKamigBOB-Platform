@@ -94,7 +94,7 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   assert.doesNotMatch(app, /<select data-whiteboard-tool>/);
   assert.match(app, /<input type="hidden" data-whiteboard-tool value="select">/);
   assert.match(app, /data-whiteboard-quick-tool="ruler-adjust">Adjust Ruler/);
-  assert.match(app, /action\.closest\("details"\)\?\.removeAttribute\("open"\)/);
+  assert.doesNotMatch(app, /action\.closest\("details"\)\?\.removeAttribute\("open"\)/);
   assert.match(app, /menu\.addEventListener\("mouseleave", \(\) => menu\.removeAttribute\("open"\)\)/);
   assert.match(app, /menu\.addEventListener\("mouseenter", \(\) => \{ menu\.open = true; \}\)/);
   assert.match(app, /action\.dataset\.action === "whiteboard-quick-tool"/);
@@ -129,6 +129,7 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   assert.match(css, /\.platform-whiteboard-more-panel/);
   assert.match(app, /--quick-menu-left/);
   assert.match(app, /--quick-menu-top/);
+  assert.match(app, /bounds\.bottom - 1/);
   assert.match(css, /\.platform-whiteboard-quick-actions \{[^}]*height: 4\.15rem;[^}]*max-height: 4\.15rem;/);
   assert.match(css, /\.platform-whiteboard-quick-actions button \{[^}]*height: 3\.35rem;[^}]*max-height: 3\.35rem;/);
   assert.match(css, /\.platform-whiteboard-quick-menu\[open\] \{ z-index: 45; \}/);
