@@ -276,6 +276,8 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /entry\.addEventListener\("input", refreshPendingWhiteboardTextEntryStyle\)/);
   assert.match(app, /const baseline = object\.height \/ 2 - Math\.max/);
   assert.match(css, /platform-whiteboard-text-entry\[data-cursive-guide="practice"\]/);
+  assert.match(app, /size \* 1\.55 \* scaleY/);
+  assert.match(css, /background-position: left 0\.08em, left 0\.55em, left 1\.02em/);
   assert.match(app, /selected\.cursiveGuide = cursiveLines\.value/);
   assert.match(app, /function cancelPendingWhiteboardTextEntry\(\)/);
   assert.match(app, /data-whiteboard-primary-tool="pen"/);

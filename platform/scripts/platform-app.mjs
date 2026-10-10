@@ -3238,14 +3238,14 @@ function refreshPendingWhiteboardTextEntryStyle() {
   entry.dataset.cursiveGuide = guide;
   entry.style.fontFamily = `"${fontFamily}"`;
   entry.style.fontSize = `${size * scaleY}px`;
-  entry.style.lineHeight = "1.3";
+  entry.style.lineHeight = "1.22";
   entry.style.fontWeight = document.querySelector('[data-text-command="bold"]')?.getAttribute("aria-pressed") === "true" ? "700" : "400";
   entry.style.fontStyle = document.querySelector('[data-text-command="italic"]')?.getAttribute("aria-pressed") === "true" ? "italic" : "normal";
   entry.style.textDecoration = document.querySelector('[data-text-command="underline"]')?.getAttribute("aria-pressed") === "true" ? "underline" : "none";
   entry.style.color = backgroundName === "black" ? "#ffffff" : document.querySelector("[data-whiteboard-text-color]")?.value ?? "#12384d";
   entry.style.backgroundColor = whiteboardTextBackground(backgroundName) || "transparent";
   entry.style.width = `${Math.min(canvas.clientWidth - entry.offsetLeft - 4, Math.max(180 * scaleX, (entry.value.length + 2) * size * 0.55 * scaleX))}px`;
-  entry.style.height = `${Math.max(34, size * 1.3 * scaleY)}px`;
+  entry.style.height = `${Math.max(38, size * 1.55 * scaleY)}px`;
   entry.style.minHeight = entry.style.height;
 }
 
