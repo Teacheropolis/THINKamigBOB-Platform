@@ -4010,13 +4010,6 @@ function mountWhiteboard() {
     if (tool === "text") {
       openWhiteboardTextEntry(point, canvas); return;
     }
-    if (directTools && tool !== "select" && selected) {
-      pushWhiteboardHistory(); whiteboardSelectedObjectId = selected.id;
-      const bounds = objectBounds(selected); const resizeCorner = selected.type !== "dimension" ? whiteboardResizeCorner(bounds, point) : "";
-      whiteboardDrawing = { tool: "select", objectId: selected.id, start: point, original: cloneEditableWhiteboardObject(selected), resize: Boolean(resizeCorner), resizeCorner };
-      syncWhiteboardDimensionCompareControl(); renderWhiteboardObjects(canvas); canvas.setPointerCapture?.(event.pointerId);
-      setWhiteboardStatus(selected.type === "dimension" ? "Measurement selected directly. Drag its red line or label to reposition it." : "Object selected directly. Drag to move it without changing tools."); return;
-    }
     if (tool === "lasso-select") {
       whiteboardLassoPoints = [point]; whiteboardLassoBounds = null; whiteboardSelectionDownload = "";
       whiteboardDrawing = { tool, start: point }; canvas.setPointerCapture?.(event.pointerId); renderWhiteboardObjects(canvas); setWhiteboardStatus("Drag around the work you want to turn into an image."); return;

@@ -106,7 +106,7 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   assert.match(app, /entry\.addEventListener\("blur", commit\)/);
   assert.match(app, /event\.key === "Enter" && !event\.shiftKey/);
   assert.match(app, /Text added at the selected spot\. Drag it to reposition it\./);
-  assert.ok(app.indexOf('if (tool === "text")') < app.indexOf('if (directTools && tool !== "select" && selected)'), "Text placement must take priority over background objects");
+  assert.doesNotMatch(app, /directTools && tool !== "select" && selected/);
   assert.match(app, /button\.dataset\.whiteboardQuickTool === nextTool/);
   assert.match(css, /data-controls-hidden="true"\] \.platform-whiteboard-quick-actions \{ flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;/);
   assert.match(css, /\.platform-whiteboard-quick-actions \{ position: relative;[^}]*z-index: 40;[^}]*flex-wrap: nowrap;[^}]*overflow-x: auto;/);
@@ -154,8 +154,7 @@ test("every whiteboard element remains an editable object", () => {
   assert.match(app, /serializableWhiteboardObjects/);
   assert.match(css, /\.platform-whiteboard-object-actions/);
   assert.match(app, /cloneEditableWhiteboardObject\(selected\)/);
-  assert.match(app, /Object selected directly\. Drag to move it without changing tools/);
-  assert.match(app, /Measurement selected directly\. Drag its red line or label/);
+  assert.match(app, /if \(tool === "select"\) \{ whiteboardSelectedObjectId = selected\?\.id/);
   assert.match(app, /event\.ctrlKey \|\| event\.metaKey/);
   assert.match(app, /\["c", "v", "x", "d"\]\.includes\(shortcutKey\)/);
   assert.match(app, /Press Ctrl\+V or Command\+V/);
@@ -178,6 +177,13 @@ test("every whiteboard element remains an editable object", () => {
   assert.match(css, /\.platform-whiteboard-quick-actions/);
   assert.match(css, /@media \(max-width: 760px\)/);
   assert.match(css, /\.platform-whiteboard-context-menu/);
+});
+
+test("drawing and line tools can start over existing objects without moving them", () => {
+  assert.doesNotMatch(app, /directTools && tool !== "select" && selected/);
+  assert.match(app, /if \(tool === "select"\) \{ whiteboardSelectedObjectId = selected\?\.id/);
+  assert.match(app, /const object = isDrawingStroke \? createWhiteboardObject/);
+  assert.match(app, /completedTool === "line" && bisectWhiteboardShapeWithLine/);
 });
 
 test("whiteboard offers paint fill, calligraphy, and brush tools", () => {
