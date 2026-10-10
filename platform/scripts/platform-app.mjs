@@ -3662,7 +3662,7 @@ function resizeWhiteboardObjectFromCorner(object, corner, dx, dy) {
   if (corner.includes("e")) right = Math.max(left + 12, right + dx);
   if (corner.includes("n")) top = Math.min(bottom - 12, top + dy);
   if (corner.includes("s")) bottom = Math.max(top + 12, bottom + dy);
-  if (["ellipse", "sphere"].includes(object.type)) {
+  if (["ellipse", "sphere", "cube"].includes(object.type)) {
     const side = Math.max(12, Math.max(right - left, bottom - top));
     if (corner.includes("w")) left = right - side; else right = left + side;
     if (corner.includes("n")) top = bottom - side; else bottom = top + side;
@@ -3685,13 +3685,17 @@ function drawWhiteboardSelectionMeasurements(context, object) {
     context.beginPath(); context.arc(centerX, centerY, 4, 0, Math.PI * 2); context.fill();
     label(`r = ${Math.round(radius)}`, centerX + radius / 2, centerY - 12);
   }
-  if (object.type === "triangle") {
+  if (["cylinder", "cone"].includes(object.type)) {
+    const radius = bounds.width / 2;
+    label(`r = ${Math.round(radius)}`, centerX, bounds.y + bounds.height + 34);
+  }
+  if (["triangle", "pyramid"].includes(object.type)) {
     const points = [{ x: 0, y: -bounds.height / 2 }, { x: bounds.width / 2, y: bounds.height / 2 }, { x: -bounds.width / 2, y: bounds.height / 2 }];
     const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
     const angleAt = (a, b, c) => Math.acos(Math.max(-1, Math.min(1, (distance(a, b) ** 2 + distance(a, c) ** 2 - distance(b, c) ** 2) / (2 * distance(a, b) * distance(a, c))))) * 180 / Math.PI;
     context.translate(centerX, centerY); context.rotate(object.rotation ?? 0);
     points.forEach((point, index) => { const degrees = Math.round(angleAt(point, points[(index + 1) % 3], points[(index + 2) % 3])); const length = Math.max(1, Math.hypot(point.x, point.y)); const outwardX = point.x / length * 32, outwardY = point.y / length * 32; label(`${degrees}°`, point.x + outwardX, point.y + outwardY); });
-  } else if (object.type === "rectangle") {
+  } else if (["rectangle", "cube", "rectangular-prism"].includes(object.type)) {
     context.translate(centerX, centerY); context.rotate(object.rotation ?? 0); label("90°", -bounds.width / 2 - 24, -bounds.height / 2 - 16); label("90°", bounds.width / 2 + 24, bounds.height / 2 + 28);
   }
   const rotationDegrees = Math.round((object.rotation ?? 0) * 180 / Math.PI);

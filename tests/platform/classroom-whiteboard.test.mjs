@@ -356,10 +356,17 @@ test("selected shapes temporarily display angle and radius measurements", () => 
 });
 
 test("selection corner handles update triangle angles and circle radius", () => {
-  assert.match(app, /\["ellipse", "sphere"\]\.includes\(object\.type\)/);
+  assert.match(app, /\["ellipse", "sphere", "cube"\]\.includes\(object\.type\)/);
   assert.match(app, /const side = Math\.max\(12, Math\.max\(right - left, bottom - top\)\)/);
   assert.match(app, /if \(corner\.includes\("w"\)\) left = right - side/);
   assert.match(app, /resizeWhiteboardObjectFromCorner\(whiteboardDrawing\.original, whiteboardDrawing\.resizeCorner, dx, dy\)/);
+});
+
+test("selected 3D shapes show live angle and radius measurements outside their lines", () => {
+  assert.match(app, /\["cylinder", "cone"\]\.includes\(object\.type\)/);
+  assert.match(app, /label\(`r = \$\{Math\.round\(radius\)\}`, centerX, bounds\.y \+ bounds\.height \+ 34\)/);
+  assert.match(app, /\["triangle", "pyramid"\]\.includes\(object\.type\)/);
+  assert.match(app, /\["rectangle", "cube", "rectangular-prism"\]\.includes\(object\.type\)/);
 });
 
 test("selected text drawings and lines can be made 3D and restored to 2D", () => {
