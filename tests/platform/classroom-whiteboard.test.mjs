@@ -282,7 +282,7 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /function refreshPendingWhiteboardTextEntryStyle\(\)/);
   assert.match(app, /entry\.dataset\.cursiveGuide = guide/);
   assert.match(app, /entry\.style\.fontFamily/);
-  assert.match(app, /entry\.addEventListener\("input", \(\) => \{ refreshPendingWhiteboardTextEntryStyle\(\); updateWhiteboardCursiveCoach\(\); \}\)/);
+  assert.match(app, /entry\.addEventListener\("input", \(\) => \{ refreshPendingWhiteboardTextEntryStyle\(\); updateWhiteboardCursiveCoach\(\); scheduleReturnReminder\(\); \}\)/);
   assert.match(app, /const baseline = object\.height \/ 2 - Math\.max/);
   assert.match(css, /platform-whiteboard-text-entry\[data-cursive-guide="practice"\]/);
   assert.match(app, /size \* 1\.55 \* scaleY/);
@@ -299,7 +299,10 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /function showWhiteboardCursiveModel/);
   assert.match(app, /platform-whiteboard-cursive-model/);
   assert.match(app, /platform-whiteboard-cursive-connector/);
-  assert.match(app, /M \$\{letterX \+ 11\} 24 C \$\{letterX \+ 14\} 23, \$\{letterX \+ 16\} 21, \$\{letterX \+ 18\} 20/);
+  assert.match(app, /letterX \+ advance - 4/);
+  assert.match(app, /const advance = isUppercase \? 20 : 15/);
+  assert.match(app, /platform-whiteboard-cursive-capital/);
+  assert.match(app, /\^\[A-Z\]\$/);
   assert.match(app, /coach\.style\.left = "8px"/);
   assert.match(app, /coach\.style\.top = "8px"/);
   assert.match(app, /Would you like to replay it once more/);
@@ -307,7 +310,11 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /Open the pencil grip tutorial/);
   assert.match(app, /How to hold a pencil for cursive writing/);
   assert.match(app, /pathLength="1"/);
-  assert.match(css, /animation: platform-cursive-pen-stroke 1\.2s linear calc\(var\(--stroke-order\) \* 1\.35s\)/);
+  assert.match(css, /animation: platform-cursive-pen-stroke 0\.75s linear calc\(var\(--stroke-order\) \* 0\.85s\)/);
+  assert.match(app, /60000/);
+  assert.match(app, /Press Return to complete this line of text/);
+  assert.match(app, /scheduleReturnReminder/);
+  assert.match(css, /platform-whiteboard-return-reminder/);
   assert.match(css, /platform-whiteboard-cursive-dot/);
   assert.match(css, /overflow: visible/);
   assert.match(css, /@keyframes platform-cursive-stroke-reveal/);

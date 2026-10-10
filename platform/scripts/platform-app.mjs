@@ -3285,18 +3285,20 @@ function showWhiteboardCursiveModel(text, object, canvas) {
   if (!surface || !text) return;
   surface.querySelector("[data-whiteboard-cursive-model]")?.remove();
   let strokeOrder = 0, cursorX = 7;
-  const letters = [...text.toLowerCase()].map((character, characterIndex, allCharacters) => {
+  const letters = [...text].map((character, characterIndex, allCharacters) => {
     if (character === " ") { cursorX += 10; return ""; }
-    const glyph = CURSIVE_STROKE_LETTERS[character];
-    if (!glyph) { cursorX += 18; return ""; }
+    const isUppercase = /^[A-Z]$/.test(character);
+    const glyph = isUppercase ? null : CURSIVE_STROKE_LETTERS[character];
+    if (!glyph && !isUppercase) { cursorX += 15; return ""; }
     const letterX = cursorX;
-    const strokes = glyph.paths.map((path) => {
+    const strokes = isUppercase ? `<text class="platform-whiteboard-cursive-capital" x="0" y="9" style="--stroke-order:${strokeOrder++}">${escapeHtml(character)}</text>` : glyph.paths.map((path) => {
       const order = strokeOrder++;
       return path.dot ? `<circle class="platform-whiteboard-cursive-dot" cx="${path.dot.cx}" cy="${path.dot.cy}" r="${path.dot.r}" style="--stroke-order:${order}"/>` : `<path pathLength="1" d="${path.d}" style="--stroke-order:${order}"/>`;
     }).join("");
-    cursorX += 18;
+    const advance = isUppercase ? 20 : 15;
+    cursorX += advance;
     const nextCharacter = allCharacters[characterIndex + 1];
-    const connector = nextCharacter && nextCharacter !== " " && CURSIVE_STROKE_LETTERS[nextCharacter] ? `<path class="platform-whiteboard-cursive-connector" pathLength="1" d="M ${letterX + 11} 24 C ${letterX + 14} 23, ${letterX + 16} 21, ${letterX + 18} 20" style="--stroke-order:${strokeOrder++}"/>` : "";
+    const connector = nextCharacter && /^[A-Za-z]$/.test(nextCharacter) ? `<path class="platform-whiteboard-cursive-connector" pathLength="1" d="M ${letterX + advance - 4} 24 C ${letterX + advance - 2} 23, ${letterX + advance - 1} 21, ${letterX + advance} 20" style="--stroke-order:${strokeOrder++}"/>` : "";
     return `<g transform="translate(${letterX} 16)">${strokes}</g>${connector}`;
   }).join("");
   const model = document.createElement("aside");
@@ -3305,7 +3307,7 @@ function showWhiteboardCursiveModel(text, object, canvas) {
   model.style.left = `${Math.max(4, object.x * scaleX)}px`; model.style.top = `${Math.max(4, object.y * scaleY)}px`;
   model.innerHTML = `<strong>Watch the pencil strokes and connections</strong><svg viewBox="0 -2 ${Math.max(42, cursorX + 9)} 42" aria-label="Slow cursive stroke model for ${escapeHtml(text)}">${letters}</svg>`;
   surface.append(model);
-  const totalDuration = Math.max(1, strokeOrder) * 1350 + 700;
+  const totalDuration = Math.max(1, strokeOrder) * 850 + 600;
   window.setTimeout(() => {
     if (!model.isConnected) return;
     const replay = window.confirm("The cursive model is complete. Would you like to replay it once more?");
@@ -3329,7 +3331,20 @@ function openWhiteboardTextEntry(point, canvas) {
   entry.style.left = `${Math.max(4, Math.min(canvas.clientWidth - 230, point.x * scaleX))}px`;
   entry.style.top = `${Math.max(4, Math.min(canvas.clientHeight - 55, point.y * scaleY))}px`;
   let finished = false;
-  const close = () => { if (finished) return; finished = true; surface.querySelector("[data-whiteboard-cursive-coach-preview]")?.remove(); surface.querySelector("[data-whiteboard-live-cursive]")?.remove(); entry.remove(); canvas.focus({ preventScroll: true }); };
+  let returnReminderTimer = null;
+  const scheduleReturnReminder = () => {
+    window.clearTimeout(returnReminderTimer);
+    surface.querySelector("[data-whiteboard-return-reminder]")?.remove();
+    returnReminderTimer = window.setTimeout(() => {
+      if (!entry.isConnected || !entry.value.trim()) return;
+      const reminder = document.createElement("p");
+      reminder.className = "platform-whiteboard-return-reminder"; reminder.dataset.whiteboardReturnReminder = "true"; reminder.setAttribute("role", "alert");
+      reminder.textContent = "Press Return to complete this line of text.";
+      reminder.style.left = entry.style.left; reminder.style.top = `${entry.offsetTop + entry.offsetHeight + 6}px`;
+      surface.append(reminder);
+    }, 60000);
+  };
+  const close = () => { if (finished) return; finished = true; window.clearTimeout(returnReminderTimer); surface.querySelector("[data-whiteboard-return-reminder]")?.remove(); surface.querySelector("[data-whiteboard-cursive-coach-preview]")?.remove(); surface.querySelector("[data-whiteboard-live-cursive]")?.remove(); entry.remove(); canvas.focus({ preventScroll: true }); };
   const commit = () => {
     if (finished) return;
     const value = entry.value.trim().slice(0, 120);
@@ -3346,13 +3361,14 @@ function openWhiteboardTextEntry(point, canvas) {
     if (event.relatedTarget?.closest?.(".platform-whiteboard-quick-actions")) return;
     window.requestAnimationFrame(() => { if (entry.isConnected) entry.focus({ preventScroll: true }); });
   });
-  entry.addEventListener("input", () => { refreshPendingWhiteboardTextEntryStyle(); updateWhiteboardCursiveCoach(); });
+  entry.addEventListener("input", () => { refreshPendingWhiteboardTextEntryStyle(); updateWhiteboardCursiveCoach(); scheduleReturnReminder(); });
   entry.addEventListener("keydown", (event) => {
     if (event.key === "Escape") { event.preventDefault(); close(); setWhiteboardStatus("Text placement canceled."); }
     else if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); commit(); }
   });
   surface.append(entry);
   refreshPendingWhiteboardTextEntryStyle();
+  scheduleReturnReminder();
   window.requestAnimationFrame(() => { if (entry.isConnected) entry.focus({ preventScroll: true }); });
   setWhiteboardStatus("Type directly on the board. Press Enter or click elsewhere to finish; Escape cancels.");
 }
