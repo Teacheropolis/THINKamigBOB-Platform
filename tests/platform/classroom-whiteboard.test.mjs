@@ -90,7 +90,7 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   for (const tool of ["select", "lasso-select", "eraser", "fill", "pen", "calligraphy", "brush", "highlighter", "line", "arrow", "rectangle", "ellipse", "triangle", "cube", "rectangular-prism", "cylinder", "cone", "pyramid", "sphere", "pull-3d", "laser-dimension"]) {
     assert.match(app, new RegExp(`data-whiteboard-quick-tool="${tool}"`));
   }
-  for (const menu of ["Select", "Erase", "Pen", "Line", "Shapes", "3D Shapes", "Text", "Emoji", "Measure", "History", "Clipboard", "More"]) assert.match(app, new RegExp(`<small>${menu}</small>`));
+  for (const menu of ["Select", "Erase", "Color", "Paint Can", "Pen", "Line", "Shapes", "3D Shapes", "Text", "Emoji", "Measure", "History", "Clipboard", "More"]) assert.match(app, new RegExp(`<small>${menu}</small>`));
   assert.doesNotMatch(app, /<select data-whiteboard-tool>/);
   assert.match(app, /<input type="hidden" data-whiteboard-tool value="select">/);
   assert.match(app, /data-whiteboard-quick-tool="ruler-adjust">Adjust Ruler/);
@@ -147,7 +147,7 @@ test("saved boards support repeating weekdays or a specific calendar date", () =
 });
 
 test("every whiteboard element remains an editable object", () => {
-  for (const text of ["Select and move", "Eraser", "Arrow", "Circle or oval", "Triangle", "Copy", "Paste", "Duplicate", "Delete selected"]) assert.match(app, new RegExp(text));
+  for (const text of ["Select and move", "Eraser", "Arrow", "Circle or oval", "Triangle", "Copy", "Paste", "Duplicate"]) assert.match(app, new RegExp(text));
   assert.match(app, /WHITEBOARD_OBJECT_SESSION_KEY/);
   assert.match(app, /hitTestObjects/);
   assert.match(app, /resizeWhiteboardObject/);
@@ -181,7 +181,7 @@ test("every whiteboard element remains an editable object", () => {
 });
 
 test("whiteboard offers paint fill, calligraphy, and brush tools", () => {
-  for (const text of ["Calligraphy pen", "Brush strokes", "Paint can — fill shape", "Shape filled.", "Use the Paint Can on a closed 2D or 3D shape."]) assert.match(app, new RegExp(text.replace(/[.]/g, "\\.")));
+  for (const text of ["Calligraphy pen", "Brush strokes", "Fill a closed shape with the selected color", "Shape filled.", "Use the Paint Can on a closed 2D or 3D shape."]) assert.match(app, new RegExp(text.replace(/[.]/g, "\\.")));
   assert.match(app, /selected\.fillColor/);
   assert.match(app, /strokeStyle: tool/);
   assert.match(app, /drawWhiteboardPath/);
@@ -206,7 +206,18 @@ test("eraser removes only its stroke area with its own adjustable thickness", ()
   assert.match(app, /filter\(\(object\) => object\.strokeStyle !== "eraser"\)/);
   assert.match(app, /context\.lineWidth = object\.size \?\? 40/);
   assert.match(app, /Eraser stroke saved\. Use Undo to restore the erased area\./);
-  assert.match(app, />Delete selected object<\/button>/);
+  assert.doesNotMatch(app, />Delete selected(?: object)?<\/button>/);
+});
+
+test("top toolbar starts with select erase color and paint can", () => {
+  const selectIndex = app.indexOf("<small>Select</small>");
+  const eraseIndex = app.indexOf("<small>Erase</small>");
+  const colorIndex = app.indexOf("<small>Color</small>");
+  const paintIndex = app.indexOf("<small>Paint Can</small>");
+  assert.ok(selectIndex < eraseIndex && eraseIndex < colorIndex && colorIndex < paintIndex);
+  assert.match(app, /data-whiteboard-color-panel/);
+  assert.match(app, /querySelector\("\[data-whiteboard-color-panel\]"\)\?\.append\(\.\.\.colorControls\)/);
+  assert.match(app, /data-whiteboard-quick-tool="fill" title="Fill a closed shape with the selected color"/);
 });
 
 test("erase object removes a connected drawing or filled shape with one click", () => {
