@@ -234,7 +234,7 @@ test("top toolbar starts with select erase color and paint can", () => {
   assert.match(app, /data-whiteboard-primary-tool="select"/);
   assert.match(app, /menu\.querySelector\("summary"\)\?\.addEventListener\("click"/);
   assert.match(app, /const primaryTool = menu\.dataset\.whiteboardPrimaryTool/);
-  assert.match(app, /primaryTool === "select" \? "Select and move is active\." : "Text is active\. Click anywhere on the whiteboard to start typing\."/);
+  assert.match(app, /primaryTool === "select" \? "Select and move is active\." : primaryTool === "text" \? "Text is active\. Click anywhere on the whiteboard to start typing\." : "Pen is active\./);
 });
 
 test("text tools provide fonts, formatting shortcuts, color, and corner scaling", () => {
@@ -272,6 +272,7 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /drawWhiteboardCursiveGuides\(context, object\)/);
   assert.match(app, /selected\.cursiveGuide = cursiveLines\.value/);
   assert.match(app, /function cancelPendingWhiteboardTextEntry\(\)/);
+  assert.match(app, /data-whiteboard-primary-tool="pen"/);
   assert.match(app, /if \(nextTool !== "text"\) cancelPendingWhiteboardTextEntry\(\)/);
   assert.match(app, /action\.dataset\.action === "whiteboard-tool-select"\) \{ cancelPendingWhiteboardTextEntry\(\)/);
 });

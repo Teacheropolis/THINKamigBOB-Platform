@@ -1699,7 +1699,7 @@ function teacherDashboardView(state) {
         </div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span class="platform-whiteboard-color-chip" data-whiteboard-color-chip style="--whiteboard-selected-color:#12384d" aria-hidden="true"></span><small>Color</small></summary><div data-whiteboard-color-panel></div></details>
         <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="fill" title="Fill a closed shape with the selected color"><span class="platform-whiteboard-paint-can-icon" data-whiteboard-paint-can-icon style="--whiteboard-selected-color:#12384d" aria-hidden="true"><svg viewBox="0 0 28 24"><path class="platform-whiteboard-paint-can-body" d="M5 8h15l-2 12H7L5 8Z"/><path d="M4 7h17M7 8c0-7 11-7 11 0M20 12l4 4 2-2-4-4"/></svg></span><small>Paint Can</small></button>
-        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">✎</span><small>Pen</small></summary><div data-whiteboard-pen-panel>
+        <details class="platform-whiteboard-quick-menu" data-whiteboard-primary-tool="pen"><summary><span aria-hidden="true">✎</span><small>Pen</small></summary><div data-whiteboard-pen-panel>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pen">Pen</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="calligraphy">Calligraphy pen</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="brush">Brush strokes</button>
@@ -4048,7 +4048,7 @@ function mountWhiteboard() {
       const tool = document.querySelector("[data-whiteboard-tool]");
       if (tool) { tool.value = primaryTool; tool.dispatchEvent(new Event("change", { bubbles: true })); }
       document.querySelectorAll("[data-whiteboard-quick-tool]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.whiteboardQuickTool === primaryTool)));
-      whiteboardCanvas()?.focus({ preventScroll: true }); setWhiteboardStatus(primaryTool === "select" ? "Select and move is active." : "Text is active. Click anywhere on the whiteboard to start typing.");
+      whiteboardCanvas()?.focus({ preventScroll: true }); setWhiteboardStatus(primaryTool === "select" ? "Select and move is active." : primaryTool === "text" ? "Text is active. Click anywhere on the whiteboard to start typing." : "Pen is active. Drag anywhere on the whiteboard to draw.");
     });
     menu.addEventListener("toggle", () => {
       if (!menu.open) return;
