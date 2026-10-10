@@ -344,7 +344,7 @@ test("selected shapes temporarily display angle and radius measurements", () => 
   assert.doesNotMatch(app, /data-whiteboard-shape-angle/);
   assert.doesNotMatch(app, /data-whiteboard-circle-radius/);
   assert.match(app, /function drawWhiteboardSelectionMeasurements\(context, object\)/);
-  assert.match(app, /\["ellipse", "sphere"\]\.includes\(object\.type\)/);
+  assert.match(app, /\["ellipse", "sphere", "hemisphere"\]\.includes\(object\.type\)/);
   assert.match(app, /label\(`r = \$\{Math\.round\(radius\)\}`/);
   assert.match(app, /object\.type === "triangle"/);
   assert.match(app, /label\(`\$\{degrees\}°`/);
@@ -356,7 +356,7 @@ test("selected shapes temporarily display angle and radius measurements", () => 
 });
 
 test("selection corner handles update triangle angles and circle radius", () => {
-  assert.match(app, /\["ellipse", "sphere", "cube"\]\.includes\(object\.type\)/);
+  assert.match(app, /\["ellipse", "sphere", "hemisphere", "cube"\]\.includes\(object\.type\)/);
   assert.match(app, /const side = Math\.max\(12, Math\.max\(right - left, bottom - top\)\)/);
   assert.match(app, /if \(corner\.includes\("w"\)\) left = right - side/);
   assert.match(app, /resizeWhiteboardObjectFromCorner\(whiteboardDrawing\.original, whiteboardDrawing\.resizeCorner, dx, dy\)/);
@@ -379,9 +379,18 @@ test("every built-in 3D shape pushes back into one or more editable 2D shapes", 
   assert.match(app, /was unfolded into \$\{flattened\.length\} editable 2D shapes/);
 });
 
+test("whiteboard adds more 2D and 3D shapes and pulls connected shapes into a 3D assembly", () => {
+  for (const shape of ["diamond", "pentagon", "hexagon", "star", "triangular-prism", "hexagonal-prism", "hemisphere"]) assert.match(app, new RegExp(`data-whiteboard-quick-tool="${shape}"`));
+  assert.match(app, /function traceWhiteboardPolygon\(context, object, sides, innerRatio = 1\)/);
+  assert.match(app, /WHITEBOARD_CLOSED_2D_SHAPES/);
+  assert.match(app, /connectedWhiteboardObjectIds\(selected\)/);
+  assert.match(app, /connected 2D shapes are now one 3D assembly/);
+  assert.match(app, /idsToPull\.has\(object\.id\) \? makeWhiteboardObject3D\(object, depth\)/);
+});
+
 test("selected text drawings and lines can be made 3D and restored to 2D", () => {
   assert.match(app, />Make selected object 3D<\/button>/);
-  assert.match(app, /"rectangle", "ellipse", "triangle", "text", "path", "line", "arrow"/);
+  assert.match(app, /\.\.\.WHITEBOARD_CLOSED_2D_SHAPES, "text", "path", "line", "arrow"/);
   assert.match(app, /extruded3D: true, depth: normalizedDepth/);
   assert.match(app, /function drawWhiteboardExtrusion\(context, object\)/);
   assert.match(app, /const layers = Math\.max\(4, Math\.ceil\(depth \/ 2\)\)/);
