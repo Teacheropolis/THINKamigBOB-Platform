@@ -408,9 +408,17 @@ test("all closed shapes show angles or radius measurements", () => {
 });
 
 test("English ruler and dimension calculations share the same 96 pixel inch", () => {
-  assert.match(app, /const unit = metric \? 37\.8 : 96/);
+  assert.match(app, /whiteboardPixelsPerUnit\(metric \? "cm" : "in"\)/);
   assert.match(app, /in: 96/);
   assert.doesNotMatch(app, /metric \? 37\.8 : 72/);
+});
+
+test("ruler ticks reach its endpoint and written measurements include true-scale unit keys", () => {
+  assert.match(app, /totalTicks = Math\.floor\(width \/ tickSpacing\)/);
+  assert.match(app, /context\.moveTo\(width, 0\); context\.lineTo\(width, 12\)/);
+  assert.match(app, /const drawUnitKey = \(unit, y\)/);
+  assert.match(app, /const keyLength = whiteboardPixelsPerUnit\(unit\)/);
+  assert.match(app, /drawUnitKey\(object\.unit, 39\); drawUnitKey\(compareUnit, 71\)/);
 });
 
 test("3D shapes use gradient line layers without solid fills", () => {

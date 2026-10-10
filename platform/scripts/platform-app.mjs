@@ -3318,20 +3318,20 @@ function drawWhiteboardTitleBar(context, canvas) {
 function drawWhiteboardRuler(context, canvas) {
   if (whiteboardRulerUnit === "none") return;
   const metric = whiteboardRulerUnit === "metric";
-  const unit = metric ? 37.8 : 96;
+  const unit = whiteboardPixelsPerUnit(metric ? "cm" : "in");
   const subdivisions = metric ? 10 : 8;
   const width = Math.max(150, whiteboardRuler.length);
-  const units = Math.max(1, Math.floor(width / unit));
+  const tickSpacing = unit / subdivisions, totalTicks = Math.floor(width / tickSpacing);
   const height = 62;
   context.save(); context.translate(whiteboardRuler.x, whiteboardRuler.y); context.rotate(whiteboardRuler.angle); context.globalAlpha = 0.94; context.fillStyle = "#fff1a8"; context.strokeStyle = "#6b5312"; context.lineWidth = 2; context.fillRect(0, 0, width, height); context.strokeRect(0, 0, width, height); context.fillStyle = "#3e320d"; context.font = "700 13px sans-serif";
-  for (let unitIndex = 0; unitIndex <= units; unitIndex += 1) {
-    const unitX = unitIndex * unit; context.fillText(String(unitIndex), unitX + 3, 43);
-    for (let tick = 0; tick < subdivisions && unitIndex < units; tick += 1) {
-      const tickX = unitX + tick * unit / subdivisions; const length = tick === 0 ? 28 : tick % (subdivisions / 2) === 0 ? 20 : tick % (subdivisions / 4) === 0 ? 15 : 10;
-      context.beginPath(); context.moveTo(tickX, 0); context.lineTo(tickX, length); context.stroke();
-      if (whiteboardRuler.sides === "both") { context.beginPath(); context.moveTo(tickX, height); context.lineTo(tickX, height - length); context.stroke(); }
-    }
+  for (let tickIndex = 0; tickIndex <= totalTicks; tickIndex += 1) {
+    const tickX = tickIndex * tickSpacing, tick = tickIndex % subdivisions;
+    const length = tick === 0 ? 28 : tick % (subdivisions / 2) === 0 ? 20 : tick % (subdivisions / 4) === 0 ? 15 : 10;
+    if (tick === 0) context.fillText(String(tickIndex / subdivisions), tickX + 3, 43);
+    context.beginPath(); context.moveTo(tickX, 0); context.lineTo(tickX, length); context.stroke();
+    if (whiteboardRuler.sides === "both") { context.beginPath(); context.moveTo(tickX, height); context.lineTo(tickX, height - length); context.stroke(); }
   }
+  context.beginPath(); context.moveTo(width, 0); context.lineTo(width, 12); if (whiteboardRuler.sides === "both") { context.moveTo(width, height); context.lineTo(width, height - 12); } context.stroke();
   context.fillText(metric ? "cm" : "in", width - 25, 43);
   if (document.querySelector("[data-whiteboard-tool]")?.value === "ruler-adjust") { context.fillStyle = "#087ba0"; context.fillRect(width - 7, height / 2 - 7, 14, 14); context.beginPath(); context.arc(width, -24, 8, 0, Math.PI * 2); context.fill(); context.strokeStyle = "#087ba0"; context.beginPath(); context.moveTo(width, 0); context.lineTo(width, -16); context.stroke(); }
   context.restore();
@@ -3449,9 +3449,12 @@ function drawWhiteboard3DShape(context, object) {
   }
 }
 
+function whiteboardPixelsPerUnit(unit) {
+  return ({ mm: 3.78, cm: 37.8, m: 3780, in: 96, ft: 1152, yd: 3456 })[unit] ?? 37.8;
+}
+
 function whiteboardDimensionValue(object, unit = object.unit) {
-  const pixelsPerUnit = ({ mm: 3.78, cm: 37.8, m: 3780, in: 96, ft: 1152, yd: 3456 })[unit] ?? 37.8;
-  return Math.hypot(object.width, object.height) / pixelsPerUnit;
+  return Math.hypot(object.width, object.height) / whiteboardPixelsPerUnit(unit);
 }
 
 function suggestedWhiteboardDimensionLabel(start, end) {
@@ -3479,7 +3482,9 @@ function drawWhiteboardDimension(context, object) {
   arrow(object.x + normalX, object.y + normalY, angle); arrow(x2 + normalX, y2 + normalY, angle + Math.PI);
   const value = whiteboardDimensionValue(object); const digits = object.unit === "mm" ? 0 : 2; const text = `${object.label || "Length"}: ${value.toFixed(digits)} ${object.unit}`;
   const compareUnit = object.compareUnit ?? (object.unit === "mm" ? "cm" : "mm"); const compareValue = whiteboardDimensionValue(object, compareUnit); const compareDigits = compareUnit === "mm" ? 0 : compareUnit === "m" ? 3 : 2; const comparison = `This is the same as ${compareValue.toFixed(compareDigits)} ${compareUnit}`;
-  context.font = "700 18px sans-serif"; const textWidth = Math.max(context.measureText(text).width, context.measureText(comparison).width); const midX = (object.x + x2) / 2 + normalX, midY = (object.y + y2) / 2 + normalY; context.translate(midX, midY); context.rotate(angle); context.fillStyle = "rgba(255,255,255,0.94)"; context.fillRect(-textWidth / 2 - 7, -25, textWidth + 14, 49); context.fillStyle = object.color ?? "#b52222"; context.fillText(text, -textWidth / 2, -6); context.font = "600 15px sans-serif"; context.fillText(comparison, -textWidth / 2, 15); context.restore();
+  context.font = "700 18px sans-serif"; const textWidth = Math.max(context.measureText(text).width, context.measureText(comparison).width); const midX = (object.x + x2) / 2 + normalX, midY = (object.y + y2) / 2 + normalY; context.translate(midX, midY); context.rotate(angle); context.fillStyle = "rgba(255,255,255,0.94)"; context.fillRect(-textWidth / 2 - 7, -25, textWidth + 14, 49); context.fillStyle = object.color ?? "#b52222"; context.fillText(text, -textWidth / 2, -6); context.font = "600 15px sans-serif"; context.fillText(comparison, -textWidth / 2, 15);
+  const drawUnitKey = (unit, y) => { const keyLength = whiteboardPixelsPerUnit(unit); context.save(); context.strokeStyle = object.color ?? "#b52222"; context.fillStyle = object.color ?? "#b52222"; context.lineWidth = 2; context.beginPath(); context.moveTo(-keyLength / 2, y); context.lineTo(keyLength / 2, y); context.moveTo(-keyLength / 2, y - 6); context.lineTo(-keyLength / 2, y + 6); context.moveTo(keyLength / 2, y - 6); context.lineTo(keyLength / 2, y + 6); context.stroke(); context.font = "700 13px sans-serif"; const keyText = `1 ${unit}`; const keyTextWidth = context.measureText(keyText).width; context.fillStyle = "rgba(255,255,255,0.94)"; context.fillRect(-keyTextWidth / 2 - 4, y + 5, keyTextWidth + 8, 18); context.fillStyle = object.color ?? "#b52222"; context.fillText(keyText, -keyTextWidth / 2, y + 18); context.restore(); };
+  drawUnitKey(object.unit, 39); drawUnitKey(compareUnit, 71); context.restore();
 }
 
 function drawWhiteboardLaserPreview(context) {
