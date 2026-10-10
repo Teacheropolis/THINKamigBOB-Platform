@@ -6,7 +6,7 @@ const app = readFileSync(new URL("../../platform/scripts/platform-app.mjs", impo
 const css = readFileSync(new URL("../../platform/styles/platform.css", import.meta.url), "utf8");
 
 test("Today workspace launches a browser-session classroom whiteboard", () => {
-  for (const text of ["Open Whiteboard", "Close Whiteboard", "Pen", "Highlighter", "Eraser", "Line", "Rectangle", "Place a text box", "Undo", "Redo", "Clear Board"]) {
+  for (const text of ["Open Whiteboard", "Close Whiteboard", "Pen", "Highlighter", "Eraser", "Line", "Rectangle", "Text", "Undo", "Redo", "Clear Board"]) {
     assert.match(app, new RegExp(text));
   }
   assert.match(app, /data-whiteboard-canvas/);
@@ -99,7 +99,8 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   assert.match(app, /menu\.matches\(":hover, :focus-within"\)/);
   assert.match(app, /menu\.addEventListener\("mouseenter", \(\) => \{ cancelClose\(\); menu\.open = true; \}\)/);
   assert.match(app, /action\.dataset\.action === "whiteboard-quick-tool"/);
-  assert.match(app, /data-whiteboard-quick-tool="text"/);
+  assert.match(app, /data-whiteboard-primary-tool="text"/);
+  assert.doesNotMatch(app, />Place a text box<\/button>/);
   assert.match(app, /openWhiteboardTextEntry\(point, canvas\)/);
   assert.match(app, /data-whiteboard-text-entry/);
   assert.match(app, /Type directly on the board\. Press Enter or click elsewhere to finish; Escape cancels\./);
@@ -231,12 +232,16 @@ test("top toolbar starts with select erase color and paint can", () => {
   assert.match(app, /data-whiteboard-primary-tool="select"/);
   assert.match(app, /menu\.querySelector\("summary"\)\?\.addEventListener\("click"/);
   assert.match(app, /const primaryTool = menu\.dataset\.whiteboardPrimaryTool/);
-  assert.match(app, /setWhiteboardStatus\("Select and move is active\."\)/);
+  assert.match(app, /primaryTool === "select" \? "Select and move is active\." : "Text is active\. Click anywhere on the whiteboard to start typing\."/);
 });
 
 test("text tools provide fonts, formatting shortcuts, color, and corner scaling", () => {
   assert.match(app, /data-whiteboard-text-font/);
   assert.match(app, /data-whiteboard-text-color/);
+  assert.match(app, /platform-whiteboard-font-examples/);
+  assert.match(app, /data-action="whiteboard-choose-text-font"/);
+  assert.match(app, /Aa Bb Cc/);
+  assert.match(css, /\.platform-whiteboard-font-examples/);
   for (const command of ["bold", "italic", "underline"]) assert.match(app, new RegExp(`data-text-command="${command}"`));
   assert.match(app, /function formatSelectedWhiteboardText\(command\)/);
   assert.match(app, /\["b", "i", "u"\]\.includes\(shortcutKey\)/);

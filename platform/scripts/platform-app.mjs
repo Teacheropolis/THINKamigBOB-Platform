@@ -1734,7 +1734,7 @@ function teacherDashboardView(state) {
           <fieldset class="platform-whiteboard-face-colors"><legend>3D face colors</legend><label>Front<input type="color" data-whiteboard-3d-front-color value="#287da0"></label><label>Side<input type="color" data-whiteboard-3d-side-color value="#f0a52b"></label><label>Top or back<input type="color" data-whiteboard-3d-top-color value="#55a875"></label></fieldset>
           <button type="button" data-action="whiteboard-apply-all-3d-face-colors">Apply all face colors</button>
         </div></details>
-        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">T</span><small>Text</small></summary><div data-whiteboard-text-panel><button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="text">Place a text box</button><label>Font<select data-whiteboard-text-font><option value="Arial">Arial</option><option value="Georgia">Georgia</option><option value="Verdana">Verdana</option><option value="Trebuchet MS">Trebuchet</option><option value="Courier New">Courier</option><option value="Comic Sans MS">Comic Sans</option></select></label><label>Font color<input type="color" data-whiteboard-text-color value="#12384d"></label><button type="button" data-action="whiteboard-format-text" data-text-command="bold"><b>Bold</b> (Ctrl+B)</button><button type="button" data-action="whiteboard-format-text" data-text-command="italic"><i>Italic</i> (Ctrl+I)</button><button type="button" data-action="whiteboard-format-text" data-text-command="underline"><u>Underline</u> (Ctrl+U)</button></div></details>
+        <details class="platform-whiteboard-quick-menu" data-whiteboard-primary-tool="text"><summary><span aria-hidden="true">T</span><small>Text</small></summary><div data-whiteboard-text-panel><label>Font<select data-whiteboard-text-font><option value="Arial">Arial</option><option value="Georgia">Georgia</option><option value="Verdana">Verdana</option><option value="Trebuchet MS">Trebuchet</option><option value="Courier New">Courier</option><option value="Comic Sans MS">Comic Sans</option></select></label><div class="platform-whiteboard-font-examples" aria-label="Font examples"><button type="button" data-action="whiteboard-choose-text-font" data-text-font="Arial" style="font-family:Arial">Arial — Aa Bb Cc</button><button type="button" data-action="whiteboard-choose-text-font" data-text-font="Georgia" style="font-family:Georgia">Georgia — Aa Bb Cc</button><button type="button" data-action="whiteboard-choose-text-font" data-text-font="Verdana" style="font-family:Verdana">Verdana — Aa Bb Cc</button><button type="button" data-action="whiteboard-choose-text-font" data-text-font="Trebuchet MS" style="font-family:'Trebuchet MS'">Trebuchet — Aa Bb Cc</button><button type="button" data-action="whiteboard-choose-text-font" data-text-font="Courier New" style="font-family:'Courier New'">Courier — Aa Bb Cc</button><button type="button" data-action="whiteboard-choose-text-font" data-text-font="Comic Sans MS" style="font-family:'Comic Sans MS'">Comic Sans — Aa Bb Cc</button></div><label>Font color<input type="color" data-whiteboard-text-color value="#12384d"></label><button type="button" data-action="whiteboard-format-text" data-text-command="bold"><b>Bold</b> (Ctrl+B)</button><button type="button" data-action="whiteboard-format-text" data-text-command="italic"><i>Italic</i> (Ctrl+I)</button><button type="button" data-action="whiteboard-format-text" data-text-command="underline"><u>Underline</u> (Ctrl+U)</button></div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">☺</span><small>Emoji</small></summary><div data-whiteboard-emoji-panel></div></details>
         <details class="platform-whiteboard-quick-menu" data-whiteboard-measure-menu><summary><span aria-hidden="true">↔</span><small>Measure</small></summary><div data-whiteboard-measure-panel>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="laser-dimension">Laser measure — select 2 points</button>
@@ -4014,7 +4014,7 @@ function mountWhiteboard() {
       const tool = document.querySelector("[data-whiteboard-tool]");
       if (tool) { tool.value = primaryTool; tool.dispatchEvent(new Event("change", { bubbles: true })); }
       document.querySelectorAll("[data-whiteboard-quick-tool]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.whiteboardQuickTool === primaryTool)));
-      whiteboardCanvas()?.focus({ preventScroll: true }); setWhiteboardStatus("Select and move is active.");
+      whiteboardCanvas()?.focus({ preventScroll: true }); setWhiteboardStatus(primaryTool === "select" ? "Select and move is active." : "Text is active. Click anywhere on the whiteboard to start typing.");
     });
     menu.addEventListener("toggle", () => {
       if (!menu.open) return;
@@ -4350,6 +4350,13 @@ function handleClick(event) {
   if (!action) return;
   if (handleNamePickerAction(action, document)) return;
   if (action.dataset.action === "whiteboard-format-text") { formatSelectedWhiteboardText(action.dataset.textCommand); return; }
+  if (action.dataset.action === "whiteboard-choose-text-font") {
+    const font = action.dataset.textFont, fontControl = document.querySelector("[data-whiteboard-text-font]"); if (fontControl) fontControl.value = font;
+    const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
+    if (selected?.type === "text" && !selected.emojiStamp) formatSelectedWhiteboardText("font");
+    else { const tool = document.querySelector("[data-whiteboard-tool]"); if (tool) { tool.value = "text"; tool.dispatchEvent(new Event("change", { bubbles: true })); } document.querySelectorAll("[data-whiteboard-quick-tool]").forEach((button) => button.setAttribute("aria-pressed", "false")); setWhiteboardStatus(`${font} selected. Click anywhere on the whiteboard to start typing.`); }
+    return;
+  }
   if (action.closest("[data-class-resource-teacher]") || action.dataset.action?.startsWith("timer-") || action.dataset.action === "instant-timer") window.setTimeout(refreshCurrentClassPlan, 0);
   if (action.dataset.action === "open-current-plan-editor") {
     const modal = document.querySelector("[data-current-plan-modal]");
