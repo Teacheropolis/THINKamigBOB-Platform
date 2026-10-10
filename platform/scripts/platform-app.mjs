@@ -3595,6 +3595,22 @@ function deleteSelectedWhiteboardObject() {
   renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); setWhiteboardStatus("Selected object deleted. Use Undo to restore it."); return true;
 }
 
+function connectedWhiteboardObjectIds(seed) {
+  if (!seed) return new Set();
+  const editable = whiteboardObjects.filter((object) => object.strokeStyle !== "eraser");
+  const connected = new Set([seed.id]);
+  const queue = [seed];
+  const touches = (first, second) => {
+    const a = objectBounds(first), b = objectBounds(second), padding = Math.max(8, Number(first.size ?? 0) / 2, Number(second.size ?? 0) / 2);
+    return a.x <= b.x + b.width + padding && a.x + a.width + padding >= b.x && a.y <= b.y + b.height + padding && a.y + a.height + padding >= b.y;
+  };
+  while (queue.length) {
+    const current = queue.shift();
+    editable.forEach((candidate) => { if (!connected.has(candidate.id) && touches(current, candidate)) { connected.add(candidate.id); queue.push(candidate); } });
+  }
+  return connected;
+}
+
 function whiteboardRulerLocalPoint(point) {
   const dx = point.x - whiteboardRuler.x, dy = point.y - whiteboardRuler.y, cosine = Math.cos(-whiteboardRuler.angle), sine = Math.sin(-whiteboardRuler.angle);
   return { x: dx * cosine - dy * sine, y: dx * sine + dy * cosine };
@@ -3752,6 +3768,7 @@ function mountWhiteboard() {
     if (event.button !== undefined && event.button !== 0) return; event.preventDefault(); canvas.focus({ preventScroll: true });
     const point = whiteboardPoint(event, canvas), tool = document.querySelector("[data-whiteboard-tool]")?.value ?? "select";
     const selected = hitTestObjects(whiteboardObjects.filter((object) => object.strokeStyle !== "eraser"), point);
+    if (!selected && whiteboardSelectedObjectId) { whiteboardSelectedObjectId = ""; syncWhiteboardDimensionCompareControl(); renderWhiteboardObjects(canvas); }
     if (whiteboardDeleteNextObject) {
       if (!selected) { setWhiteboardStatus("Delete is ready. Click the object you want to remove."); return; }
       pushWhiteboardHistory(); whiteboardObjects = whiteboardObjects.filter((object) => object.id !== selected.id); whiteboardSelectedObjectId = ""; whiteboardDeleteNextObject = false;
@@ -3822,8 +3839,9 @@ function mountWhiteboard() {
     if (tool === "fill") { if (selected && ["rectangle", "ellipse", "triangle", "cube", "rectangular-prism", "cylinder", "cone", "pyramid", "sphere"].includes(selected.type)) { pushWhiteboardHistory(); selected.fillColor = document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d"; whiteboardSelectedObjectId = selected.id; renderWhiteboardObjects(canvas); saveWhiteboard(canvas); setWhiteboardStatus("Shape filled. Use Undo to restore its previous color."); } else setWhiteboardStatus("Use the Paint Can on a closed 2D or 3D shape."); return; }
     if (tool === "erase-object") {
       if (!selected) { setWhiteboardStatus("Click a connected drawing, line, or filled shape to erase the whole object."); return; }
-      pushWhiteboardHistory(); whiteboardObjects = whiteboardObjects.filter((object) => object.id !== selected.id); whiteboardSelectedObjectId = "";
-      renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls(); setWhiteboardStatus("Entire connected object erased. Use Undo to restore it."); return;
+      const connectedIds = connectedWhiteboardObjectIds(selected);
+      pushWhiteboardHistory(); whiteboardObjects = whiteboardObjects.filter((object) => !connectedIds.has(object.id)); whiteboardSelectedObjectId = "";
+      renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls(); setWhiteboardStatus(`${connectedIds.size === 1 ? "Object" : "Connected objects"} erased. Use Undo to restore ${connectedIds.size === 1 ? "it" : "them"}.`); return;
     }
     if (tool === "eraser") {
       pushWhiteboardHistory();

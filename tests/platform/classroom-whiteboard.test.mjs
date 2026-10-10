@@ -212,9 +212,15 @@ test("eraser removes only its stroke area with its own adjustable thickness", ()
 test("erase object removes a connected drawing or filled shape with one click", () => {
   assert.match(app, /data-whiteboard-quick-tool="erase-object">Erase object/);
   assert.match(app, /tool === "erase-object"/);
-  assert.match(app, /whiteboardObjects = whiteboardObjects\.filter\(\(object\) => object\.id !== selected\.id\)/);
-  assert.match(app, /Entire connected object erased\. Use Undo to restore it\./);
+  assert.match(app, /connectedWhiteboardObjectIds\(selected\)/);
+  assert.match(app, /!connectedIds\.has\(object\.id\)/);
+  assert.match(app, /Connected objects/);
   assert.match(app, /Click a connected drawing, line, or filled shape to erase the whole object\./);
+});
+
+test("clicking blank whiteboard space clears the current object selection", () => {
+  assert.match(app, /!selected && whiteboardSelectedObjectId/);
+  assert.match(app, /whiteboardSelectedObjectId = ""; syncWhiteboardDimensionCompareControl\(\); renderWhiteboardObjects\(canvas\)/);
 });
 
 test("delete selected arms a one-click delete when nothing is selected", () => {
