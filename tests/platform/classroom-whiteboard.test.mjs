@@ -388,12 +388,21 @@ test("whiteboard adds more 2D and 3D shapes and pulls connected shapes into a 3D
   assert.match(app, /idsToPull\.has\(object\.id\) \? makeWhiteboardObject3D\(object, depth\)/);
 });
 
+test("pulled 3D layers use a readable light-to-shadow gradient", () => {
+  assert.match(app, /context\.createLinearGradient\(bounds\.x, bounds\.y/);
+  assert.match(app, /gradient\.addColorStop\(0, "rgba\(255,255,255,0\.96\)"\)/);
+  assert.match(app, /gradient\.addColorStop\(0\.34, object\.color \?\? "#287da0"\)/);
+  assert.match(app, /gradient\.addColorStop\(1, "#082b3b"\)/);
+  assert.match(app, /context\.globalAlpha = 0\.055 \+ 0\.045 \* ratio/);
+  assert.match(app, /Math\.min\(14, Math\.ceil\(depth \/ 3\)\)/);
+});
+
 test("selected text drawings and lines can be made 3D and restored to 2D", () => {
   assert.match(app, />Make selected object 3D<\/button>/);
   assert.match(app, /\.\.\.WHITEBOARD_CLOSED_2D_SHAPES, "text", "path", "line", "arrow"/);
   assert.match(app, /extruded3D: true, depth: normalizedDepth/);
   assert.match(app, /function drawWhiteboardExtrusion\(context, object\)/);
-  assert.match(app, /const layers = Math\.max\(4, Math\.ceil\(depth \/ 2\)\)/);
+  assert.match(app, /const layers = Math\.max\(5, Math\.min\(14, Math\.ceil\(depth \/ 3\)\)\)/);
   assert.match(app, /drawWhiteboardExtrusion\(context, object\)/);
   assert.match(app, /Selected object is now 3D with thickness \$\{depth\}\. Use Push Back to 2D to reverse it\./);
   assert.match(app, /delete restored\.extruded3D/);

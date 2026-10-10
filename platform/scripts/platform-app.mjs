@@ -3686,11 +3686,14 @@ function flattenWhiteboard3DShape(object) {
 function drawWhiteboardExtrusion(context, object) {
   if (!object.extruded3D) return;
   const depth = Math.max(10, Math.min(48, Number(object.depth ?? 24)));
-  const layers = Math.max(4, Math.ceil(depth / 2));
+  const layers = Math.max(5, Math.min(14, Math.ceil(depth / 3)));
+  const bounds = objectBounds(object);
   for (let layer = layers; layer >= 1; layer -= 1) {
-    const offset = depth * layer / layers;
-    context.save(); context.translate(offset, offset); context.globalAlpha = 0.12 + 0.32 * (layer / layers); context.strokeStyle = "#12384d"; context.fillStyle = "#12384d"; context.lineWidth = Math.max(3, Number(object.size ?? 6)); context.lineCap = "round"; context.lineJoin = "round";
-    if (object.type === "path") drawWhiteboardPath(context, { ...object, color: "#12384d", opacity: 1, extruded3D: false });
+    const ratio = layer / layers, offset = depth * ratio;
+    const gradient = context.createLinearGradient(bounds.x, bounds.y, bounds.x + bounds.width + depth, bounds.y + bounds.height + depth);
+    gradient.addColorStop(0, "rgba(255,255,255,0.96)"); gradient.addColorStop(0.34, object.color ?? "#287da0"); gradient.addColorStop(1, "#082b3b");
+    context.save(); context.translate(offset, offset); context.globalAlpha = 0.055 + 0.045 * ratio; context.strokeStyle = gradient; context.fillStyle = gradient; context.lineWidth = Math.max(2, Number(object.size ?? 6) * 0.72); context.lineCap = "round"; context.lineJoin = "round";
+    if (object.type === "path") drawWhiteboardPath(context, { ...object, opacity: 1, extruded3D: false });
     else if (object.type === "line" || object.type === "arrow") { context.beginPath(); context.moveTo(object.x, object.y); context.lineTo(object.x + object.width, object.y + object.height); context.stroke(); }
     else if (object.type === "text") {
       context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(object.rotation ?? 0);
