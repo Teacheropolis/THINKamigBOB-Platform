@@ -302,7 +302,14 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /const modeledLetters = \[\.\.\.text\]\.reduce/);
   assert.match(app, /connectsFromPrevious: sourceIndex > 0/);
   assert.match(app, /platform-whiteboard-cursive-incoming/);
-  assert.match(app, /M -6 8 C -4 8, -2 6, 0 4/);
+  assert.match(app, /M -6 4 C -4 4, -2 5, 0 4/);
+  assert.match(app, /platform-whiteboard-cursive-guides/);
+  assert.match(app, /y1="-4" y2="-4"/);
+  assert.match(app, /y1="8" y2="8"/);
+  assert.match(app, /y1="17" y2="17"/);
+  assert.match(app, /previousLetter\.getBBox\(\)/);
+  assert.match(app, /6 - previousRightEdge/);
+  assert.match(app, /transform="translate\(12 8\)"/);
   assert.match(app, /const penSpeedMillisecondsPerUnit = 45/);
   assert.match(app, /const pauseAfterLetter = 800/);
   assert.match(app, /stroke\.getTotalLength\(\) \* penSpeedMillisecondsPerUnit/);
@@ -322,6 +329,7 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /pathLength="1"/);
   assert.match(css, /animation: platform-cursive-pen-stroke var\(--stroke-duration, 900ms\) linear var\(--stroke-delay, 0ms\)/);
   assert.match(css, /platform-cursive-letter-fade/);
+  assert.match(css, /platform-whiteboard-cursive-guides line\.is-midline/);
   assert.match(css, /stroke-dashoffset: 1; opacity: 0; animation: platform-cursive-pen-stroke/);
   assert.match(css, /from \{ opacity: 1; stroke-dashoffset: 1; \} to \{ opacity: 1; stroke-dashoffset: 0; \}/);
   assert.match(app, /10000/);

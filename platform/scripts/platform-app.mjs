@@ -3296,7 +3296,7 @@ function showWhiteboardCursiveModel(text, object, canvas) {
   model.className = "platform-whiteboard-cursive-model"; model.dataset.whiteboardCursiveModel = "true";
   const scaleX = canvas.clientWidth / canvas.width, scaleY = canvas.clientHeight / canvas.height;
   model.style.left = `${Math.max(4, object.x * scaleX)}px`; model.style.top = `${Math.max(4, object.y * scaleY)}px`;
-  model.innerHTML = `<strong data-whiteboard-cursive-model-title>Watch each letter form</strong><svg data-whiteboard-cursive-model-svg viewBox="-6 -5 34 42" aria-live="polite"></svg>`;
+  model.innerHTML = `<strong data-whiteboard-cursive-model-title>Watch each letter form</strong><svg data-whiteboard-cursive-model-svg viewBox="-12 -5 58 42" aria-live="polite"><g class="platform-whiteboard-cursive-guides" aria-hidden="true"><line x1="-12" x2="46" y1="-4" y2="-4"/><line class="is-midline" x1="-12" x2="46" y1="8" y2="8"/><line x1="-12" x2="46" y1="17" y2="17"/></g></svg>`;
   surface.append(model);
   const modelTitle = model.querySelector("[data-whiteboard-cursive-model-title]");
   const modelSvg = model.querySelector("[data-whiteboard-cursive-model-svg]");
@@ -3314,10 +3314,10 @@ function showWhiteboardCursiveModel(text, object, canvas) {
     const isUppercase = /^[A-Z]$/.test(character);
     const glyph = isUppercase ? null : CURSIVE_STROKE_LETTERS[character];
     const incomingStroke = connectsFromPrevious
-      ? `<path class="platform-whiteboard-cursive-incoming" pathLength="1" d="M -6 8 C -4 8, -2 6, 0 4"/>`
+      ? `<path class="platform-whiteboard-cursive-incoming" pathLength="1" d="M -6 4 C -4 4, -2 5, 0 4"/>`
       : "";
     const letterStrokes = isUppercase
-      ? `<text class="platform-whiteboard-cursive-capital" x="0" y="25">${escapeHtml(character)}</text>`
+      ? `<text class="platform-whiteboard-cursive-capital" x="0" y="9">${escapeHtml(character)}</text>`
       : glyph?.paths.map((path) => path.dot
         ? `<circle class="platform-whiteboard-cursive-dot" cx="${path.dot.cx}" cy="${path.dot.cy}" r="${path.dot.r}"/>`
         : `<path pathLength="1" d="${path.d}"/>`).join("") || "";
@@ -3326,11 +3326,14 @@ function showWhiteboardCursiveModel(text, object, canvas) {
     modelSvg.setAttribute("aria-label", `${connectsFromPrevious ? "How to connect into and form" : "How to form"} the cursive letter ${character}`);
     const previousLetter = modelSvg.querySelector("[data-cursive-letter-active]");
     if (previousLetter) {
+      const previousBounds = previousLetter.getBBox();
+      const previousRightEdge = previousBounds.x + previousBounds.width;
+      previousLetter.setAttribute("transform", `translate(${6 - previousRightEdge} 8)`);
       previousLetter.removeAttribute("data-cursive-letter-active");
       previousLetter.classList.add("is-fading");
       window.setTimeout(() => previousLetter.remove(), 800);
     }
-    modelSvg.insertAdjacentHTML("beforeend", `<g data-cursive-letter-active transform="translate(3 8)">${strokes}</g>`);
+    modelSvg.insertAdjacentHTML("beforeend", `<g data-cursive-letter-active transform="translate(12 8)">${strokes}</g>`);
     const currentLetter = modelSvg.querySelector("[data-cursive-letter-active]");
     let elapsedDrawingTime = 0;
     currentLetter?.querySelectorAll("path, circle, text").forEach((stroke) => {
