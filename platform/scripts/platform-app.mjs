@@ -3618,6 +3618,32 @@ function isAccidentalWhiteboardDot(object) {
   return false;
 }
 
+function makeWhiteboardObject3D(object, depth = 24) {
+  const typeMap = { rectangle: "rectangular-prism", ellipse: "cylinder", triangle: "pyramid" };
+  const normalizedDepth = Math.max(10, Math.min(120, Number(depth) || 24));
+  return typeMap[object.type]
+    ? { ...object, type: typeMap[object.type], original2DType: object.type, shapeLabel: true, depth: normalizedDepth }
+    : { ...object, original2DType: object.type, extruded3D: true, depth: normalizedDepth };
+}
+
+function drawWhiteboardExtrusion(context, object) {
+  if (!object.extruded3D) return;
+  const depth = Math.max(10, Math.min(48, Number(object.depth ?? 24)));
+  const layers = Math.max(4, Math.ceil(depth / 2));
+  for (let layer = layers; layer >= 1; layer -= 1) {
+    const offset = depth * layer / layers;
+    context.save(); context.translate(offset, offset); context.globalAlpha = 0.12 + 0.32 * (layer / layers); context.strokeStyle = "#12384d"; context.fillStyle = "#12384d"; context.lineWidth = Math.max(3, Number(object.size ?? 6)); context.lineCap = "round"; context.lineJoin = "round";
+    if (object.type === "path") drawWhiteboardPath(context, { ...object, color: "#12384d", opacity: 1, extruded3D: false });
+    else if (object.type === "line" || object.type === "arrow") { context.beginPath(); context.moveTo(object.x, object.y); context.lineTo(object.x + object.width, object.y + object.height); context.stroke(); }
+    else if (object.type === "text") {
+      context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(object.rotation ?? 0);
+      if (whiteboardTextBackground(object.background)) context.fillRect(-object.width / 2 - 8, -object.height / 2 - 5, object.width + 16, object.height + 10);
+      context.font = `700 ${object.fontSize ?? 36}px sans-serif`; context.fillText(object.text ?? "", -object.width / 2, -object.height / 2 + (object.fontSize ?? 36));
+    }
+    context.restore();
+  }
+}
+
 function whiteboardRulerLocalPoint(point) {
   const dx = point.x - whiteboardRuler.x, dy = point.y - whiteboardRuler.y, cosine = Math.cos(-whiteboardRuler.angle), sine = Math.sin(-whiteboardRuler.angle);
   return { x: dx * cosine - dy * sine, y: dx * sine + dy * cosine };
@@ -3646,8 +3672,8 @@ function renderWhiteboardObjects(canvas = whiteboardCanvas()) {
   const context = canvas.getContext("2d");
   context.clearRect(0, 0, canvas.width, canvas.height); context.fillStyle = "#fff"; context.fillRect(0, 0, canvas.width, canvas.height); drawWhiteboardGrid(context, canvas);
   for (const object of whiteboardObjects) {
+    drawWhiteboardExtrusion(context, object);
     context.save(); context.globalAlpha = object.opacity ?? 1; context.strokeStyle = object.color ?? "#12384d"; context.fillStyle = object.color ?? "#12384d"; context.lineWidth = object.size ?? 6; context.lineCap = "round"; context.lineJoin = "round";
-    if (object.extruded3D) { const depth = Math.max(8, Number(object.depth ?? 18)); context.shadowColor = "rgba(18,56,77,0.48)"; context.shadowOffsetX = depth; context.shadowOffsetY = depth; context.shadowBlur = 0; }
     if (object.rotation && !["text", "image", "path", "dimension"].includes(object.type)) { const bounds = objectBounds(object), centerX = bounds.x + bounds.width / 2, centerY = bounds.y + bounds.height / 2; context.translate(centerX, centerY); context.rotate(object.rotation); context.translate(-centerX, -centerY); }
     if (object.type === "path") drawWhiteboardPath(context, object);
     else if (object.type === "text") { const angle = object.rotation ?? 0, background = whiteboardTextBackground(object.background); context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(angle); if (background) { context.fillStyle = background; context.fillRect(-object.width / 2 - 8, -object.height / 2 - 5, object.width + 16, object.height + 10); } let cursorX = -object.width / 2; const baseline = -object.height / 2 + (object.fontSize ?? 36); whiteboardRichTextRuns(object.richHtml, object.text, object.fontSize, object.background === "black" ? "#ffffff" : object.color).forEach((run) => { context.font = `${run.italic ? "italic " : ""}${run.bold ? "700" : "400"} ${run.size}px sans-serif`; context.fillStyle = run.color; context.fillText(run.text, cursorX, baseline); const width = context.measureText(run.text).width; if (run.underline) context.fillRect(cursorX, baseline + 3, width, Math.max(1.5, run.size / 18)); cursorX += width; }); }
@@ -3893,11 +3919,8 @@ function mountWhiteboard() {
     if (index < 0) return;
     const object = whiteboardObjects[index];
     if (whiteboardDrawing.tool === "pull-3d") {
-      const typeMap = { rectangle: "rectangular-prism", ellipse: "cylinder", triangle: "pyramid" };
       const depth = Math.max(10, Math.min(120, Math.hypot(point.x - whiteboardDrawing.start.x, point.y - whiteboardDrawing.start.y)));
-      whiteboardObjects[index] = typeMap[whiteboardDrawing.original.type]
-        ? { ...whiteboardDrawing.original, type: typeMap[whiteboardDrawing.original.type], original2DType: whiteboardDrawing.original.type, shapeLabel: true, depth }
-        : { ...whiteboardDrawing.original, original2DType: whiteboardDrawing.original.type, extruded3D: true, depth };
+      whiteboardObjects[index] = makeWhiteboardObject3D(whiteboardDrawing.original, depth);
       renderWhiteboardObjects(canvas); return;
     }
     if (whiteboardDrawing.tool === "select") {
@@ -4469,6 +4492,13 @@ function handleClick(event) {
     whiteboardDeleteNextObject = false;
     const tool = document.querySelector("[data-whiteboard-tool]");
     const nextTool = action.dataset.whiteboardQuickTool;
+    if (nextTool === "pull-3d") {
+      const selectedIndex = whiteboardObjects.findIndex((object) => object.id === whiteboardSelectedObjectId);
+      const selected = whiteboardObjects[selectedIndex];
+      if (selected && ["rectangle", "ellipse", "triangle", "text", "path", "line", "arrow"].includes(selected.type) && selected.strokeStyle !== "eraser" && !selected.original2DType) {
+        pushWhiteboardHistory(); whiteboardObjects[selectedIndex] = makeWhiteboardObject3D(selected, 24); renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); setWhiteboardStatus("Selected object is now 3D. Use Push Back to 2D to reverse it."); return;
+      }
+    }
     if (tool && nextTool) {
       tool.value = nextTool;
       tool.dispatchEvent(new Event("change", { bubbles: true }));
