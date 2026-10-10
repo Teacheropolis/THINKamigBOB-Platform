@@ -1729,6 +1729,8 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="hemisphere">Hemisphere</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pull-3d">Make selected object 3D</button>
           <label>3D thickness<input type="range" data-whiteboard-3d-depth min="10" max="120" value="24"><output data-whiteboard-3d-depth-output>24</output></label>
+          <button type="button" data-action="whiteboard-turn-3d-left">Turn 3D left</button>
+          <button type="button" data-action="whiteboard-turn-3d-right">Turn 3D right</button>
         </div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">T</span><small>Text</small></summary><div data-whiteboard-text-panel><button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="text">Place a text box</button></div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">☺</span><small>Emoji</small></summary><div data-whiteboard-emoji-panel></div></details>
@@ -3715,6 +3717,14 @@ function drawWhiteboardExtrusion(context, object) {
   }
 }
 
+function applyWhiteboardSideTurn(context, object) {
+  const turn = Number(object.sideTurn ?? 0);
+  if (!turn) return;
+  const bounds = objectBounds(object), centerX = bounds.x + bounds.width / 2, centerY = bounds.y + bounds.height / 2;
+  const scaleX = Math.max(0.18, Math.abs(Math.cos(turn))), skewY = Math.sin(turn) * 0.18;
+  context.translate(centerX, centerY); context.transform(scaleX, skewY, 0, 1, 0, 0); context.translate(-centerX, -centerY);
+}
+
 function whiteboardRulerLocalPoint(point) {
   const dx = point.x - whiteboardRuler.x, dy = point.y - whiteboardRuler.y, cosine = Math.cos(-whiteboardRuler.angle), sine = Math.sin(-whiteboardRuler.angle);
   return { x: dx * cosine - dy * sine, y: dx * sine + dy * cosine };
@@ -3749,17 +3759,13 @@ function drawWhiteboardSelectionMeasurements(context, object) {
   const centerX = bounds.x + bounds.width / 2, centerY = bounds.y + bounds.height / 2;
   context.save(); context.strokeStyle = "#b52222"; context.fillStyle = "#b52222"; context.lineWidth = 2.5; context.font = "800 16px sans-serif";
   const label = (text, x, y) => { const width = context.measureText(text).width + 12; context.fillStyle = "rgba(255,255,255,0.96)"; context.fillRect(x - width / 2, y - 16, width, 22); context.strokeStyle = "rgba(181,34,34,0.35)"; context.strokeRect(x - width / 2, y - 16, width, 22); context.fillStyle = "#b52222"; context.fillText(text, x - width / 2 + 6, y); };
-  if (["ellipse", "sphere", "hemisphere"].includes(object.type)) {
-    const radius = Math.min(bounds.width, bounds.height) / 2;
-    context.beginPath(); context.moveTo(centerX, centerY); context.lineTo(centerX + radius, centerY); context.stroke();
-    context.beginPath(); context.arc(centerX, centerY, 4, 0, Math.PI * 2); context.fill();
-    label(`r = ${Math.round(radius)}`, centerX + radius / 2, centerY - 12);
+  if (["ellipse", "sphere", "hemisphere", "cylinder", "cone"].includes(object.type)) {
+    const radius = ["cylinder", "cone"].includes(object.type) ? bounds.width / 2 : Math.min(bounds.width, bounds.height) / 2, diameter = radius * 2, circumference = 2 * Math.PI * radius;
+    label(`r = ${Math.round(radius)}`, bounds.x + bounds.width + 44, centerY - 26);
+    label(`d = ${Math.round(diameter)}`, bounds.x + bounds.width + 44, centerY + 2);
+    label(`C = ${Math.round(circumference)}`, bounds.x + bounds.width + 44, centerY + 30);
   }
-  if (["cylinder", "cone"].includes(object.type)) {
-    const radius = bounds.width / 2;
-    label(`r = ${Math.round(radius)}`, centerX, bounds.y + bounds.height + 34);
-  }
-  if (["triangle", "pyramid", "cone"].includes(object.type)) {
+  if (["triangle", "pyramid", "cone", "triangular-prism"].includes(object.type)) {
     const points = [{ x: 0, y: -bounds.height / 2 }, { x: bounds.width / 2, y: bounds.height / 2 }, { x: -bounds.width / 2, y: bounds.height / 2 }];
     const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
     const angleAt = (a, b, c) => Math.acos(Math.max(-1, Math.min(1, (distance(a, b) ** 2 + distance(a, c) ** 2 - distance(b, c) ** 2) / (2 * distance(a, b) * distance(a, c))))) * 180 / Math.PI;
@@ -3767,6 +3773,13 @@ function drawWhiteboardSelectionMeasurements(context, object) {
     points.forEach((point, index) => { const degrees = Math.round(angleAt(point, points[(index + 1) % 3], points[(index + 2) % 3])); const length = Math.max(1, Math.hypot(point.x, point.y)); const outwardX = point.x / length * 32, outwardY = point.y / length * 32; label(`${degrees}°`, point.x + outwardX, point.y + outwardY); });
   } else if (["rectangle", "cube", "rectangular-prism"].includes(object.type)) {
     context.translate(centerX, centerY); context.rotate(object.rotation ?? 0); label("90°", -bounds.width / 2 - 24, -bounds.height / 2 - 16); label("90°", bounds.width / 2 + 24, bounds.height / 2 + 28);
+  } else if (["diamond", "pentagon", "hexagon", "star", "hexagonal-prism"].includes(object.type)) {
+    const sideCount = object.type === "diamond" ? 4 : object.type === "pentagon" ? 5 : object.type === "star" ? 10 : 6;
+    const innerRatio = object.type === "star" ? 0.44 : 1;
+    const points = Array.from({ length: sideCount }, (_, index) => { const scale = object.type === "star" && index % 2 ? innerRatio : 1, angle = -Math.PI / 2 + index * Math.PI * 2 / sideCount; return { x: Math.cos(angle) * bounds.width / 2 * scale, y: Math.sin(angle) * bounds.height / 2 * scale }; });
+    const angleAt = (previous, point, next) => { const a = Math.atan2(previous.y - point.y, previous.x - point.x), b = Math.atan2(next.y - point.y, next.x - point.x); let degrees = Math.abs((b - a) * 180 / Math.PI); if (degrees > 180) degrees = 360 - degrees; return Math.round(degrees); };
+    context.translate(centerX, centerY); context.rotate(object.rotation ?? 0);
+    points.forEach((point, index) => { const length = Math.max(1, Math.hypot(point.x, point.y)), offset = object.type === "star" && index % 2 ? 20 : 32; label(`${angleAt(points[(index + points.length - 1) % points.length], point, points[(index + 1) % points.length])}°`, point.x + point.x / length * offset, point.y + point.y / length * offset); });
   }
   const rotationDegrees = Math.round((object.rotation ?? 0) * 180 / Math.PI);
   if (rotationDegrees && [...WHITEBOARD_CLOSED_2D_SHAPES, "cube", "rectangular-prism", "triangular-prism", "hexagonal-prism", "cylinder", "cone", "pyramid", "sphere", "hemisphere"].includes(object.type)) {
@@ -3781,8 +3794,8 @@ function renderWhiteboardObjects(canvas = whiteboardCanvas()) {
   const context = canvas.getContext("2d");
   context.clearRect(0, 0, canvas.width, canvas.height); context.fillStyle = "#fff"; context.fillRect(0, 0, canvas.width, canvas.height); drawWhiteboardGrid(context, canvas);
   for (const object of whiteboardObjects) {
-    drawWhiteboardExtrusion(context, object);
-    context.save(); context.globalAlpha = object.opacity ?? 1; context.strokeStyle = object.color ?? "#12384d"; context.fillStyle = object.color ?? "#12384d"; context.lineWidth = object.size ?? 6; context.lineCap = "round"; context.lineJoin = "round";
+    context.save(); applyWhiteboardSideTurn(context, object); drawWhiteboardExtrusion(context, object); context.restore();
+    context.save(); applyWhiteboardSideTurn(context, object); context.globalAlpha = object.opacity ?? 1; context.strokeStyle = object.color ?? "#12384d"; context.fillStyle = object.color ?? "#12384d"; context.lineWidth = object.size ?? 6; context.lineCap = "round"; context.lineJoin = "round";
     if (object.rotation && !["text", "image", "path", "dimension"].includes(object.type)) { const bounds = objectBounds(object), centerX = bounds.x + bounds.width / 2, centerY = bounds.y + bounds.height / 2; context.translate(centerX, centerY); context.rotate(object.rotation); context.translate(-centerX, -centerY); }
     if (object.type === "path") drawWhiteboardPath(context, object);
     else if (object.type === "text") { const angle = object.rotation ?? 0, background = whiteboardTextBackground(object.background); context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(angle); if (background) { context.fillStyle = background; context.fillRect(-object.width / 2 - 8, -object.height / 2 - 5, object.width + 16, object.height + 10); } let cursorX = -object.width / 2; const baseline = -object.height / 2 + (object.fontSize ?? 36); whiteboardRichTextRuns(object.richHtml, object.text, object.fontSize, object.background === "black" ? "#ffffff" : object.color).forEach((run) => { context.font = `${run.italic ? "italic " : ""}${run.bold ? "700" : "400"} ${run.size}px sans-serif`; context.fillStyle = run.color; context.fillText(run.text, cursorX, baseline); const width = context.measureText(run.text).width; if (run.underline) context.fillRect(cursorX, baseline + 3, width, Math.max(1.5, run.size / 18)); cursorX += width; }); }
@@ -4906,7 +4919,7 @@ function handleClick(event) {
     if (selected?.type !== "text") { setWhiteboardStatus("Select a text object before applying a text background."); return; }
     pushWhiteboardHistory(); selected.background = document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent"; renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus("Text background updated."); return;
   }
-  if (["whiteboard-copy", "whiteboard-paste", "whiteboard-duplicate", "whiteboard-push-2d", "whiteboard-rotate-left", "whiteboard-rotate-right", "whiteboard-delete-object"].includes(action.dataset.action)) {
+  if (["whiteboard-copy", "whiteboard-paste", "whiteboard-duplicate", "whiteboard-push-2d", "whiteboard-rotate-left", "whiteboard-rotate-right", "whiteboard-turn-3d-left", "whiteboard-turn-3d-right", "whiteboard-delete-object"].includes(action.dataset.action)) {
     const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
     if (action.dataset.action === "whiteboard-copy") { if (selected) { whiteboardClipboard = structuredClone(serializableWhiteboardObjects().find((object) => object.id === selected.id)); setWhiteboardStatus("Selected object copied."); } else setWhiteboardStatus("Select an object first."); return; }
     if (action.dataset.action === "whiteboard-paste") { if (!whiteboardClipboard) { setWhiteboardStatus("Copy an object before pasting."); return; } pushWhiteboardHistory(); const copy = duplicateWhiteboardObject(whiteboardClipboard); whiteboardObjects.push(copy); whiteboardSelectedObjectId = copy.id; hydrateWhiteboardImages(() => renderWhiteboardObjects()); saveWhiteboard(); return; }
@@ -4923,6 +4936,11 @@ function handleClick(event) {
     if (["whiteboard-rotate-left", "whiteboard-rotate-right"].includes(action.dataset.action)) {
       if (["path", "dimension"].includes(selected.type)) { setWhiteboardStatus("Rotation is available for images, text, lines, arrows, and 2D or 3D shapes."); return; }
       pushWhiteboardHistory(); selected.rotation = (selected.rotation ?? 0) + (action.dataset.action === "whiteboard-rotate-left" ? -Math.PI / 12 : Math.PI / 12); renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus("Selected object rotated 15 degrees."); return;
+    }
+    if (["whiteboard-turn-3d-left", "whiteboard-turn-3d-right"].includes(action.dataset.action)) {
+      const is3D = Boolean(selected.extruded3D || ["cube", "rectangular-prism", "triangular-prism", "hexagonal-prism", "cylinder", "cone", "pyramid", "sphere", "hemisphere"].includes(selected.type));
+      if (!is3D) { setWhiteboardStatus("Select a 3D shape before turning it sideways."); return; }
+      pushWhiteboardHistory(); selected.sideTurn = Number(selected.sideTurn ?? 0) + (action.dataset.action === "whiteboard-turn-3d-left" ? -Math.PI / 12 : Math.PI / 12); renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus("3D shape turned 15 degrees sideways."); return;
     }
     pushWhiteboardHistory();
     if (action.dataset.action === "whiteboard-duplicate") { const copy = duplicateWhiteboardObject(selected); whiteboardObjects.push(copy); whiteboardSelectedObjectId = copy.id; hydrateWhiteboardImages(() => renderWhiteboardObjects()); }
