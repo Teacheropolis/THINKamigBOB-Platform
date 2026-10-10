@@ -191,7 +191,7 @@ test("whiteboard offers paint fill, calligraphy, and brush tools", () => {
   assert.match(app, /object\.strokeStyle === "brush"/);
   assert.match(app, /bristleOffsets/);
   assert.match(app, /tool === "brush" \? size \* 3/);
-  assert.match(app, /if \(object\.fillColor\)/);
+  assert.match(app, /if \(object\.fillColor && !object\.extruded3D\)/);
   assert.match(app, /data-whiteboard-line-size/);
   assert.match(app, /size\.dispatchEvent\(new Event\("input", \{ bubbles: true \}\)\)/);
 });
@@ -344,7 +344,7 @@ test("selected shapes temporarily display angle and radius measurements", () => 
   assert.doesNotMatch(app, /data-whiteboard-shape-angle/);
   assert.doesNotMatch(app, /data-whiteboard-circle-radius/);
   assert.match(app, /function drawWhiteboardSelectionMeasurements\(context, object\)/);
-  assert.match(app, /\["ellipse", "sphere", "hemisphere", "cylinder", "cone"\]\.includes\(object\.type\)/);
+  assert.match(app, /\["ellipse", "sphere", "hemisphere"\]\.includes\(object\.type\)/);
   assert.match(app, /label\(`r = \$\{Math\.round\(radius\)\}`/);
   assert.match(app, /object\.type === "triangle"/);
   assert.match(app, /label\(`\$\{degrees\}°`/);
@@ -364,8 +364,7 @@ test("selection corner handles update triangle angles and circle radius", () => 
 
 test("selected 3D shapes show live angle and radius measurements outside their lines", () => {
   assert.match(app, /\["cylinder", "cone"\]\.includes\(object\.type\)/);
-  assert.match(app, /label\(`d = \$\{Math\.round\(diameter\)\}`/);
-  assert.match(app, /label\(`C = \$\{Math\.round\(circumference\)\}`/);
+  assert.match(app, /label\(`r = \$\{Math\.round\(radius\)\}`, centerX, bounds\.y \+ bounds\.height \+ 34\)/);
   assert.match(app, /\["triangle", "pyramid", "cone", "triangular-prism"\]\.includes\(object\.type\)/);
   assert.match(app, /\["rectangle", "cube", "rectangular-prism"\]\.includes\(object\.type\)/);
 });
@@ -398,14 +397,21 @@ test("pulled 3D layers use a readable light-to-shadow gradient", () => {
   assert.match(app, /Math\.min\(14, Math\.ceil\(depth \/ 3\)\)/);
 });
 
-test("all closed shapes show angles or circular measurements and 3D shapes turn sideways", () => {
-  for (const text of ["r =", "d =", "C =", "Turn 3D left", "Turn 3D right"]) assert.match(app, new RegExp(text));
-  assert.match(app, /2 \* Math\.PI \* radius/);
+test("all closed shapes show angles or radius measurements and 3D shapes turn sideways", () => {
+  for (const text of ["r =", "Turn 3D left", "Turn 3D right"]) assert.match(app, new RegExp(text));
+  assert.doesNotMatch(app, /label\(`d =/);
+  assert.doesNotMatch(app, /label\(`C =/);
   assert.match(app, /\["diamond", "pentagon", "hexagon", "star", "hexagonal-prism"\]/);
   assert.match(app, /\["triangle", "pyramid", "cone", "triangular-prism"\]/);
   assert.match(app, /function applyWhiteboardSideTurn\(context, object\)/);
-  assert.match(app, /Math\.max\(0\.18, Math\.abs\(Math\.cos\(turn\)\)\)/);
+  assert.match(app, /0\.62 \+ Math\.abs\(Math\.cos\(turn\)\) \* 0\.38/);
   assert.match(app, /selected\.sideTurn = Number\(selected\.sideTurn \?\? 0\)/);
+});
+
+test("3D shapes use gradient line layers without solid fills", () => {
+  assert.match(app, /context\.strokeStyle = gradient/);
+  assert.match(app, /if \(object\.fillColor && !object\.extruded3D\)/);
+  assert.doesNotMatch(app, /globalAlpha = 0\.22; context\.fillStyle = object\.fillColor; context\.fill\(\)/);
 });
 
 test("selected text drawings and lines can be made 3D and restored to 2D", () => {

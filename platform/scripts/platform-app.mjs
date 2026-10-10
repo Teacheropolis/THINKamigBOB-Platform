@@ -3437,7 +3437,6 @@ function drawWhiteboard3DShape(context, object) {
     context.moveTo(x, y + height / 2); context.bezierCurveTo(x + width * 0.2, y + height * 0.35, x + width * 0.8, y + height * 0.35, x + width, y + height / 2);
     if (object.type === "sphere") { context.moveTo(x + width / 2, y); context.bezierCurveTo(x + width * 0.35, y + height * 0.2, x + width * 0.35, y + height * 0.8, x + width / 2, y + height); }
   }
-  if (object.fillColor) { context.save(); context.globalAlpha = 0.22; context.fillStyle = object.fillColor; context.fill(); context.restore(); }
   context.stroke();
   if (object.shapeLabel) {
     const name = ({ "rectangular-prism": "Rectangular Prism", "triangular-prism": "Triangular Prism", "hexagonal-prism": "Hexagonal Prism", cylinder: "Cylinder", pyramid: "Pyramid", hemisphere: "Hemisphere" })[object.type] ?? "3D Shape";
@@ -3711,7 +3710,7 @@ function drawWhiteboardExtrusion(context, object) {
       if (object.type === "pentagon") traceWhiteboardPolygon(context, object, 5);
       if (object.type === "hexagon") traceWhiteboardPolygon(context, object, 6);
       if (object.type === "star") traceWhiteboardPolygon(context, object, 5, 0.44);
-      context.fill(); context.stroke();
+      context.stroke();
     }
     context.restore();
   }
@@ -3721,7 +3720,7 @@ function applyWhiteboardSideTurn(context, object) {
   const turn = Number(object.sideTurn ?? 0);
   if (!turn) return;
   const bounds = objectBounds(object), centerX = bounds.x + bounds.width / 2, centerY = bounds.y + bounds.height / 2;
-  const scaleX = Math.max(0.18, Math.abs(Math.cos(turn))), skewY = Math.sin(turn) * 0.18;
+  const scaleX = 0.62 + Math.abs(Math.cos(turn)) * 0.38, skewY = Math.sin(turn) * 0.08;
   context.translate(centerX, centerY); context.transform(scaleX, skewY, 0, 1, 0, 0); context.translate(-centerX, -centerY);
 }
 
@@ -3759,11 +3758,15 @@ function drawWhiteboardSelectionMeasurements(context, object) {
   const centerX = bounds.x + bounds.width / 2, centerY = bounds.y + bounds.height / 2;
   context.save(); context.strokeStyle = "#b52222"; context.fillStyle = "#b52222"; context.lineWidth = 2.5; context.font = "800 16px sans-serif";
   const label = (text, x, y) => { const width = context.measureText(text).width + 12; context.fillStyle = "rgba(255,255,255,0.96)"; context.fillRect(x - width / 2, y - 16, width, 22); context.strokeStyle = "rgba(181,34,34,0.35)"; context.strokeRect(x - width / 2, y - 16, width, 22); context.fillStyle = "#b52222"; context.fillText(text, x - width / 2 + 6, y); };
-  if (["ellipse", "sphere", "hemisphere", "cylinder", "cone"].includes(object.type)) {
-    const radius = ["cylinder", "cone"].includes(object.type) ? bounds.width / 2 : Math.min(bounds.width, bounds.height) / 2, diameter = radius * 2, circumference = 2 * Math.PI * radius;
-    label(`r = ${Math.round(radius)}`, bounds.x + bounds.width + 44, centerY - 26);
-    label(`d = ${Math.round(diameter)}`, bounds.x + bounds.width + 44, centerY + 2);
-    label(`C = ${Math.round(circumference)}`, bounds.x + bounds.width + 44, centerY + 30);
+  if (["ellipse", "sphere", "hemisphere"].includes(object.type)) {
+    const radius = Math.min(bounds.width, bounds.height) / 2;
+    context.beginPath(); context.moveTo(centerX, centerY); context.lineTo(centerX + radius, centerY); context.stroke();
+    context.beginPath(); context.arc(centerX, centerY, 4, 0, Math.PI * 2); context.fill();
+    label(`r = ${Math.round(radius)}`, centerX + radius / 2, centerY - 12);
+  }
+  if (["cylinder", "cone"].includes(object.type)) {
+    const radius = bounds.width / 2;
+    label(`r = ${Math.round(radius)}`, centerX, bounds.y + bounds.height + 34);
   }
   if (["triangle", "pyramid", "cone", "triangular-prism"].includes(object.type)) {
     const points = [{ x: 0, y: -bounds.height / 2 }, { x: bounds.width / 2, y: bounds.height / 2 }, { x: -bounds.width / 2, y: bounds.height / 2 }];
@@ -3803,7 +3806,7 @@ function renderWhiteboardObjects(canvas = whiteboardCanvas()) {
     else if (object.type === "dimension") drawWhiteboardDimension(context, object);
     else if (object.type === "line" || object.type === "arrow") { context.beginPath(); context.moveTo(object.x, object.y); context.lineTo(object.x + object.width, object.y + object.height); context.stroke(); if (object.type === "arrow") { const angle = Math.atan2(object.height, object.width); context.beginPath(); context.moveTo(object.x + object.width, object.y + object.height); context.lineTo(object.x + object.width - 18 * Math.cos(angle - 0.55), object.y + object.height - 18 * Math.sin(angle - 0.55)); context.moveTo(object.x + object.width, object.y + object.height); context.lineTo(object.x + object.width - 18 * Math.cos(angle + 0.55), object.y + object.height - 18 * Math.sin(angle + 0.55)); context.stroke(); } }
     else if (["cube", "rectangular-prism", "triangular-prism", "hexagonal-prism", "cylinder", "cone", "pyramid", "sphere", "hemisphere"].includes(object.type)) drawWhiteboard3DShape(context, object);
-    else { context.beginPath(); if (object.type === "rectangle") context.rect(object.x, object.y, object.width, object.height); if (object.type === "ellipse") context.ellipse(object.x + object.width / 2, object.y + object.height / 2, Math.abs(object.width / 2), Math.abs(object.height / 2), 0, 0, Math.PI * 2); if (object.type === "triangle") { context.moveTo(object.x + object.width / 2, object.y); context.lineTo(object.x + object.width, object.y + object.height); context.lineTo(object.x, object.y + object.height); context.closePath(); } if (object.type === "diamond") traceWhiteboardPolygon(context, object, 4); if (object.type === "pentagon") traceWhiteboardPolygon(context, object, 5); if (object.type === "hexagon") traceWhiteboardPolygon(context, object, 6); if (object.type === "star") traceWhiteboardPolygon(context, object, 5, 0.44); if (object.fillColor) { context.fillStyle = object.fillColor; context.fill(); } context.stroke(); }
+    else { context.beginPath(); if (object.type === "rectangle") context.rect(object.x, object.y, object.width, object.height); if (object.type === "ellipse") context.ellipse(object.x + object.width / 2, object.y + object.height / 2, Math.abs(object.width / 2), Math.abs(object.height / 2), 0, 0, Math.PI * 2); if (object.type === "triangle") { context.moveTo(object.x + object.width / 2, object.y); context.lineTo(object.x + object.width, object.y + object.height); context.lineTo(object.x, object.y + object.height); context.closePath(); } if (object.type === "diamond") traceWhiteboardPolygon(context, object, 4); if (object.type === "pentagon") traceWhiteboardPolygon(context, object, 5); if (object.type === "hexagon") traceWhiteboardPolygon(context, object, 6); if (object.type === "star") traceWhiteboardPolygon(context, object, 5, 0.44); if (object.fillColor && !object.extruded3D) { context.fillStyle = object.fillColor; context.fill(); } context.stroke(); }
     context.restore();
   }
   const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
