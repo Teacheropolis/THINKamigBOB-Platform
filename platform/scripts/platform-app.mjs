@@ -3702,6 +3702,13 @@ function bisectWhiteboardShapeWithLine(line) {
 }
 
 function flattenWhiteboard3DShape(object) {
+  if (object.type === "shape-fragment") {
+    const flatType = { cube: "rectangle", "rectangular-prism": "rectangle", "triangular-prism": "triangle", "hexagonal-prism": "hexagon", cylinder: "ellipse", cone: "triangle", pyramid: "triangle", sphere: "ellipse", hemisphere: "ellipse" }[object.sourceType];
+    if (!flatType) return [];
+    const restored = { ...object, sourceType: flatType };
+    delete restored.original2DType; delete restored.shapeLabel; delete restored.depth; delete restored.extruded3D; delete restored.faceColors;
+    return [restored];
+  }
   if (object.original2DType) {
     const restored = { ...object, type: object.original2DType };
     delete restored.original2DType; delete restored.shapeLabel; delete restored.depth; delete restored.extruded3D;
@@ -3778,6 +3785,23 @@ function drawWhiteboardShapeFragment(context, object) {
   context.save(); context.strokeStyle = object.color ?? "#12384d"; context.lineWidth = object.size ?? 6; context.beginPath(); context.moveTo(x1, y1); context.lineTo(x2, y2); context.stroke(); context.restore();
 }
 
+function whiteboardFragmentCutSegment(object) {
+  const bounds = objectBounds(object), cut = object.normalizedCut;
+  if (!bounds || !cut) return null;
+  const start = { x: bounds.x + cut.x1 * bounds.width, y: bounds.y + cut.y1 * bounds.height };
+  const end = { x: bounds.x + cut.x2 * bounds.width, y: bounds.y + cut.y2 * bounds.height };
+  const dx = end.x - start.x, dy = end.y - start.y;
+  if (Math.hypot(dx, dy) < 1) return null;
+  const points = [];
+  const add = (t) => { const point = { x: start.x + dx * t, y: start.y + dy * t }; if (point.x >= bounds.x - 0.5 && point.x <= bounds.x + bounds.width + 0.5 && point.y >= bounds.y - 0.5 && point.y <= bounds.y + bounds.height + 0.5 && !points.some((item) => Math.hypot(item.x - point.x, item.y - point.y) < 1)) points.push(point); };
+  if (Math.abs(dx) > 0.001) { add((bounds.x - start.x) / dx); add((bounds.x + bounds.width - start.x) / dx); }
+  if (Math.abs(dy) > 0.001) { add((bounds.y - start.y) / dy); add((bounds.y + bounds.height - start.y) / dy); }
+  if (points.length < 2) return null;
+  let pair = [points[0], points[1]], greatest = 0;
+  points.forEach((first) => points.forEach((second) => { const distance = Math.hypot(second.x - first.x, second.y - first.y); if (distance > greatest) { greatest = distance; pair = [first, second]; } }));
+  return { start: pair[0], end: pair[1], length: greatest };
+}
+
 function whiteboardRulerLocalPoint(point) {
   const dx = point.x - whiteboardRuler.x, dy = point.y - whiteboardRuler.y, cosine = Math.cos(-whiteboardRuler.angle), sine = Math.sin(-whiteboardRuler.angle);
   return { x: dx * cosine - dy * sine, y: dx * sine + dy * cosine };
@@ -3812,6 +3836,24 @@ function drawWhiteboardSelectionMeasurements(context, object) {
   const centerX = bounds.x + bounds.width / 2, centerY = bounds.y + bounds.height / 2;
   context.save(); context.strokeStyle = "#b52222"; context.fillStyle = "#b52222"; context.lineWidth = 2.5; context.font = "800 16px sans-serif";
   const label = (text, x, y) => { const width = context.measureText(text).width + 12; context.fillStyle = "rgba(255,255,255,0.96)"; context.fillRect(x - width / 2, y - 16, width, 22); context.strokeStyle = "rgba(181,34,34,0.35)"; context.strokeRect(x - width / 2, y - 16, width, 22); context.fillStyle = "#b52222"; context.fillText(text, x - width / 2 + 6, y); };
+  if (object.type === "shape-fragment") {
+    const segment = whiteboardFragmentCutSegment(object);
+    if (segment) {
+      const dx = segment.end.x - segment.start.x, dy = segment.end.y - segment.start.y, length = Math.max(1, segment.length);
+      const normal = { x: -dy / length * 26 * object.cutSide, y: dx / length * 26 * object.cutSide };
+      const acuteAngle = Math.max(1, Math.min(89, Math.round(Math.atan2(Math.abs(dy), Math.abs(dx)) * 180 / Math.PI)));
+      label(`${acuteAngle}°`, segment.start.x + normal.x, segment.start.y + normal.y);
+      label(`${180 - acuteAngle}°`, segment.end.x + normal.x, segment.end.y + normal.y);
+      label(`cut = ${Math.round(length)}`, (segment.start.x + segment.end.x) / 2 + normal.x, (segment.start.y + segment.end.y) / 2 + normal.y);
+    }
+    if (["ellipse", "cylinder", "sphere", "hemisphere", "cone"].includes(object.sourceType)) {
+      const radius = Math.min(bounds.width, bounds.height) / 2;
+      context.beginPath(); context.moveTo(centerX, centerY); context.lineTo(centerX + radius, centerY); context.stroke();
+      context.beginPath(); context.arc(centerX, centerY, 4, 0, Math.PI * 2); context.fill();
+      label(`r = ${Math.round(radius)}`, centerX + radius / 2, centerY - 12);
+    }
+    context.restore(); return;
+  }
   if (["ellipse", "sphere", "hemisphere"].includes(object.type)) {
     const radius = Math.min(bounds.width, bounds.height) / 2;
     context.beginPath(); context.moveTo(centerX, centerY); context.lineTo(centerX + radius, centerY); context.stroke();

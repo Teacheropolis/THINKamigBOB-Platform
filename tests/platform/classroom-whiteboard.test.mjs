@@ -458,6 +458,15 @@ test("a line through a closed 2D or 3D shape bisects it into two editable fragme
   assert.match(app, /Shape divided into two independently editable objects along the line/);
 });
 
+test("selected split pieces show cut measurements and 3D pieces can return to 2D", () => {
+  assert.match(app, /function whiteboardFragmentCutSegment\(object\)/);
+  assert.match(app, /label\(`cut = \$\{Math\.round\(length\)\}`/);
+  assert.match(app, /label\(`\$\{acuteAngle\}°`/);
+  assert.match(app, /\["ellipse", "cylinder", "sphere", "hemisphere", "cone"\]\.includes\(object\.sourceType\)/);
+  assert.match(app, /if \(object\.type === "shape-fragment"\)/);
+  assert.match(app, /const flatType = \{ cube: "rectangle"/);
+});
+
 test("chosen built-in 3D face colors use transparent fills with strong outlines", () => {
   assert.match(app, /if \(object\.faceColors\?\.\[face\]\)/);
   assert.match(app, /context\.globalAlpha = 0\.2/);
