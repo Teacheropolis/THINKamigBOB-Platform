@@ -1712,6 +1712,8 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="rectangle">Rectangle</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="ellipse">Circle or oval</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="triangle">Triangle</button>
+          <label>Angle (degrees)<input type="number" data-whiteboard-shape-angle min="-180" max="180" step="1" value="0" disabled></label>
+          <label>Circle radius<input type="number" data-whiteboard-circle-radius min="5" max="500" step="1" value="50" disabled></label>
         </div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">◇</span><small>3D Shapes</small></summary><div>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="cube">Cube</button>
@@ -3668,6 +3670,16 @@ function resizeWhiteboardObjectFromCorner(object, corner, dx, dy) {
   return resized;
 }
 
+function syncWhiteboardShapeControls() {
+  const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
+  const angle = document.querySelector("[data-whiteboard-shape-angle]");
+  const radius = document.querySelector("[data-whiteboard-circle-radius]");
+  const shapeTypes = ["rectangle", "ellipse", "triangle", "cube", "rectangular-prism", "cylinder", "cone", "pyramid", "sphere"];
+  if (angle) { angle.disabled = !selected || !shapeTypes.includes(selected.type); angle.value = String(Math.round((selected?.rotation ?? 0) * 180 / Math.PI)); }
+  const radiusSupported = selected && ["ellipse", "sphere"].includes(selected.type);
+  if (radius) { radius.disabled = !radiusSupported; if (radiusSupported) radius.value = String(Math.round(Math.min(Math.abs(selected.width), Math.abs(selected.height)) / 2)); }
+}
+
 function renderWhiteboardObjects(canvas = whiteboardCanvas()) {
   if (!canvas) return;
   const context = canvas.getContext("2d");
@@ -3687,6 +3699,7 @@ function renderWhiteboardObjects(canvas = whiteboardCanvas()) {
   }
   const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
   if (selected) { const bounds = objectBounds(selected); context.save(); context.setLineDash([8, 6]); context.strokeStyle = "#087ba0"; context.lineWidth = 3; context.strokeRect(bounds.x - 6, bounds.y - 6, bounds.width + 12, bounds.height + 12); context.setLineDash([]); context.fillStyle = "#ffffff"; context.strokeStyle = "#087ba0"; context.lineWidth = 3; [[bounds.x, bounds.y], [bounds.x + bounds.width, bounds.y], [bounds.x, bounds.y + bounds.height], [bounds.x + bounds.width, bounds.y + bounds.height]].forEach(([x, y]) => { context.fillRect(x - 7, y - 7, 14, 14); context.strokeRect(x - 7, y - 7, 14, 14); }); context.restore(); }
+  syncWhiteboardShapeControls();
   drawWhiteboardTitleBar(context, canvas);
   drawWhiteboardRuler(context, canvas);
   drawWhiteboardLaserPreview(context);
@@ -5644,6 +5657,18 @@ root.addEventListener("drop", (event) => {
 });
 
 root.addEventListener("change", (event) => {
+  const shapeAngle = event.target.closest("[data-whiteboard-shape-angle]");
+  if (shapeAngle) {
+    const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
+    if (selected && !shapeAngle.disabled) { pushWhiteboardHistory(); selected.rotation = Number(shapeAngle.value) * Math.PI / 180; renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus(`Shape angle set to ${Math.round(Number(shapeAngle.value))} degrees.`); }
+    return;
+  }
+  const circleRadius = event.target.closest("[data-whiteboard-circle-radius]");
+  if (circleRadius) {
+    const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
+    if (selected && ["ellipse", "sphere"].includes(selected.type)) { const radius = Math.max(5, Math.min(500, Number(circleRadius.value) || 5)); const centerX = selected.x + selected.width / 2, centerY = selected.y + selected.height / 2; pushWhiteboardHistory(); selected.x = centerX - radius; selected.y = centerY - radius; selected.width = radius * 2; selected.height = radius * 2; renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus(`Circle radius set to ${radius}.`); }
+    return;
+  }
   if (event.target.closest("[data-class-resource-teacher]")) window.setTimeout(refreshCurrentClassPlan, 0);
   const planResourceToggle = event.target.closest("[data-current-plan-resource-toggle]");
   if (planResourceToggle) {
