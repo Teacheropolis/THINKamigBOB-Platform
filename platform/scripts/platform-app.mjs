@@ -1690,6 +1690,8 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-tool-select" data-whiteboard-quick-tool="select" aria-pressed="true">Select and move</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="lasso-select">Lasso select for image</button>
         </div></details>
+        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">↶</span><small>History</small></summary><div><button type="button" data-action="whiteboard-undo">Undo</button><button type="button" data-action="whiteboard-redo">Redo</button></div></details>
+        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">⧉</span><small>Clipboard</small></summary><div><button type="button" data-action="whiteboard-copy">Copy</button><button type="button" data-action="whiteboard-cut">Cut</button><button type="button" data-action="whiteboard-paste">Paste</button><button type="button" data-action="whiteboard-duplicate">Duplicate</button></div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">⌫</span><small>Erase</small></summary><div>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="eraser">Eraser</button>
           <label>Eraser thickness<input type="range" data-whiteboard-eraser-size min="12" max="140" value="40"><output data-whiteboard-eraser-size-output>40</output></label>
@@ -1732,13 +1734,11 @@ function teacherDashboardView(state) {
           <fieldset class="platform-whiteboard-face-colors"><legend>3D face colors</legend><label>Front<input type="color" data-whiteboard-3d-front-color value="#287da0"></label><label>Side<input type="color" data-whiteboard-3d-side-color value="#f0a52b"></label><label>Top or back<input type="color" data-whiteboard-3d-top-color value="#55a875"></label></fieldset>
           <button type="button" data-action="whiteboard-apply-all-3d-face-colors">Apply all face colors</button>
         </div></details>
-        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">T</span><small>Text</small></summary><div data-whiteboard-text-panel><button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="text">Place a text box</button></div></details>
+        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">T</span><small>Text</small></summary><div data-whiteboard-text-panel><button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="text">Place a text box</button><label>Font<select data-whiteboard-text-font><option value="Arial">Arial</option><option value="Georgia">Georgia</option><option value="Verdana">Verdana</option><option value="Trebuchet MS">Trebuchet</option><option value="Courier New">Courier</option><option value="Comic Sans MS">Comic Sans</option></select></label><label>Font color<input type="color" data-whiteboard-text-color value="#12384d"></label><button type="button" data-action="whiteboard-format-text" data-text-command="bold"><b>Bold</b> (Ctrl+B)</button><button type="button" data-action="whiteboard-format-text" data-text-command="italic"><i>Italic</i> (Ctrl+I)</button><button type="button" data-action="whiteboard-format-text" data-text-command="underline"><u>Underline</u> (Ctrl+U)</button></div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">☺</span><small>Emoji</small></summary><div data-whiteboard-emoji-panel></div></details>
         <details class="platform-whiteboard-quick-menu" data-whiteboard-measure-menu><summary><span aria-hidden="true">↔</span><small>Measure</small></summary><div data-whiteboard-measure-panel>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="laser-dimension">Laser measure — select 2 points</button>
         </div></details>
-        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">↶</span><small>History</small></summary><div><button type="button" data-action="whiteboard-undo">Undo</button><button type="button" data-action="whiteboard-redo">Redo</button></div></details>
-        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">⧉</span><small>Clipboard</small></summary><div><button type="button" data-action="whiteboard-copy">Copy</button><button type="button" data-action="whiteboard-cut">Cut</button><button type="button" data-action="whiteboard-paste">Paste</button><button type="button" data-action="whiteboard-duplicate">Duplicate</button></div></details>
         <button type="button" data-action="whiteboard-keyboard-help" title="Show keyboard and Chromebook shortcuts"><span aria-hidden="true">?</span><small>Help</small></button>
         <details class="platform-whiteboard-quick-menu" data-whiteboard-more-menu><summary><span aria-hidden="true">•••</span><small>More</small></summary><div class="platform-whiteboard-more-panel" data-whiteboard-more-panel></div></details>
       </nav>
@@ -3245,7 +3245,7 @@ function openWhiteboardTextEntry(point, canvas) {
     if (!value) { close(); setWhiteboardStatus("Text placement canceled."); return; }
     pushWhiteboardHistory();
     const size = Math.max(22, Number(document.querySelector("[data-whiteboard-size]")?.value ?? 6) * 5);
-    const object = createWhiteboardObject("text", { text: value, x: point.x, y: point.y, width: Math.min(canvas.width - point.x, Math.max(180, value.length * size * 0.55)), height: size * 1.3, fontSize: size, color: document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d", background: document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent", rotation: 0 });
+    const object = createWhiteboardObject("text", { text: value, x: point.x, y: point.y, width: Math.min(canvas.width - point.x, Math.max(180, value.length * size * 0.55)), height: size * 1.3, fontSize: size, fontFamily: document.querySelector("[data-whiteboard-text-font]")?.value ?? "Arial", color: document.querySelector("[data-whiteboard-text-color]")?.value ?? document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d", background: document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent", rotation: 0 });
     whiteboardObjects.push(object); whiteboardSelectedObjectId = object.id; close(); renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls(); setWhiteboardStatus("Text added at the selected spot. Drag it to reposition it.");
   };
   entry.addEventListener("blur", commit);
@@ -3259,8 +3259,8 @@ function openWhiteboardTextEntry(point, canvas) {
   setWhiteboardStatus("Type directly on the board. Press Enter or click elsewhere to finish; Escape cancels.");
 }
 
-function whiteboardRichTextRuns(html, fallbackText, fallbackSize = 36, fallbackColor = "#12384d") {
-  if (!html) return [{ text: fallbackText ?? "", bold: true, italic: false, underline: false, size: fallbackSize, color: fallbackColor }];
+function whiteboardRichTextRuns(html, fallbackText, fallbackSize = 36, fallbackColor = "#12384d", fallbackFont = "Arial") {
+  if (!html) return [{ text: fallbackText ?? "", bold: true, italic: false, underline: false, size: fallbackSize, color: fallbackColor, fontFamily: fallbackFont }];
   const template = document.createElement("template");
   template.innerHTML = html;
   const runs = [];
@@ -3273,11 +3273,13 @@ function whiteboardRichTextRuns(html, fallbackText, fallbackSize = 36, fallbackC
     if (tag === "u") next.underline = true;
     if (node.getAttribute("color")) next.color = node.getAttribute("color");
     if (node.style?.color) next.color = node.style.color;
+    if (node.getAttribute("face")) next.fontFamily = node.getAttribute("face");
+    if (node.style?.fontFamily) next.fontFamily = node.style.fontFamily.replace(/["']/g, "");
     const size = Number(node.dataset?.textSize || node.style?.fontSize?.replace("px", "")); if (size) next.size = size;
     node.childNodes.forEach((child) => visit(child, next));
   };
-  template.content.childNodes.forEach((node) => visit(node, { bold: false, italic: false, underline: false, size: fallbackSize, color: fallbackColor }));
-  return runs.length ? runs : [{ text: fallbackText ?? "", bold: true, italic: false, underline: false, size: fallbackSize, color: fallbackColor }];
+  template.content.childNodes.forEach((node) => visit(node, { bold: false, italic: false, underline: false, size: fallbackSize, color: fallbackColor, fontFamily: fallbackFont }));
+  return runs.length ? runs : [{ text: fallbackText ?? "", bold: true, italic: false, underline: false, size: fallbackSize, color: fallbackColor, fontFamily: fallbackFont }];
 }
 
 function openWhiteboardRichTextEditor(object, canvas) {
@@ -3285,12 +3287,13 @@ function openWhiteboardRichTextEditor(object, canvas) {
   surface.querySelector("[data-whiteboard-rich-editor]")?.remove();
   const editor = document.createElement("section"); editor.className = "platform-whiteboard-rich-editor"; editor.dataset.whiteboardRichEditor = "true";
   editor.style.left = `${Math.max(4, object.x * canvas.clientWidth / canvas.width)}px`; editor.style.top = `${Math.max(4, object.y * canvas.clientHeight / canvas.height)}px`;
-  editor.innerHTML = `<div class="platform-whiteboard-rich-toolbar"><button type="button" data-rich-command="bold"><b>B</b></button><button type="button" data-rich-command="italic"><i>I</i></button><button type="button" data-rich-command="underline"><u>U</u></button><label>Color <input type="color" data-rich-color value="${escapeHtml(object.color ?? "#12384d")}"></label><label>Size <select data-rich-size>${[18,24,30,36,48,60,72].map((size) => `<option value="${size}"${size === Math.round(object.fontSize ?? 36) ? " selected" : ""}>${size}</option>`).join("")}</select></label><button type="button" data-rich-done>Done</button></div><div class="platform-whiteboard-rich-content" contenteditable="true" role="textbox" aria-label="Edit and format whiteboard text"></div>`;
+  editor.innerHTML = `<div class="platform-whiteboard-rich-toolbar"><button type="button" data-rich-command="bold" title="Bold (Ctrl+B)"><b>B</b></button><button type="button" data-rich-command="italic" title="Italic (Ctrl+I)"><i>I</i></button><button type="button" data-rich-command="underline" title="Underline (Ctrl+U)"><u>U</u></button><label>Font <select data-rich-font>${["Arial","Georgia","Verdana","Trebuchet MS","Courier New","Comic Sans MS"].map((font) => `<option value="${font}"${font === (object.fontFamily ?? "Arial") ? " selected" : ""}>${font}</option>`).join("")}</select></label><label>Font color <input type="color" data-rich-color value="${escapeHtml(object.color ?? "#12384d")}"></label><label>Size <select data-rich-size>${[18,24,30,36,48,60,72].map((size) => `<option value="${size}"${size === Math.round((object.fontSize ?? 36) * (object.textScale ?? 1)) ? " selected" : ""}>${size}</option>`).join("")}</select></label><button type="button" data-rich-done>Done</button></div><div class="platform-whiteboard-rich-content" contenteditable="true" role="textbox" aria-label="Edit and format whiteboard text"></div>`;
   const content = editor.querySelector("[contenteditable]"); content.innerHTML = object.richHtml || escapeHtml(object.text);
   editor.querySelectorAll("[data-rich-command]").forEach((button) => button.addEventListener("mousedown", (event) => { event.preventDefault(); document.execCommand(button.dataset.richCommand); content.focus(); }));
   editor.querySelector("[data-rich-color]").addEventListener("input", (event) => { content.focus(); document.execCommand("foreColor", false, event.target.value); });
+  editor.querySelector("[data-rich-font]").addEventListener("change", (event) => { content.focus(); document.execCommand("fontName", false, event.target.value); });
   editor.querySelector("[data-rich-size]").addEventListener("change", (event) => { content.focus(); document.execCommand("fontSize", false, "7"); content.querySelectorAll('font[size="7"]').forEach((node) => { node.removeAttribute("size"); node.dataset.textSize = event.target.value; node.style.fontSize = `${event.target.value}px`; }); });
-  const save = () => { object.richHtml = content.innerHTML; object.text = content.textContent.trim().slice(0, 120); object.fontSize = Number(editor.querySelector("[data-rich-size]").value); object.height = Math.max(object.height, object.fontSize * 1.4); pushWhiteboardHistory(); editor.remove(); renderWhiteboardObjects(canvas); saveWhiteboard(canvas); setWhiteboardStatus("Formatted text saved."); canvas.focus(); };
+  const save = () => { object.richHtml = content.innerHTML; object.text = content.textContent.trim().slice(0, 120); object.fontSize = Number(editor.querySelector("[data-rich-size]").value); object.fontFamily = editor.querySelector("[data-rich-font]").value; object.color = editor.querySelector("[data-rich-color]").value; object.textScale = 1; object.height = Math.max(object.height, object.fontSize * 1.4); pushWhiteboardHistory(); editor.remove(); renderWhiteboardObjects(canvas); saveWhiteboard(canvas); setWhiteboardStatus("Formatted text saved."); canvas.focus(); };
   editor.querySelector("[data-rich-done]").addEventListener("click", save); surface.append(editor); content.focus();
 }
 
@@ -3646,6 +3649,16 @@ function deleteSelectedWhiteboardObject() {
   renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); setWhiteboardStatus("Selected object deleted. Use Undo to restore it."); return true;
 }
 
+function formatSelectedWhiteboardText(command) {
+  const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
+  if (selected?.type !== "text" || selected.emojiStamp) { setWhiteboardStatus("Select a text box before changing its formatting."); return false; }
+  pushWhiteboardHistory(); selected.richHtml = "";
+  if (["bold", "italic", "underline"].includes(command)) selected[command] = !selected[command];
+  if (command === "font") selected.fontFamily = document.querySelector("[data-whiteboard-text-font]")?.value ?? "Arial";
+  if (command === "color") selected.color = document.querySelector("[data-whiteboard-text-color]")?.value ?? "#12384d";
+  renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); setWhiteboardStatus("Text formatting updated."); return true;
+}
+
 function connectedWhiteboardObjectIds(seed) {
   if (!seed) return new Set();
   const editable = whiteboardObjects.filter((object) => object.strokeStyle !== "eraser");
@@ -3827,6 +3840,7 @@ function resizeWhiteboardObjectFromCorner(object, corner, dx, dy) {
   let resized = resizeWhiteboardObject(object, right - left, bottom - top);
   if (object.type === "path") resized = moveWhiteboardObject(resized, left - bounds.x, top - bounds.y);
   else resized = { ...resized, x: left, y: top, width: right - left, height: bottom - top };
+  if (object.type === "text" && !object.emojiStamp) resized.textScale = Math.max(0.25, Math.min(4, (object.textScale ?? 1) * ((bottom - top) / Math.max(12, bounds.height))));
   return resized;
 }
 
@@ -3896,7 +3910,7 @@ function renderWhiteboardObjects(canvas = whiteboardCanvas()) {
     context.save(); context.globalAlpha = object.opacity ?? 1; context.strokeStyle = object.faceColors?.front ?? object.color ?? "#12384d"; context.fillStyle = object.faceColors?.front ?? object.color ?? "#12384d"; context.lineWidth = object.size ?? 6; context.lineCap = "round"; context.lineJoin = "round";
     if (object.rotation && !["text", "image", "path", "dimension"].includes(object.type)) { const bounds = objectBounds(object), centerX = bounds.x + bounds.width / 2, centerY = bounds.y + bounds.height / 2; context.translate(centerX, centerY); context.rotate(object.rotation); context.translate(-centerX, -centerY); }
     if (object.type === "path") drawWhiteboardPath(context, object);
-    else if (object.type === "text") { const angle = object.rotation ?? 0, background = whiteboardTextBackground(object.background); context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(angle); if (background) { context.fillStyle = background; context.fillRect(-object.width / 2 - 8, -object.height / 2 - 5, object.width + 16, object.height + 10); } let cursorX = -object.width / 2; const baseline = -object.height / 2 + (object.fontSize ?? 36); whiteboardRichTextRuns(object.richHtml, object.text, object.fontSize, object.background === "black" ? "#ffffff" : object.color).forEach((run) => { context.font = `${run.italic ? "italic " : ""}${run.bold ? "700" : "400"} ${run.size}px sans-serif`; context.fillStyle = run.color; context.fillText(run.text, cursorX, baseline); const width = context.measureText(run.text).width; if (run.underline) context.fillRect(cursorX, baseline + 3, width, Math.max(1.5, run.size / 18)); cursorX += width; }); }
+    else if (object.type === "text") { const angle = object.rotation ?? 0, background = whiteboardTextBackground(object.background), textScale = object.textScale ?? 1; context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(angle); if (background) { context.fillStyle = background; context.fillRect(-object.width / 2 - 8, -object.height / 2 - 5, object.width + 16, object.height + 10); } let cursorX = -object.width / 2; const baseline = -object.height / 2 + (object.fontSize ?? 36) * textScale; whiteboardRichTextRuns(object.richHtml, object.text, object.fontSize, object.background === "black" ? "#ffffff" : object.color, object.fontFamily ?? "Arial").forEach((run) => { const runSize = run.size * textScale, runFont = run.fontFamily || object.fontFamily || "Arial"; context.font = `${object.italic || run.italic ? "italic " : ""}${object.bold || run.bold ? "700" : "400"} ${runSize}px "${runFont}"`; context.fillStyle = run.color; context.fillText(run.text, cursorX, baseline); const width = context.measureText(run.text).width; if (object.underline || run.underline) context.fillRect(cursorX, baseline + 3, width, Math.max(1.5, runSize / 18)); cursorX += width; }); }
     else if (object.type === "image" && object.element) { context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(object.rotation ?? 0); context.drawImage(object.element, -object.width / 2, -object.height / 2, object.width, object.height); }
     else if (object.type === "dimension") drawWhiteboardDimension(context, object);
     else if (object.type === "line" || object.type === "arrow") { context.beginPath(); context.moveTo(object.x, object.y); context.lineTo(object.x + object.width, object.y + object.height); context.stroke(); if (object.type === "arrow") { const angle = Math.atan2(object.height, object.width); context.beginPath(); context.moveTo(object.x + object.width, object.y + object.height); context.lineTo(object.x + object.width - 18 * Math.cos(angle - 0.55), object.y + object.height - 18 * Math.sin(angle - 0.55)); context.moveTo(object.x + object.width, object.y + object.height); context.lineTo(object.x + object.width - 18 * Math.cos(angle + 0.55), object.y + object.height - 18 * Math.sin(angle + 0.55)); context.stroke(); } }
@@ -4335,6 +4349,7 @@ function handleClick(event) {
   const action = event.target.closest("[data-action]");
   if (!action) return;
   if (handleNamePickerAction(action, document)) return;
+  if (action.dataset.action === "whiteboard-format-text") { formatSelectedWhiteboardText(action.dataset.textCommand); return; }
   if (action.closest("[data-class-resource-teacher]") || action.dataset.action?.startsWith("timer-") || action.dataset.action === "instant-timer") window.setTimeout(refreshCurrentClassPlan, 0);
   if (action.dataset.action === "open-current-plan-editor") {
     const modal = document.querySelector("[data-current-plan-modal]");
@@ -5011,7 +5026,7 @@ function handleClick(event) {
     if (!canvas || !text) return;
     pushWhiteboardHistory();
     const size = Math.max(22, Number(document.querySelector("[data-whiteboard-size]")?.value ?? 6) * 5);
-    const object = createWhiteboardObject("text", { text, x: 35, y: Math.min(canvas.height - 80, 30 + whiteboardObjects.length * 24), width: Math.min(canvas.width - 70, Math.max(180, text.length * size * 0.55)), height: size * 1.3, fontSize: size, color: document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d", background: document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent", rotation: 0 });
+    const object = createWhiteboardObject("text", { text, x: 35, y: Math.min(canvas.height - 80, 30 + whiteboardObjects.length * 24), width: Math.min(canvas.width - 70, Math.max(180, text.length * size * 0.55)), height: size * 1.3, fontSize: size, fontFamily: document.querySelector("[data-whiteboard-text-font]")?.value ?? "Arial", color: document.querySelector("[data-whiteboard-text-color]")?.value ?? document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d", background: document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent", rotation: 0 });
     whiteboardObjects.push(object); whiteboardSelectedObjectId = object.id; field.value = ""; renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls();
     return;
   }
@@ -5878,6 +5893,8 @@ root.addEventListener("drop", (event) => {
 });
 
 root.addEventListener("change", (event) => {
+  if (event.target.closest("[data-whiteboard-text-font]") && whiteboardSelectedObjectId) { formatSelectedWhiteboardText("font"); return; }
+  if (event.target.closest("[data-whiteboard-text-color]") && whiteboardSelectedObjectId) { formatSelectedWhiteboardText("color"); return; }
   if (event.target.closest("[data-class-resource-teacher]")) window.setTimeout(refreshCurrentClassPlan, 0);
   const planResourceToggle = event.target.closest("[data-current-plan-resource-toggle]");
   if (planResourceToggle) {
@@ -6432,6 +6449,9 @@ document.addEventListener("keydown", (event) => {
   const openWhiteboard = document.querySelector("#platform-classroom-whiteboard:not([hidden])");
   const typingTarget = event.target instanceof Element && event.target.closest("textarea, [contenteditable='true'], input:not([type='button']):not([type='range']):not([type='color'])");
   const shortcutKey = (event.ctrlKey || event.metaKey) && !event.altKey ? event.key.toLowerCase() : "";
+  if (openWhiteboard && !typingTarget && ["b", "i", "u"].includes(shortcutKey)) {
+    event.preventDefault(); formatSelectedWhiteboardText({ b: "bold", i: "italic", u: "underline" }[shortcutKey]); return;
+  }
   if (openWhiteboard && !typingTarget && ["c", "v", "x", "d"].includes(shortcutKey)) {
     event.preventDefault();
     if (shortcutKey === "c") {

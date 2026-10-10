@@ -117,6 +117,8 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   for (const command of ["bold", "italic", "underline"]) assert.match(app, new RegExp(`data-rich-command="${command}"`));
   assert.match(app, /data-rich-color/);
   assert.match(app, /data-rich-size/);
+  assert.match(app, /data-rich-font/);
+  for (const font of ["Arial", "Georgia", "Verdana", "Trebuchet MS", "Courier New", "Comic Sans MS"]) assert.match(app, new RegExp(font));
   assert.match(app, /whiteboardRichTextRuns/);
   assert.match(css, /\.platform-whiteboard-rich-editor/);
   assert.match(app, /measurePanel\?\.append\(\.\.\.measurementControls\)/);
@@ -217,10 +219,12 @@ test("eraser removes only its stroke area with its own adjustable thickness", ()
 
 test("top toolbar starts with select erase color and paint can", () => {
   const selectIndex = app.indexOf("<small>Select</small>");
+  const historyIndex = app.indexOf("<small>History</small>");
+  const clipboardIndex = app.indexOf("<small>Clipboard</small>");
   const eraseIndex = app.indexOf("<small>Erase</small>");
   const colorIndex = app.indexOf("<small>Color</small>");
   const paintIndex = app.indexOf("<small>Paint Can</small>");
-  assert.ok(selectIndex < eraseIndex && eraseIndex < colorIndex && colorIndex < paintIndex);
+  assert.ok(selectIndex < historyIndex && historyIndex < clipboardIndex && clipboardIndex < eraseIndex && eraseIndex < colorIndex && colorIndex < paintIndex);
   assert.match(app, /data-whiteboard-color-panel/);
   assert.match(app, /querySelector\("\[data-whiteboard-color-panel\]"\)\?\.append\(\.\.\.colorControls\)/);
   assert.match(app, /data-whiteboard-quick-tool="fill" title="Fill a closed shape with the selected color"/);
@@ -228,6 +232,18 @@ test("top toolbar starts with select erase color and paint can", () => {
   assert.match(app, /menu\.querySelector\("summary"\)\?\.addEventListener\("click"/);
   assert.match(app, /const primaryTool = menu\.dataset\.whiteboardPrimaryTool/);
   assert.match(app, /setWhiteboardStatus\("Select and move is active\."\)/);
+});
+
+test("text tools provide fonts, formatting shortcuts, color, and corner scaling", () => {
+  assert.match(app, /data-whiteboard-text-font/);
+  assert.match(app, /data-whiteboard-text-color/);
+  for (const command of ["bold", "italic", "underline"]) assert.match(app, new RegExp(`data-text-command="${command}"`));
+  assert.match(app, /function formatSelectedWhiteboardText\(command\)/);
+  assert.match(app, /\["b", "i", "u"\]\.includes\(shortcutKey\)/);
+  assert.match(app, /\{ b: "bold", i: "italic", u: "underline" \}\[shortcutKey\]/);
+  assert.match(app, /object\.type === "text" && !object\.emojiStamp/);
+  assert.match(app, /resized\.textScale = Math\.max/);
+  assert.match(app, /run\.size \* textScale/);
 });
 
 test("color toolbar circle matches the selected drawing color", () => {
