@@ -390,9 +390,9 @@ test("whiteboard adds more 2D and 3D shapes and pulls connected shapes into a 3D
 
 test("pulled 3D layers use a readable light-to-shadow gradient", () => {
   assert.match(app, /context\.createLinearGradient\(bounds\.x, bounds\.y/);
-  assert.match(app, /gradient\.addColorStop\(0, "rgba\(255,255,255,0\.96\)"\)/);
-  assert.match(app, /gradient\.addColorStop\(0\.34, object\.color \?\? "#287da0"\)/);
-  assert.match(app, /gradient\.addColorStop\(1, "#082b3b"\)/);
+  assert.match(app, /gradient\.addColorStop\(0, object\.faceColors\?\.top \?\? "rgba\(255,255,255,0\.96\)"\)/);
+  assert.match(app, /gradient\.addColorStop\(0\.34, object\.faceColors\?\.side \?\? object\.color \?\? "#287da0"\)/);
+  assert.match(app, /gradient\.addColorStop\(1, object\.faceColors\?\.side \?\? "#082b3b"\)/);
   assert.match(app, /context\.globalAlpha = 0\.055 \+ 0\.045 \* ratio/);
   assert.match(app, /Math\.min\(14, Math\.ceil\(depth \/ 3\)\)/);
 });
@@ -416,9 +416,21 @@ test("English ruler and dimension calculations share the same 96 pixel inch", ()
 test("ruler ticks reach its endpoint and written measurements include true-scale unit keys", () => {
   assert.match(app, /totalTicks = Math\.floor\(width \/ tickSpacing\)/);
   assert.match(app, /context\.moveTo\(width, 0\); context\.lineTo\(width, 12\)/);
-  assert.match(app, /const drawUnitKey = \(unit, y\)/);
+  assert.match(app, /const drawUnitKey = \(unit, y, color\)/);
   assert.match(app, /const keyLength = whiteboardPixelsPerUnit\(unit\)/);
-  assert.match(app, /drawUnitKey\(object\.unit, 39\); drawUnitKey\(compareUnit, 71\)/);
+  assert.match(app, /drawUnitKey\(object\.unit, 39, object\.color \?\? "#b52222"\); drawUnitKey\(compareUnit, 71, "#1769aa"\)/);
+});
+
+test("comparison scale key is blue and 3D faces have independent colors", () => {
+  assert.match(app, /drawUnitKey\(object\.unit, 39, object\.color \?\? "#b52222"\)/);
+  assert.match(app, /drawUnitKey\(compareUnit, 71, "#1769aa"\)/);
+  assert.match(app, /data-whiteboard-3d-face/);
+  assert.match(app, /data-whiteboard-3d-face-color/);
+  assert.match(app, /data-action="whiteboard-apply-3d-face-color"/);
+  assert.match(app, /selected\.faceColors = \{ \.\.\.\(selected\.faceColors \?\? \{\}\), \[face\]: color \}/);
+  assert.match(app, /object\.faceColors\?\.front/);
+  assert.match(app, /object\.faceColors\?\.side/);
+  assert.match(app, /object\.faceColors\?\.top/);
 });
 
 test("3D shapes use gradient line layers without solid fills", () => {

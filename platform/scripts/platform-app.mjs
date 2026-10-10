@@ -1729,6 +1729,9 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="hemisphere">Hemisphere</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pull-3d">Make selected object 3D</button>
           <label>3D thickness<input type="range" data-whiteboard-3d-depth min="10" max="120" value="24"><output data-whiteboard-3d-depth-output>24</output></label>
+          <label>3D face<select data-whiteboard-3d-face><option value="front">Front face</option><option value="side">Side face</option><option value="top">Top or back face</option></select></label>
+          <label>Face color<input type="color" data-whiteboard-3d-face-color value="#287da0"></label>
+          <button type="button" data-action="whiteboard-apply-3d-face-color">Apply face color</button>
         </div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">T</span><small>Text</small></summary><div data-whiteboard-text-panel><button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="text">Place a text box</button></div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">☺</span><small>Emoji</small></summary><div data-whiteboard-emoji-panel></div></details>
@@ -3428,14 +3431,36 @@ function drawWhiteboard3DShape(context, object) {
   } else if (object.type === "pyramid") {
     context.moveTo(x + width / 2, y); context.lineTo(x, y + height - depth); context.lineTo(x + width / 2, y + height); context.lineTo(x + width, y + height - depth); context.closePath();
     context.moveTo(x + width / 2, y); context.lineTo(x + width / 2, y + height);
-    if (object.type === "triangular-prism") { context.moveTo(x, y + height - depth); context.lineTo(x + (width - depth) / 2, y + depth); context.lineTo(x + width - depth, y + height - depth); }
-    if (object.type === "hexagonal-prism") { context.moveTo(x, y + height / 2); context.lineTo(x + depth, y + depth); context.lineTo(x + width - depth, y + depth); context.lineTo(x + width, y + height / 2); }
   } else if (object.type === "sphere" || object.type === "hemisphere") {
     context.ellipse(x + width / 2, y + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2);
     context.moveTo(x, y + height / 2); context.bezierCurveTo(x + width * 0.2, y + height * 0.35, x + width * 0.8, y + height * 0.35, x + width, y + height / 2);
     if (object.type === "sphere") { context.moveTo(x + width / 2, y); context.bezierCurveTo(x + width * 0.35, y + height * 0.2, x + width * 0.35, y + height * 0.8, x + width / 2, y + height); }
   }
   context.stroke();
+  const faceColors = { front: object.faceColors?.front ?? object.color ?? "#12384d", side: object.faceColors?.side ?? object.color ?? "#287da0", top: object.faceColors?.top ?? object.color ?? "#6aa9bf" };
+  const strokeFace = (color, trace) => { context.save(); context.strokeStyle = color; context.beginPath(); trace(); context.stroke(); context.restore(); };
+  if (["cube", "rectangular-prism", "triangular-prism", "hexagonal-prism"].includes(object.type)) {
+    strokeFace(faceColors.front, () => context.rect(x, y + depth, width - depth, height - depth));
+    strokeFace(faceColors.top, () => { context.moveTo(x, y + depth); context.lineTo(x + depth, y); context.lineTo(x + width, y); context.lineTo(x + width - depth, y + depth); context.closePath(); });
+    strokeFace(faceColors.side, () => { context.moveTo(x + width - depth, y + depth); context.lineTo(x + width, y); context.lineTo(x + width, y + height - depth); context.lineTo(x + width - depth, y + height); context.closePath(); });
+    if (object.type === "triangular-prism") strokeFace(faceColors.front, () => { context.moveTo(x, y + height - depth); context.lineTo(x + (width - depth) / 2, y + depth); context.lineTo(x + width - depth, y + height - depth); context.closePath(); });
+    if (object.type === "hexagonal-prism") strokeFace(faceColors.front, () => { context.moveTo(x, y + height / 2); context.lineTo(x + depth, y + depth); context.lineTo(x + width - depth, y + depth); context.lineTo(x + width, y + height / 2); });
+  } else if (object.type === "cylinder") {
+    strokeFace(faceColors.top, () => context.ellipse(x + width / 2, y + depth / 2, width / 2, depth / 2, 0, 0, Math.PI * 2));
+    strokeFace(faceColors.side, () => { context.moveTo(x, y + depth / 2); context.lineTo(x, y + height - depth / 2); context.moveTo(x + width, y + depth / 2); context.lineTo(x + width, y + height - depth / 2); });
+    strokeFace(faceColors.front, () => context.ellipse(x + width / 2, y + height - depth / 2, width / 2, depth / 2, 0, 0, Math.PI * 2));
+  } else if (object.type === "pyramid") {
+    strokeFace(faceColors.front, () => { context.moveTo(x + width / 2, y); context.lineTo(x, y + height - depth); context.lineTo(x + width / 2, y + height); context.closePath(); });
+    strokeFace(faceColors.side, () => { context.moveTo(x + width / 2, y); context.lineTo(x + width / 2, y + height); context.lineTo(x + width, y + height - depth); context.closePath(); });
+    strokeFace(faceColors.top, () => { context.moveTo(x, y + height - depth); context.lineTo(x + width / 2, y + height); context.lineTo(x + width, y + height - depth); });
+  } else if (object.type === "cone") {
+    strokeFace(faceColors.side, () => { context.moveTo(x + width / 2, y); context.lineTo(x, y + height - depth / 2); context.moveTo(x + width / 2, y); context.lineTo(x + width, y + height - depth / 2); });
+    strokeFace(faceColors.front, () => context.ellipse(x + width / 2, y + height - depth / 2, width / 2, depth / 2, 0, 0, Math.PI * 2));
+  } else if (["sphere", "hemisphere"].includes(object.type)) {
+    strokeFace(faceColors.front, () => context.ellipse(x + width / 2, y + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2));
+    strokeFace(faceColors.side, () => { context.moveTo(x + width / 2, y); context.bezierCurveTo(x + width * 0.35, y + height * 0.2, x + width * 0.35, y + height * 0.8, x + width / 2, y + height); });
+    strokeFace(faceColors.top, () => { context.moveTo(x, y + height / 2); context.bezierCurveTo(x + width * 0.2, y + height * 0.35, x + width * 0.8, y + height * 0.35, x + width, y + height / 2); });
+  }
   if (object.shapeLabel) {
     const name = ({ "rectangular-prism": "Rectangular Prism", "triangular-prism": "Triangular Prism", "hexagonal-prism": "Hexagonal Prism", cylinder: "Cylinder", pyramid: "Pyramid", hemisphere: "Hemisphere" })[object.type] ?? "3D Shape";
     context.save();
@@ -3483,8 +3508,8 @@ function drawWhiteboardDimension(context, object) {
   const value = whiteboardDimensionValue(object); const digits = object.unit === "mm" ? 0 : 2; const text = `${object.label || "Length"}: ${value.toFixed(digits)} ${object.unit}`;
   const compareUnit = object.compareUnit ?? (object.unit === "mm" ? "cm" : "mm"); const compareValue = whiteboardDimensionValue(object, compareUnit); const compareDigits = compareUnit === "mm" ? 0 : compareUnit === "m" ? 3 : 2; const comparison = `This is the same as ${compareValue.toFixed(compareDigits)} ${compareUnit}`;
   context.font = "700 18px sans-serif"; const textWidth = Math.max(context.measureText(text).width, context.measureText(comparison).width); const midX = (object.x + x2) / 2 + normalX, midY = (object.y + y2) / 2 + normalY; context.translate(midX, midY); context.rotate(angle); context.fillStyle = "rgba(255,255,255,0.94)"; context.fillRect(-textWidth / 2 - 7, -25, textWidth + 14, 49); context.fillStyle = object.color ?? "#b52222"; context.fillText(text, -textWidth / 2, -6); context.font = "600 15px sans-serif"; context.fillText(comparison, -textWidth / 2, 15);
-  const drawUnitKey = (unit, y) => { const keyLength = whiteboardPixelsPerUnit(unit); context.save(); context.strokeStyle = object.color ?? "#b52222"; context.fillStyle = object.color ?? "#b52222"; context.lineWidth = 2; context.beginPath(); context.moveTo(-keyLength / 2, y); context.lineTo(keyLength / 2, y); context.moveTo(-keyLength / 2, y - 6); context.lineTo(-keyLength / 2, y + 6); context.moveTo(keyLength / 2, y - 6); context.lineTo(keyLength / 2, y + 6); context.stroke(); context.font = "700 13px sans-serif"; const keyText = `1 ${unit}`; const keyTextWidth = context.measureText(keyText).width; context.fillStyle = "rgba(255,255,255,0.94)"; context.fillRect(-keyTextWidth / 2 - 4, y + 5, keyTextWidth + 8, 18); context.fillStyle = object.color ?? "#b52222"; context.fillText(keyText, -keyTextWidth / 2, y + 18); context.restore(); };
-  drawUnitKey(object.unit, 39); drawUnitKey(compareUnit, 71); context.restore();
+  const drawUnitKey = (unit, y, color) => { const keyLength = whiteboardPixelsPerUnit(unit); context.save(); context.strokeStyle = color; context.fillStyle = color; context.lineWidth = 2; context.beginPath(); context.moveTo(-keyLength / 2, y); context.lineTo(keyLength / 2, y); context.moveTo(-keyLength / 2, y - 6); context.lineTo(-keyLength / 2, y + 6); context.moveTo(keyLength / 2, y - 6); context.lineTo(keyLength / 2, y + 6); context.stroke(); context.font = "700 13px sans-serif"; const keyText = `1 ${unit}`; const keyTextWidth = context.measureText(keyText).width; context.fillStyle = "rgba(255,255,255,0.94)"; context.fillRect(-keyTextWidth / 2 - 4, y + 5, keyTextWidth + 8, 18); context.fillStyle = color; context.fillText(keyText, -keyTextWidth / 2, y + 18); context.restore(); };
+  drawUnitKey(object.unit, 39, object.color ?? "#b52222"); drawUnitKey(compareUnit, 71, "#1769aa"); context.restore();
 }
 
 function drawWhiteboardLaserPreview(context) {
@@ -3695,7 +3720,7 @@ function drawWhiteboardExtrusion(context, object) {
   for (let layer = layers; layer >= 1; layer -= 1) {
     const ratio = layer / layers, offset = depth * ratio;
     const gradient = context.createLinearGradient(bounds.x, bounds.y, bounds.x + bounds.width + depth, bounds.y + bounds.height + depth);
-    gradient.addColorStop(0, "rgba(255,255,255,0.96)"); gradient.addColorStop(0.34, object.color ?? "#287da0"); gradient.addColorStop(1, "#082b3b");
+    gradient.addColorStop(0, object.faceColors?.top ?? "rgba(255,255,255,0.96)"); gradient.addColorStop(0.34, object.faceColors?.side ?? object.color ?? "#287da0"); gradient.addColorStop(1, object.faceColors?.side ?? "#082b3b");
     context.save(); context.translate(offset, offset); context.globalAlpha = 0.055 + 0.045 * ratio; context.strokeStyle = gradient; context.fillStyle = gradient; context.lineWidth = Math.max(2, Number(object.size ?? 6) * 0.72); context.lineCap = "round"; context.lineJoin = "round";
     if (object.type === "path") drawWhiteboardPath(context, { ...object, opacity: 1, extruded3D: false });
     else if (object.type === "line" || object.type === "arrow") { context.beginPath(); context.moveTo(object.x, object.y); context.lineTo(object.x + object.width, object.y + object.height); context.stroke(); }
@@ -3793,7 +3818,7 @@ function renderWhiteboardObjects(canvas = whiteboardCanvas()) {
   context.clearRect(0, 0, canvas.width, canvas.height); context.fillStyle = "#fff"; context.fillRect(0, 0, canvas.width, canvas.height); drawWhiteboardGrid(context, canvas);
   for (const object of whiteboardObjects) {
     drawWhiteboardExtrusion(context, object);
-    context.save(); context.globalAlpha = object.opacity ?? 1; context.strokeStyle = object.color ?? "#12384d"; context.fillStyle = object.color ?? "#12384d"; context.lineWidth = object.size ?? 6; context.lineCap = "round"; context.lineJoin = "round";
+    context.save(); context.globalAlpha = object.opacity ?? 1; context.strokeStyle = object.faceColors?.front ?? object.color ?? "#12384d"; context.fillStyle = object.faceColors?.front ?? object.color ?? "#12384d"; context.lineWidth = object.size ?? 6; context.lineCap = "round"; context.lineJoin = "round";
     if (object.rotation && !["text", "image", "path", "dimension"].includes(object.type)) { const bounds = objectBounds(object), centerX = bounds.x + bounds.width / 2, centerY = bounds.y + bounds.height / 2; context.translate(centerX, centerY); context.rotate(object.rotation); context.translate(-centerX, -centerY); }
     if (object.type === "path") drawWhiteboardPath(context, object);
     else if (object.type === "text") { const angle = object.rotation ?? 0, background = whiteboardTextBackground(object.background); context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(angle); if (background) { context.fillStyle = background; context.fillRect(-object.width / 2 - 8, -object.height / 2 - 5, object.width + 16, object.height + 10); } let cursorX = -object.width / 2; const baseline = -object.height / 2 + (object.fontSize ?? 36); whiteboardRichTextRuns(object.richHtml, object.text, object.fontSize, object.background === "black" ? "#ffffff" : object.color).forEach((run) => { context.font = `${run.italic ? "italic " : ""}${run.bold ? "700" : "400"} ${run.size}px sans-serif`; context.fillStyle = run.color; context.fillText(run.text, cursorX, baseline); const width = context.measureText(run.text).width; if (run.underline) context.fillRect(cursorX, baseline + 3, width, Math.max(1.5, run.size / 18)); cursorX += width; }); }
@@ -4916,6 +4941,14 @@ function handleClick(event) {
     const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
     if (selected?.type !== "text") { setWhiteboardStatus("Select a text object before applying a text background."); return; }
     pushWhiteboardHistory(); selected.background = document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent"; renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus("Text background updated."); return;
+  }
+  if (action.dataset.action === "whiteboard-apply-3d-face-color") {
+    const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
+    const is3D = Boolean(selected?.extruded3D || ["cube", "rectangular-prism", "triangular-prism", "hexagonal-prism", "cylinder", "cone", "pyramid", "sphere", "hemisphere"].includes(selected?.type));
+    if (!selected || !is3D) { setWhiteboardStatus("Select a 3D shape before changing a face color."); return; }
+    const face = document.querySelector("[data-whiteboard-3d-face]")?.value ?? "front";
+    const color = document.querySelector("[data-whiteboard-3d-face-color]")?.value ?? "#287da0";
+    pushWhiteboardHistory(); selected.faceColors = { ...(selected.faceColors ?? {}), [face]: color }; renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); setWhiteboardStatus(`${face === "top" ? "Top or back" : face[0].toUpperCase() + face.slice(1)} face color updated.`); return;
   }
   if (["whiteboard-copy", "whiteboard-paste", "whiteboard-duplicate", "whiteboard-push-2d", "whiteboard-rotate-left", "whiteboard-rotate-right", "whiteboard-delete-object"].includes(action.dataset.action)) {
     const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
