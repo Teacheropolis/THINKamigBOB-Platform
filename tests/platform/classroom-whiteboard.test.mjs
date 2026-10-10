@@ -375,12 +375,11 @@ test("students can practice typed cursive by touch in a full-screen lined worksp
 });
 
 test("whiteboard embeds movable and resizable YouTube videos", () => {
-  for (const text of ["Search YouTube", "Paste Copied Link", "YouTube link", "Add YouTube Video", "YouTube Video", "Drag to move", "YouTube video added"]) assert.match(app, new RegExp(text));
+  for (const text of ["Find a video on YouTube", "Paste Copied Link", "YouTube video link", "Add Video", "YouTube Video", "Drag to move", "YouTube video added"]) assert.match(app, new RegExp(text));
   assert.match(app, /function whiteboardYouTubeId\(value\)/);
   assert.match(app, /host === "youtu\.be"/);
   assert.match(app, /url\.searchParams\.get\("v"\)/);
   assert.match(app, /youtube-nocookie\.com\/embed/);
-  assert.match(app, /youtube\.com\/results\?search_query=/);
   assert.match(app, /navigator\.clipboard\.readText\(\)/);
   assert.match(app, /allowfullscreen/);
   assert.match(app, /function syncWhiteboardYouTubeOverlays/);
@@ -390,12 +389,9 @@ test("whiteboard embeds movable and resizable YouTube videos", () => {
   assert.match(css, /\[data-youtube-resize\]/);
 });
 
-test("whiteboard can display protected YouTube search results and insert a selected video", () => {
-  for (const text of ["YouTube search results", "Insert Video", "Preview", "Searching YouTube"] ) assert.match(app, new RegExp(text));
-  assert.match(app, /thinkamigbob-youtube-search-endpoint/);
-  assert.match(app, /whiteboardYouTubeSearchEndpoint/);
-  assert.match(app, /whiteboard-insert-youtube-result/);
-  assert.match(css, /\.platform-whiteboard-youtube-results/);
+test("whiteboard YouTube insertion stays link-only without opening a search tab", () => {
+  assert.doesNotMatch(app, /whiteboard-search-youtube/);
+  assert.doesNotMatch(app, /youtube\.com\/results\?search_query/);
 });
 
 test("dragging a selected object corner resizes regardless of the active tool", () => {

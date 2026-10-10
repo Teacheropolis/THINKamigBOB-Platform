@@ -1775,7 +1775,7 @@ function teacherDashboardView(state) {
         <label>Cursive Coach<select data-whiteboard-cursive-coach><option value="off">Off</option><option value="letter">Model strokes after typing</option></select></label>
         <label class="platform-whiteboard-touch-practice-choice"><input type="checkbox" data-whiteboard-touch-practice> Let the student write this word by touch after typing</label>
         <label>Image<input type="file" data-whiteboard-image accept="image/*"></label>
-        <span class="platform-whiteboard-youtube-control"><label>Search YouTube<input type="search" data-whiteboard-youtube-search placeholder="Example: phases of the moon for kids"></label><button type="button" data-action="whiteboard-search-youtube">Search YouTube</button><label>YouTube link<input type="url" data-whiteboard-youtube-url placeholder="Paste a video link"></label><button type="button" data-action="whiteboard-paste-youtube">Paste Copied Link</button><button type="button" data-action="whiteboard-add-youtube">Add YouTube Video</button></span>
+        <span class="platform-whiteboard-youtube-control"><p>Find a video on YouTube, copy its link, then paste it here.</p><label>YouTube video link<input type="url" data-whiteboard-youtube-url placeholder="Paste a youtube.com or youtu.be link"></label><button type="button" data-action="whiteboard-paste-youtube">Paste Copied Link</button><button type="button" data-action="whiteboard-add-youtube">Add Video</button></span>
         <span class="platform-whiteboard-object-actions" role="group" aria-label="Selected object actions">
           <button type="button" data-action="whiteboard-copy">Copy</button><button type="button" data-action="whiteboard-paste">Paste</button><button type="button" data-action="whiteboard-duplicate">Duplicate</button><span class="platform-whiteboard-push-help-wrap"><button type="button" data-action="whiteboard-push-2d">Push Back to 2D</button><span class="platform-whiteboard-push-help" data-whiteboard-push-help role="status" hidden>Select the 3D shape, then use this button to return it to its original 2D shape.</span></span><button type="button" data-action="whiteboard-rotate-left">Rotate left</button><button type="button" data-action="whiteboard-rotate-right">Rotate right</button>
         </span>
@@ -1787,7 +1787,6 @@ function teacherDashboardView(state) {
       </div>
       <aside class="platform-whiteboard-pages" data-whiteboard-pages aria-label="Whiteboard pages"><div class="platform-whiteboard-page-heading"><button type="button" data-action="whiteboard-page-previous" title="Previous page">‹</button><span data-whiteboard-page-count>1 / 1</span><button type="button" data-action="whiteboard-page-next" title="Next page">›</button></div><div data-whiteboard-page-tabs></div><button type="button" data-action="whiteboard-page-add">+ Add Page</button><button type="button" data-action="whiteboard-page-duplicate">Duplicate</button><button type="button" data-action="whiteboard-page-rename">Rename</button><span class="platform-whiteboard-page-rename" data-whiteboard-page-rename hidden><label>Page name<input type="text" data-whiteboard-page-name maxlength="40"></label><button type="button" data-action="whiteboard-page-rename-save">Save</button><button type="button" data-action="whiteboard-page-rename-cancel">Cancel</button></span><span class="platform-whiteboard-page-order"><button type="button" data-action="whiteboard-page-left" title="Move page left">← Move</button><button type="button" data-action="whiteboard-page-right" title="Move page right">Move →</button></span><button type="button" data-action="whiteboard-page-delete">Delete Page</button></aside><div class="platform-whiteboard-surface"><canvas data-whiteboard-canvas tabindex="0" aria-label="Teacher classroom whiteboard drawing surface"></canvas></div>
       <p class="platform-whiteboard-status" data-whiteboard-status role="status" aria-live="polite">Drawings are saved in this browser session.</p>
-      <section class="platform-whiteboard-youtube-results" data-whiteboard-youtube-results role="dialog" aria-modal="true" aria-labelledby="whiteboard-youtube-results-title" hidden><header><div><h3 id="whiteboard-youtube-results-title">YouTube search results</h3><p>Select a classroom-appropriate video to place it on the board.</p></div><button type="button" data-action="whiteboard-close-youtube-results" aria-label="Close YouTube search results">×</button></header><div data-whiteboard-youtube-results-list></div></section>
       <div class="platform-whiteboard-context-menu" data-whiteboard-context-menu role="menu" hidden><button type="button" role="menuitem" data-action="whiteboard-copy-image">Copy Image</button><button type="button" role="menuitem" data-action="whiteboard-cut-image">Cut Image</button><button type="button" role="menuitem" data-action="whiteboard-paste-image">Paste Image</button><button type="button" role="menuitem" data-action="whiteboard-close-context-menu">Cancel</button></div>
       <aside class="platform-whiteboard-keyboard-help" data-whiteboard-keyboard-help role="dialog" aria-modal="true" aria-labelledby="whiteboard-keyboard-help-title" hidden>
         <div>
@@ -3649,19 +3648,6 @@ function whiteboardYouTubeId(value) {
   } catch { return ""; }
 }
 
-function whiteboardYouTubeSearchEndpoint() {
-  return document.querySelector('meta[name="thinkamigbob-youtube-search-endpoint"]')?.content.trim() || "";
-}
-
-function showWhiteboardYouTubeResults(items) {
-  const panel = document.querySelector("[data-whiteboard-youtube-results]");
-  const list = panel?.querySelector("[data-whiteboard-youtube-results-list]");
-  if (!panel || !list) return;
-  list.innerHTML = items.length ? items.map((item) => `<article class="platform-whiteboard-youtube-result"><img src="${escapeHtml(item.thumbnail)}" alt="" loading="lazy"><div><h4>${escapeHtml(item.title)}</h4><p>${escapeHtml(item.channel)}</p><span><a href="https://www.youtube.com/watch?v=${escapeHtml(item.videoId)}" target="_blank" rel="noopener noreferrer">Preview</a><button type="button" data-action="whiteboard-insert-youtube-result" data-youtube-video-id="${escapeHtml(item.videoId)}">Insert Video</button></span></div></article>`).join("") : "<p>No videos were found. Try different search words.</p>";
-  panel.hidden = false;
-  panel.querySelector("button")?.focus();
-}
-
 function addWhiteboardYouTubeVideo(videoId) {
   const canvas = whiteboardCanvas();
   if (!videoId || !canvas) return false;
@@ -5075,21 +5061,6 @@ function handleClick(event) {
     return;
   }
   if (action.dataset.action === "whiteboard-tool-select") { cancelPendingWhiteboardTextEntry(); whiteboardDeleteNextObject = false; const tool = document.querySelector("[data-whiteboard-tool]"); if (tool) { tool.value = "select"; tool.dispatchEvent(new Event("change", { bubbles: true })); } document.querySelectorAll("[data-whiteboard-quick-tool]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.whiteboardQuickTool === "select"))); whiteboardCanvas()?.focus({ preventScroll: true }); setWhiteboardStatus("Select and move is active."); return; }
-  if (action.dataset.action === "whiteboard-search-youtube") {
-    const field = document.querySelector("[data-whiteboard-youtube-search]"), query = field?.value.trim();
-    if (!query) { setWhiteboardStatus("Type what you want to find on YouTube first."); field?.focus(); return; }
-    const endpoint = whiteboardYouTubeSearchEndpoint();
-    if (!endpoint) { window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`, "_blank", "noopener,noreferrer"); setWhiteboardStatus("YouTube search opened in a new tab. Copy a video's link, return here, and choose Paste Copied Link."); return; }
-    action.disabled = true; action.textContent = "Searching…"; setWhiteboardStatus("Searching YouTube…");
-    fetch(`${endpoint}?q=${encodeURIComponent(query)}`, { headers: { accept: "application/json" } }).then(async (response) => {
-      const body = await response.json();
-      if (!response.ok) throw new Error(body?.error || "search-unavailable");
-      showWhiteboardYouTubeResults(Array.isArray(body.items) ? body.items : []); setWhiteboardStatus("Choose a video from the YouTube search results.");
-    }).catch(() => { setWhiteboardStatus("YouTube search is not connected yet. Opening YouTube search in a new tab instead."); window.open(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`, "_blank", "noopener,noreferrer"); }).finally(() => { action.disabled = false; action.textContent = "Search YouTube"; });
-    return;
-  }
-  if (action.dataset.action === "whiteboard-close-youtube-results") { const panel = document.querySelector("[data-whiteboard-youtube-results]"); if (panel) panel.hidden = true; return; }
-  if (action.dataset.action === "whiteboard-insert-youtube-result") { if (addWhiteboardYouTubeVideo(action.dataset.youtubeVideoId)) { const panel = document.querySelector("[data-whiteboard-youtube-results]"); if (panel) panel.hidden = true; } return; }
   if (action.dataset.action === "whiteboard-paste-youtube") {
     const field = document.querySelector("[data-whiteboard-youtube-url]");
       navigator.clipboard.readText().then((copied) => {
