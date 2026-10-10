@@ -1691,6 +1691,7 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-tool-select" data-whiteboard-quick-tool="select" aria-pressed="true">Select and move</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="lasso-select">Lasso select for image</button>
         </div></details>
+        <button type="button" class="platform-whiteboard-remove-background-button" data-action="whiteboard-remove-selection-background" title="Remove the background from a lasso selection"><span aria-hidden="true">▧</span><small>Remove<br>Background</small></button>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">↶</span><small>History</small></summary><div><button type="button" data-action="whiteboard-undo">Undo</button><button type="button" data-action="whiteboard-redo">Redo</button></div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">⧉</span><small>Clipboard</small></summary><div><button type="button" data-action="whiteboard-copy">Copy</button><button type="button" data-action="whiteboard-cut">Cut</button><button type="button" data-action="whiteboard-paste">Paste</button><button type="button" data-action="whiteboard-duplicate">Duplicate</button></div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">⌫</span><small>Erase</small></summary><div>
@@ -1766,7 +1767,7 @@ function teacherDashboardView(state) {
         <select data-whiteboard-tool hidden aria-hidden="true" tabindex="-1">
           ${["select", "lasso-select", "eraser", "erase-object", "fill", "pen", "calligraphy", "brush", "highlighter", "line", "arrow", "rectangle", "ellipse", "triangle", "diamond", "pentagon", "hexagon", "star", "cube", "rectangular-prism", "triangular-prism", "hexagonal-prism", "cylinder", "cone", "pyramid", "sphere", "hemisphere", "pull-3d", "text", "emoji-stamp", "laser-dimension", "ruler-adjust"].map((tool) => `<option value="${tool}"${tool === "select" ? " selected" : ""}>${tool}</option>`).join("")}
         </select>
-        <span class="platform-whiteboard-lasso-actions" data-whiteboard-lasso-actions hidden><strong>Selected image actions</strong><button type="button" data-action="whiteboard-remove-selection-background">Remove Selection Background</button><button type="button" data-action="whiteboard-download-selection">Download Selection PNG</button></span>
+        <span class="platform-whiteboard-lasso-actions" data-whiteboard-lasso-actions hidden><strong>Selected image actions</strong><button type="button" data-action="whiteboard-download-selection">Download Selection PNG</button></span>
         <label>Color<input type="color" data-whiteboard-color value="#12384d"></label>
         <label data-whiteboard-emoji-label>Choose an emoji<select data-whiteboard-emoji aria-label="Choose an emoji stamp">${WHITEBOARD_EMOJI_STAMPS.map((group) => `<optgroup label="${escapeHtml(group.category)}">${group.emojis.map(([emoji, name]) => `<option value="${emoji}">${emoji} ${escapeHtml(name)}</option>`).join("")}</optgroup>`).join("")}</select></label>
         <label>Line size<input type="range" data-whiteboard-size min="2" max="32" value="6"><output data-whiteboard-size-output>6</output></label>
