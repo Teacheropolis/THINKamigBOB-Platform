@@ -1772,7 +1772,7 @@ function teacherDashboardView(state) {
         <label>Line size<input type="range" data-whiteboard-size min="2" max="32" value="6"><output data-whiteboard-size-output>6</output></label>
         <label>Text background<select data-whiteboard-text-background><option value="transparent">Transparent</option><option value="white">White</option><option value="black">Black</option><option value="highlight-yellow">Yellow highlighter</option><option value="highlight-green">Green highlighter</option><option value="highlight-pink">Pink highlighter</option><option value="highlight-blue">Blue highlighter</option></select></label>
         <label>Cursive writing lines<select data-whiteboard-cursive-lines><option value="none">No lines</option><option value="wide">Wide ruled</option><option value="practice">Handwriting practice — 3 lines</option></select></label>
-        <label>Cursive Coach<select data-whiteboard-cursive-coach><option value="off">Off</option><option value="letter">Show slow live strokes</option></select></label>
+        <label>Cursive Coach<select data-whiteboard-cursive-coach><option value="off">Off</option><option value="letter">Model strokes after typing</option></select></label>
         <label>Image<input type="file" data-whiteboard-image accept="image/*"></label>
         <span class="platform-whiteboard-object-actions" role="group" aria-label="Selected object actions">
           <button type="button" data-action="whiteboard-copy">Copy</button><button type="button" data-action="whiteboard-paste">Paste</button><button type="button" data-action="whiteboard-duplicate">Duplicate</button><span class="platform-whiteboard-push-help-wrap"><button type="button" data-action="whiteboard-push-2d">Push Back to 2D</button><span class="platform-whiteboard-push-help" data-whiteboard-push-help role="status" hidden>Select the 3D shape, then use this button to return it to its original 2D shape.</span></span><button type="button" data-action="whiteboard-rotate-left">Rotate left</button><button type="button" data-action="whiteboard-rotate-right">Rotate right</button>
@@ -3251,37 +3251,67 @@ function refreshPendingWhiteboardTextEntryStyle() {
   entry.style.minHeight = entry.style.height;
 }
 
+function openPencilGripTutorial() {
+  document.querySelector("[data-pencil-grip-tutorial]")?.remove();
+  const tutorial = document.createElement("div");
+  tutorial.className = "platform-pencil-grip-tutorial"; tutorial.dataset.pencilGripTutorial = "true";
+  tutorial.innerHTML = `<section role="dialog" aria-modal="true" aria-labelledby="pencil-grip-title"><button type="button" class="platform-pencil-grip-close" aria-label="Close pencil grip tutorial">×</button><h3 id="pencil-grip-title">How to hold a pencil for cursive writing</h3><img src="./assets/images/whiteboard/proper-pencil-grip.jpg" alt="Close view of a relaxed tripod pencil grip"><ol><li>Rest the pencil on the side of the middle finger.</li><li>Hold it gently between the thumb and index finger.</li><li>Keep all three fingers curved and relaxed.</li><li>Let the side of the hand glide across the paper.</li></ol></section>`;
+  const close = () => tutorial.remove();
+  tutorial.addEventListener("click", (event) => { if (event.target === tutorial || event.target.closest(".platform-pencil-grip-close")) close(); });
+  document.body.append(tutorial); tutorial.querySelector("button")?.focus();
+}
+
 function updateWhiteboardCursiveCoach() {
   const entry = document.querySelector("[data-whiteboard-text-entry]");
   const surface = entry?.parentElement;
   surface?.querySelector("[data-whiteboard-cursive-coach-preview]")?.remove();
-  surface?.querySelector("[data-whiteboard-live-cursive]")?.remove();
   const mode = document.querySelector("[data-whiteboard-cursive-coach]")?.value ?? "off";
   const font = document.querySelector("[data-whiteboard-text-font]")?.value ?? "Arial";
   const text = entry?.value ?? "";
   if (!entry || !surface || mode === "off" || font !== "School Cursive" || !text) { refreshPendingWhiteboardTextEntryStyle(); return; }
-  entry.style.color = "transparent";
-  entry.style.caretColor = document.querySelector("[data-whiteboard-text-color]")?.value ?? "#12384d";
-  const liveWriting = document.createElement("span");
-  liveWriting.className = "platform-whiteboard-live-cursive"; liveWriting.dataset.whiteboardLiveCursive = "true";
-  liveWriting.style.left = entry.style.left; liveWriting.style.top = entry.style.top; liveWriting.style.width = entry.style.width; liveWriting.style.height = entry.style.height;
-  liveWriting.style.fontFamily = entry.style.fontFamily; liveWriting.style.fontSize = entry.style.fontSize; liveWriting.style.lineHeight = entry.style.lineHeight;
-  liveWriting.style.color = entry.style.caretColor;
-  const characters = [...text];
-  const activeCharacter = characters.at(-1) ?? "";
-  const completedText = characters.slice(0, -1).join("");
-  const glyph = CURSIVE_STROKE_LETTERS[activeCharacter.toLowerCase()];
-  const activeStroke = glyph ? `<svg class="platform-whiteboard-active-cursive-stroke" viewBox="-7 -15 34 40" aria-label="${escapeHtml(activeCharacter)} being written one stroke at a time">${glyph.paths.map((path, index) => path.dot ? `<circle class="platform-whiteboard-cursive-dot" cx="${path.dot.cx}" cy="${path.dot.cy}" r="${path.dot.r}" style="--stroke-order:${index}"/>` : `<path pathLength="1" d="${path.d}" style="--stroke-order:${index}"/>`).join("")}</svg>` : `<span class="platform-whiteboard-cursive-fallback">${escapeHtml(activeCharacter)}</span>`;
-  liveWriting.innerHTML = `<span>${escapeHtml(completedText).replaceAll(" ", "&nbsp;")}</span>${activeStroke}`;
-  surface.append(liveWriting);
   const coach = document.createElement("aside");
   coach.className = "platform-whiteboard-pencil-grip-photo"; coach.dataset.whiteboardCursiveCoachPreview = "true";
-  coach.innerHTML = `<img src="./assets/images/whiteboard/proper-pencil-grip.jpg" alt="A hand demonstrating a tripod pencil grip while writing"><small>Relaxed tripod pencil grip</small>`;
+  coach.innerHTML = `<button type="button" aria-label="Open the pencil grip tutorial"><img src="./assets/images/whiteboard/proper-pencil-grip.jpg" alt="A hand demonstrating a tripod pencil grip while writing"><small>Relaxed tripod pencil grip<br>Click for tutorial</small></button>`;
+  coach.querySelector("button")?.addEventListener("click", openPencilGripTutorial);
   coach.style.left = `${Math.max(4, entry.offsetLeft - 136)}px`;
   coach.style.top = `${Math.max(4, entry.offsetTop - 18)}px`;
   surface.append(coach);
   window.setTimeout(() => coach.classList.add("is-fading"), 5800);
   window.setTimeout(() => coach.remove(), 6600);
+}
+
+function showWhiteboardCursiveModel(text, object, canvas) {
+  const surface = canvas.parentElement;
+  if (!surface || !text) return;
+  surface.querySelector("[data-whiteboard-cursive-model]")?.remove();
+  let strokeOrder = 0, cursorX = 7;
+  const letters = [...text.toLowerCase()].map((character, characterIndex, allCharacters) => {
+    if (character === " ") { cursorX += 10; return ""; }
+    const glyph = CURSIVE_STROKE_LETTERS[character];
+    if (!glyph) { cursorX += 18; return ""; }
+    const letterX = cursorX;
+    const strokes = glyph.paths.map((path) => {
+      const order = strokeOrder++;
+      return path.dot ? `<circle class="platform-whiteboard-cursive-dot" cx="${path.dot.cx}" cy="${path.dot.cy}" r="${path.dot.r}" style="--stroke-order:${order}"/>` : `<path pathLength="1" d="${path.d}" style="--stroke-order:${order}"/>`;
+    }).join("");
+    cursorX += 18;
+    const nextCharacter = allCharacters[characterIndex + 1];
+    const connector = nextCharacter && nextCharacter !== " " && CURSIVE_STROKE_LETTERS[nextCharacter] ? `<path class="platform-whiteboard-cursive-connector" pathLength="1" d="M ${letterX + 11} 8 C ${letterX + 14} 7, ${letterX + 16} 5, ${letterX + 18} 4" style="--stroke-order:${strokeOrder++}"/>` : "";
+    return `<g transform="translate(${letterX} 16)">${strokes}</g>${connector}`;
+  }).join("");
+  const model = document.createElement("aside");
+  model.className = "platform-whiteboard-cursive-model"; model.dataset.whiteboardCursiveModel = "true";
+  const scaleX = canvas.clientWidth / canvas.width, scaleY = canvas.clientHeight / canvas.height;
+  model.style.left = `${Math.max(4, object.x * scaleX)}px`; model.style.top = `${Math.max(4, object.y * scaleY)}px`;
+  model.innerHTML = `<strong>Watch the pencil strokes and connections</strong><svg viewBox="0 -2 ${Math.max(42, cursorX + 9)} 42" aria-label="Slow cursive stroke model for ${escapeHtml(text)}">${letters}</svg>`;
+  surface.append(model);
+  const totalDuration = Math.max(1, strokeOrder) * 1350 + 700;
+  window.setTimeout(() => {
+    if (!model.isConnected) return;
+    const replay = window.confirm("The cursive model is complete. Would you like to replay it once more?");
+    model.remove();
+    if (replay) showWhiteboardCursiveModel(text, object, canvas);
+  }, totalDuration);
 }
 
 function openWhiteboardTextEntry(point, canvas) {
@@ -3307,7 +3337,9 @@ function openWhiteboardTextEntry(point, canvas) {
     pushWhiteboardHistory();
     const size = Math.max(22, Number(document.querySelector("[data-whiteboard-size]")?.value ?? 6) * 5);
     const object = createWhiteboardObject("text", { text: value, x: point.x, y: point.y, width: Math.min(canvas.width - point.x, Math.max(180, value.length * size * 0.55)), height: size * 1.3, fontSize: size, fontFamily: document.querySelector("[data-whiteboard-text-font]")?.value ?? "Arial", color: document.querySelector("[data-whiteboard-text-color]")?.value ?? document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d", background: document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent", cursiveGuide: document.querySelector("[data-whiteboard-cursive-lines]")?.value ?? "none", bold: document.querySelector('[data-text-command="bold"]')?.getAttribute("aria-pressed") === "true", italic: document.querySelector('[data-text-command="italic"]')?.getAttribute("aria-pressed") === "true", underline: document.querySelector('[data-text-command="underline"]')?.getAttribute("aria-pressed") === "true", rotation: 0 });
-    whiteboardObjects.push(object); whiteboardSelectedObjectId = object.id; close(); renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls(); setWhiteboardStatus("Text added at the selected spot. Drag it to reposition it.");
+    const shouldModelCursive = object.fontFamily === "School Cursive" && document.querySelector("[data-whiteboard-cursive-coach]")?.value !== "off";
+    whiteboardObjects.push(object); whiteboardSelectedObjectId = object.id; close(); renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls(); setWhiteboardStatus(shouldModelCursive ? "Text added. Watch each cursive stroke and letter connection." : "Text added at the selected spot. Drag it to reposition it.");
+    if (shouldModelCursive) window.requestAnimationFrame(() => showWhiteboardCursiveModel(value, object, canvas));
   };
   entry.addEventListener("blur", (event) => {
     if (entry.value.trim()) { commit(); return; }
