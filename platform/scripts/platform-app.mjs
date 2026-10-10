@@ -3288,6 +3288,7 @@ function showWhiteboardCursiveModel(text, object, canvas) {
     if (/^[A-Za-z]$/.test(character)) letters.push({
       character,
       connectsFromPrevious: sourceIndex > 0 && /^[A-Za-z]$/.test(sourceCharacters[sourceIndex - 1]),
+      connectsToNext: sourceIndex < sourceCharacters.length - 1 && /^[A-Za-z]$/.test(sourceCharacters[sourceIndex + 1]),
     });
     return letters;
   }, []);
@@ -3310,10 +3311,10 @@ function showWhiteboardCursiveModel(text, object, canvas) {
       if (replay) showWhiteboardCursiveModel(text, object, canvas);
       return;
     }
-    const { character, connectsFromPrevious } = modeledLetters[index];
+    const { character, connectsFromPrevious, connectsToNext } = modeledLetters[index];
     const isUppercase = /^[A-Z]$/.test(character);
     const glyph = isUppercase ? null : CURSIVE_STROKE_LETTERS[character];
-    const baselineEntryStroke = `<path class="platform-whiteboard-cursive-entry${connectsFromPrevious ? " platform-whiteboard-cursive-incoming" : ""}" pathLength="1" d="M -6 9 C -4 9, -2 7, 0 4"/>`;
+    const baselineEntryStroke = isUppercase ? "" : `<path class="platform-whiteboard-cursive-entry${connectsFromPrevious ? " platform-whiteboard-cursive-incoming" : ""}" pathLength="1" d="M -6 9 C -4 9, -2 7, 0 4"/>`;
     const letterStrokes = isUppercase
       ? `<text class="platform-whiteboard-cursive-capital" x="0" y="9">${escapeHtml(character)}</text>`
       : glyph?.paths.map((path) => path.dot
@@ -3325,14 +3326,25 @@ function showWhiteboardCursiveModel(text, object, canvas) {
     const previousLetter = modelSvg.querySelector("[data-cursive-letter-active]");
     if (previousLetter) {
       const previousBounds = previousLetter.getBBox();
-      const previousRightEdge = previousBounds.x + previousBounds.width;
-      previousLetter.setAttribute("transform", `translate(${6 - previousRightEdge} 8)`);
+      const previousEndpointX = Number(previousLetter.dataset.cursiveExitX) || previousBounds.x + previousBounds.width;
+      previousLetter.setAttribute("transform", `translate(${6 - previousEndpointX} 8)`);
       previousLetter.removeAttribute("data-cursive-letter-active");
       previousLetter.classList.add("is-fading");
       window.setTimeout(() => previousLetter.remove(), 800);
     }
     modelSvg.insertAdjacentHTML("beforeend", `<g data-cursive-letter-active transform="translate(12 8)">${strokes}</g>`);
     const currentLetter = modelSvg.querySelector("[data-cursive-letter-active]");
+    if (currentLetter && connectsToNext) {
+      const drawnPaths = [...currentLetter.querySelectorAll("path:not(.platform-whiteboard-cursive-entry)")];
+      const lastDrawnPath = drawnPaths.at(-1);
+      const capitalBounds = currentLetter.querySelector("text")?.getBBox();
+      const pathEndpoint = lastDrawnPath?.getPointAtLength(lastDrawnPath.getTotalLength());
+      const exitStartX = pathEndpoint?.x ?? (capitalBounds ? capitalBounds.x + capitalBounds.width : 0);
+      const exitStartY = pathEndpoint?.y ?? 9;
+      const exitEndX = exitStartX + 6;
+      currentLetter.insertAdjacentHTML("beforeend", `<path class="platform-whiteboard-cursive-exit" pathLength="1" d="M ${exitStartX} ${exitStartY} C ${exitStartX + 2} ${exitStartY}, ${exitEndX - 2} 9, ${exitEndX} 9"/>`);
+      currentLetter.dataset.cursiveExitX = String(exitEndX);
+    }
     let elapsedDrawingTime = 0;
     currentLetter?.querySelectorAll("path, circle, text").forEach((stroke) => {
       const isPath = stroke.tagName.toLowerCase() === "path";
