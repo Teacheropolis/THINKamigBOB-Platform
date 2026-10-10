@@ -66,7 +66,8 @@ test("whiteboard supports named, saved, and presentable pages", () => {
   assert.match(css, /grid-area: pages/);
   assert.match(css, /data-page-dock="right"/);
   assert.match(css, /data-page-dock="hidden"/);
-  assert.match(css, /\.platform-whiteboard-page-dock-control \{ position: fixed;[^}]*bottom: 1\.7rem; left: 0\.75rem;/);
+  assert.match(css, /\.platform-whiteboard-page-dock-control \{ position: fixed;[^}]*bottom: 0\.25rem; left: 0\.75rem;/);
+  assert.match(css, /\.platform-whiteboard-status \{[^}]*text-align: center;/);
   assert.match(css, /overflow-x: hidden; overflow-y: auto;/);
   assert.match(css, /\.platform-whiteboard-page-rename\[hidden\]/);
   assert.match(css, /button\[aria-current="page"\]/);
