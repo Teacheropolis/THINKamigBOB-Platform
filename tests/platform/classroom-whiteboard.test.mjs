@@ -340,6 +340,16 @@ test("push back to 2D is located in the Shapes dropdown", () => {
   assert.match(app, />Push Back to 2D<\/button>/);
 });
 
+test("selected text drawings and lines can be made 3D and restored to 2D", () => {
+  assert.match(app, />Make selected object 3D<\/button>/);
+  assert.match(app, /"rectangle", "ellipse", "triangle", "text", "path", "line", "arrow"/);
+  assert.match(app, /extruded3D: true, depth/);
+  assert.match(app, /if \(object\.extruded3D\)/);
+  assert.match(app, /context\.shadowOffsetX = depth/);
+  assert.match(app, /delete selected\.extruded3D/);
+  assert.match(app, /The object was pushed back to its original 2D form\./);
+});
+
 test("CAD laser selects two points, asks concise questions, and creates dimensions", () => {
   for (const text of ["Laser measure — select 2 points", "Label this CAD measurement", "What are you measuring?", "Add my own answer", "Measurement unit", "Add CAD Dimension", "Laser point 1 selected.", "Two points selected."]) assert.match(app, new RegExp(text.replace(/[?]/g, "\\?")));
   assert.match(app, /createWhiteboardObject\("dimension"/);
@@ -366,14 +376,14 @@ test("measurement graph paper automatically includes a CAD title bar", () => {
 });
 
 test("geometric shapes rotate and 2D shapes can be pulled into 3D", () => {
-  for (const text of ["Pull selected 2D shape into 3D", "Push Back to 2D", "Choose Pull into 3D, then drag a rectangle, oval, or triangle.", "Rectangular Prism", "Cylinder", "Pyramid", "The shape was pushed back to its original 2D form.", "Rotation is available for images, text, lines, arrows, and 2D or 3D shapes."]) assert.match(app, new RegExp(text.replace(/[.]/g, "\\.")));
+  for (const text of ["Make selected object 3D", "Push Back to 2D", "Select a shape, highlighted text box, drawing, or line to make it 3D.", "Rectangular Prism", "Cylinder", "Pyramid", "The object was pushed back to its original 2D form.", "Rotation is available for images, text, lines, arrows, and 2D or 3D shapes."]) assert.match(app, new RegExp(text.replace(/[.]/g, "\\.")));
   assert.match(app, /typeMap = \{ rectangle: "rectangular-prism", ellipse: "cylinder", triangle: "pyramid" \}/);
   assert.match(app, /original2DType: whiteboardDrawing\.original\.type/);
   assert.match(app, /shapeLabel: true/);
   assert.match(app, /data-whiteboard-push-help/);
   assert.match(css, /\.platform-whiteboard-push-help/);
   assert.match(css, /\.platform-whiteboard-push-help::before/);
-  assert.match(app, /depth: Math\.max\(10, Math\.min\(120/);
+  assert.match(app, /const depth = Math\.max\(10, Math\.min\(120/);
   assert.match(app, /object\.rotation && !\["text", "image", "path", "dimension"\]/);
   assert.match(app, /object\.depth \?\?/);
 });

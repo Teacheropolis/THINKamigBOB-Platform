@@ -1720,7 +1720,7 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="cone">Cone</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pyramid">Pyramid</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="sphere">Sphere</button>
-          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pull-3d">Pull selected 2D shape into 3D</button>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pull-3d">Make selected object 3D</button>
         </div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">T</span><small>Text</small></summary><div data-whiteboard-text-panel><button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="text">Place a text box</button></div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">☺</span><small>Emoji</small></summary><div data-whiteboard-emoji-panel></div></details>
@@ -3647,6 +3647,7 @@ function renderWhiteboardObjects(canvas = whiteboardCanvas()) {
   context.clearRect(0, 0, canvas.width, canvas.height); context.fillStyle = "#fff"; context.fillRect(0, 0, canvas.width, canvas.height); drawWhiteboardGrid(context, canvas);
   for (const object of whiteboardObjects) {
     context.save(); context.globalAlpha = object.opacity ?? 1; context.strokeStyle = object.color ?? "#12384d"; context.fillStyle = object.color ?? "#12384d"; context.lineWidth = object.size ?? 6; context.lineCap = "round"; context.lineJoin = "round";
+    if (object.extruded3D) { const depth = Math.max(8, Number(object.depth ?? 18)); context.shadowColor = "rgba(18,56,77,0.48)"; context.shadowOffsetX = depth; context.shadowOffsetY = depth; context.shadowBlur = 0; }
     if (object.rotation && !["text", "image", "path", "dimension"].includes(object.type)) { const bounds = objectBounds(object), centerX = bounds.x + bounds.width / 2, centerY = bounds.y + bounds.height / 2; context.translate(centerX, centerY); context.rotate(object.rotation); context.translate(-centerX, -centerY); }
     if (object.type === "path") drawWhiteboardPath(context, object);
     else if (object.type === "text") { const angle = object.rotation ?? 0, background = whiteboardTextBackground(object.background); context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(angle); if (background) { context.fillStyle = background; context.fillRect(-object.width / 2 - 8, -object.height / 2 - 5, object.width + 16, object.height + 10); } let cursorX = -object.width / 2; const baseline = -object.height / 2 + (object.fontSize ?? 36); whiteboardRichTextRuns(object.richHtml, object.text, object.fontSize, object.background === "black" ? "#ffffff" : object.color).forEach((run) => { context.font = `${run.italic ? "italic " : ""}${run.bold ? "700" : "400"} ${run.size}px sans-serif`; context.fillStyle = run.color; context.fillText(run.text, cursorX, baseline); const width = context.measureText(run.text).width; if (run.underline) context.fillRect(cursorX, baseline + 3, width, Math.max(1.5, run.size / 18)); cursorX += width; }); }
@@ -3823,7 +3824,7 @@ function mountWhiteboard() {
       setWhiteboardStatus(`${emoji} emoji stamped. Drag it to move, resize, rotate, copy, or delete it.`); return;
     }
     if (tool === "pull-3d") {
-      if (!selected || !["rectangle", "ellipse", "triangle"].includes(selected.type)) { setWhiteboardStatus("Choose Pull into 3D, then drag a rectangle, oval, or triangle."); return; }
+      if (!selected || !["rectangle", "ellipse", "triangle", "text", "path", "line", "arrow"].includes(selected.type) || selected.strokeStyle === "eraser") { setWhiteboardStatus("Select a shape, highlighted text box, drawing, or line to make it 3D."); return; }
       pushWhiteboardHistory(); whiteboardSelectedObjectId = selected.id; whiteboardDrawing = { tool, objectId: selected.id, start: point, original: cloneEditableWhiteboardObject(selected) }; canvas.setPointerCapture?.(event.pointerId); return;
     }
     if (tool === "laser-dimension") {
@@ -3893,7 +3894,10 @@ function mountWhiteboard() {
     const object = whiteboardObjects[index];
     if (whiteboardDrawing.tool === "pull-3d") {
       const typeMap = { rectangle: "rectangular-prism", ellipse: "cylinder", triangle: "pyramid" };
-      whiteboardObjects[index] = { ...whiteboardDrawing.original, type: typeMap[whiteboardDrawing.original.type], original2DType: whiteboardDrawing.original.type, shapeLabel: true, depth: Math.max(10, Math.min(120, Math.hypot(point.x - whiteboardDrawing.start.x, point.y - whiteboardDrawing.start.y))) };
+      const depth = Math.max(10, Math.min(120, Math.hypot(point.x - whiteboardDrawing.start.x, point.y - whiteboardDrawing.start.y)));
+      whiteboardObjects[index] = typeMap[whiteboardDrawing.original.type]
+        ? { ...whiteboardDrawing.original, type: typeMap[whiteboardDrawing.original.type], original2DType: whiteboardDrawing.original.type, shapeLabel: true, depth }
+        : { ...whiteboardDrawing.original, original2DType: whiteboardDrawing.original.type, extruded3D: true, depth };
       renderWhiteboardObjects(canvas); return;
     }
     if (whiteboardDrawing.tool === "select") {
@@ -4765,11 +4769,11 @@ function handleClick(event) {
     if (!selected && action.dataset.action === "whiteboard-delete-object") { whiteboardDeleteNextObject = true; whiteboardCanvas()?.focus({ preventScroll: true }); setWhiteboardStatus("Delete is ready. Click the next object you want to remove."); return; }
     if (!selected) { setWhiteboardStatus("Select an object first."); return; }
     if (action.dataset.action === "whiteboard-push-2d") {
-      if (!["rectangle", "ellipse", "triangle"].includes(selected.original2DType)) { setWhiteboardStatus("Select a shape that was pulled from 2D into 3D first."); return; }
+      if (!["rectangle", "ellipse", "triangle", "text", "path", "line", "arrow"].includes(selected.original2DType)) { setWhiteboardStatus("Select an object that was made 3D first."); return; }
       pushWhiteboardHistory();
       selected.type = selected.original2DType;
-      delete selected.original2DType; delete selected.shapeLabel; delete selected.depth;
-      renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus("The shape was pushed back to its original 2D form."); return;
+      delete selected.original2DType; delete selected.shapeLabel; delete selected.depth; delete selected.extruded3D;
+      renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus("The object was pushed back to its original 2D form."); return;
     }
     if (["whiteboard-rotate-left", "whiteboard-rotate-right"].includes(action.dataset.action)) {
       if (["path", "dimension"].includes(selected.type)) { setWhiteboardStatus("Rotation is available for images, text, lines, arrows, and 2D or 3D shapes."); return; }
