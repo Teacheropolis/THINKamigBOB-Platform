@@ -92,7 +92,7 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   }
   for (const menu of ["Select", "Erase", "Color", "Paint Can", "Pen", "Line", "Shapes", "3D Shapes", "Text", "Emoji", "Measure", "History", "Clipboard", "More"]) assert.match(app, new RegExp(`<small>${menu}</small>`));
   assert.doesNotMatch(app, /<select data-whiteboard-tool>/);
-  assert.match(app, /<input type="hidden" data-whiteboard-tool value="select">/);
+  assert.match(app, /<select data-whiteboard-tool hidden/);
   assert.match(app, /data-whiteboard-quick-tool="ruler-adjust">Adjust Ruler/);
   assert.doesNotMatch(app, /action\.closest\("details"\)\?\.removeAttribute\("open"\)/);
   assert.match(app, /menu\.addEventListener\("mouseleave", scheduleClose\)/);
@@ -238,6 +238,8 @@ test("top toolbar starts with select erase color and paint can", () => {
 });
 
 test("text tools provide fonts, formatting shortcuts, color, and corner scaling", () => {
+  assert.match(app, /<select data-whiteboard-tool hidden/);
+  assert.doesNotMatch(app, /<input type="hidden" data-whiteboard-tool/);
   assert.match(app, /data-whiteboard-text-font/);
   assert.match(app, /data-whiteboard-text-color/);
   assert.match(app, /platform-whiteboard-font-examples/);
