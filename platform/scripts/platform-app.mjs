@@ -3300,7 +3300,8 @@ function showWhiteboardCursiveModel(text, object, canvas) {
   surface.append(model);
   const modelTitle = model.querySelector("[data-whiteboard-cursive-model-title]");
   const modelSvg = model.querySelector("[data-whiteboard-cursive-model-svg]");
-  const strokeDuration = 900;
+  const penSpeedMillisecondsPerUnit = 45;
+  const pauseAfterLetter = 800;
   const playLetter = (index) => {
     if (!model.isConnected || !modelTitle || !modelSvg) return;
     if (index >= modeledLetters.length) {
@@ -3313,20 +3314,36 @@ function showWhiteboardCursiveModel(text, object, canvas) {
     const isUppercase = /^[A-Z]$/.test(character);
     const glyph = isUppercase ? null : CURSIVE_STROKE_LETTERS[character];
     const incomingStroke = connectsFromPrevious
-      ? `<path class="platform-whiteboard-cursive-incoming" pathLength="1" d="M -6 8 C -4 8, -2 6, 0 4" style="--stroke-order:0"/>`
+      ? `<path class="platform-whiteboard-cursive-incoming" pathLength="1" d="M -6 8 C -4 8, -2 6, 0 4"/>`
       : "";
-    const firstLetterStrokeOrder = connectsFromPrevious ? 1 : 0;
     const letterStrokes = isUppercase
-      ? `<text class="platform-whiteboard-cursive-capital" x="0" y="25" style="--stroke-order:${firstLetterStrokeOrder}">${escapeHtml(character)}</text>`
-      : glyph?.paths.map((path, strokeOrder) => path.dot
-        ? `<circle class="platform-whiteboard-cursive-dot" cx="${path.dot.cx}" cy="${path.dot.cy}" r="${path.dot.r}" style="--stroke-order:${strokeOrder + firstLetterStrokeOrder}"/>`
-        : `<path pathLength="1" d="${path.d}" style="--stroke-order:${strokeOrder + firstLetterStrokeOrder}"/>`).join("") || "";
+      ? `<text class="platform-whiteboard-cursive-capital" x="0" y="25">${escapeHtml(character)}</text>`
+      : glyph?.paths.map((path) => path.dot
+        ? `<circle class="platform-whiteboard-cursive-dot" cx="${path.dot.cx}" cy="${path.dot.cy}" r="${path.dot.r}"/>`
+        : `<path pathLength="1" d="${path.d}"/>`).join("") || "";
     const strokes = `${incomingStroke}${letterStrokes}`;
-    const strokeCount = (connectsFromPrevious ? 1 : 0) + (isUppercase ? 1 : Math.max(1, glyph?.paths.length || 1));
     modelTitle.textContent = `Letter ${index + 1} of ${modeledLetters.length}: ${character}`;
     modelSvg.setAttribute("aria-label", `${connectsFromPrevious ? "How to connect into and form" : "How to form"} the cursive letter ${character}`);
-    modelSvg.innerHTML = `<g transform="translate(3 8)">${strokes}</g>`;
-    window.setTimeout(() => playLetter(index + 1), strokeCount * strokeDuration);
+    const previousLetter = modelSvg.querySelector("[data-cursive-letter-active]");
+    if (previousLetter) {
+      previousLetter.removeAttribute("data-cursive-letter-active");
+      previousLetter.classList.add("is-fading");
+      window.setTimeout(() => previousLetter.remove(), 800);
+    }
+    modelSvg.insertAdjacentHTML("beforeend", `<g data-cursive-letter-active transform="translate(3 8)">${strokes}</g>`);
+    const currentLetter = modelSvg.querySelector("[data-cursive-letter-active]");
+    let elapsedDrawingTime = 0;
+    currentLetter?.querySelectorAll("path, circle, text").forEach((stroke) => {
+      const isPath = stroke.tagName.toLowerCase() === "path";
+      const isDot = stroke.tagName.toLowerCase() === "circle";
+      const duration = isPath
+        ? Math.max(650, Math.min(2200, stroke.getTotalLength() * penSpeedMillisecondsPerUnit))
+        : isDot ? 180 : 1100;
+      stroke.style.setProperty("--stroke-delay", `${elapsedDrawingTime}ms`);
+      stroke.style.setProperty("--stroke-duration", `${duration}ms`);
+      elapsedDrawingTime += duration;
+    });
+    window.setTimeout(() => playLetter(index + 1), elapsedDrawingTime + pauseAfterLetter);
   };
   playLetter(0);
 }
