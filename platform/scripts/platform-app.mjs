@@ -3627,6 +3627,36 @@ function makeWhiteboardObject3D(object, depth = 24) {
     : { ...object, original2DType: object.type, extruded3D: true, depth: normalizedDepth };
 }
 
+function flattenWhiteboard3DShape(object) {
+  if (object.original2DType) {
+    const restored = { ...object, type: object.original2DType };
+    delete restored.original2DType; delete restored.shapeLabel; delete restored.depth; delete restored.extruded3D;
+    return [restored];
+  }
+  if (!["cube", "rectangular-prism", "cylinder", "cone", "pyramid", "sphere"].includes(object.type)) return [];
+  const { id, type, original2DType, shapeLabel, depth, extruded3D, ...style } = object;
+  const bounds = objectBounds(object), gap = 24;
+  const part = (partType, values) => createWhiteboardObject(partType, { ...style, rotation: 0, ...values });
+  if (type === "sphere") return [part("ellipse", { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height })];
+  if (type === "cylinder") return [
+    part("rectangle", { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }),
+    part("ellipse", { x: bounds.x + bounds.width + gap, y: bounds.y, width: bounds.width, height: Math.max(24, bounds.width * 0.42) }),
+  ];
+  if (type === "cone") return [
+    part("triangle", { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }),
+    part("ellipse", { x: bounds.x + bounds.width + gap, y: bounds.y + bounds.height - Math.max(24, bounds.width * 0.42), width: bounds.width, height: Math.max(24, bounds.width * 0.42) }),
+  ];
+  if (type === "pyramid") return [
+    part("triangle", { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }),
+    part("rectangle", { x: bounds.x + bounds.width + gap, y: bounds.y + bounds.height - Math.max(36, bounds.height * 0.42), width: bounds.width, height: Math.max(36, bounds.height * 0.42) }),
+  ];
+  const sideWidth = type === "cube" ? bounds.width : Math.max(36, Number(object.depth ?? bounds.width * 0.35));
+  return [
+    part("rectangle", { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height }),
+    part("rectangle", { x: bounds.x + bounds.width + gap, y: bounds.y, width: sideWidth, height: bounds.height }),
+  ];
+}
+
 function drawWhiteboardExtrusion(context, object) {
   if (!object.extruded3D) return;
   const depth = Math.max(10, Math.min(48, Number(object.depth ?? 24)));
@@ -3689,7 +3719,7 @@ function drawWhiteboardSelectionMeasurements(context, object) {
     const radius = bounds.width / 2;
     label(`r = ${Math.round(radius)}`, centerX, bounds.y + bounds.height + 34);
   }
-  if (["triangle", "pyramid"].includes(object.type)) {
+  if (["triangle", "pyramid", "cone"].includes(object.type)) {
     const points = [{ x: 0, y: -bounds.height / 2 }, { x: bounds.width / 2, y: bounds.height / 2 }, { x: -bounds.width / 2, y: bounds.height / 2 }];
     const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
     const angleAt = (a, b, c) => Math.acos(Math.max(-1, Math.min(1, (distance(a, b) ** 2 + distance(a, c) ** 2 - distance(b, c) ** 2) / (2 * distance(a, b) * distance(a, c))))) * 180 / Math.PI;
@@ -4839,11 +4869,12 @@ function handleClick(event) {
     if (!selected && action.dataset.action === "whiteboard-delete-object") { whiteboardDeleteNextObject = true; whiteboardCanvas()?.focus({ preventScroll: true }); setWhiteboardStatus("Delete is ready. Click the next object you want to remove."); return; }
     if (!selected) { setWhiteboardStatus("Select an object first."); return; }
     if (action.dataset.action === "whiteboard-push-2d") {
-      if (!["rectangle", "ellipse", "triangle", "text", "path", "line", "arrow"].includes(selected.original2DType)) { setWhiteboardStatus("Select an object that was made 3D first."); return; }
+      const flattened = flattenWhiteboard3DShape(selected);
+      if (!flattened.length) { setWhiteboardStatus("Select a 3D object first."); return; }
       pushWhiteboardHistory();
-      selected.type = selected.original2DType;
-      delete selected.original2DType; delete selected.shapeLabel; delete selected.depth; delete selected.extruded3D;
-      renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus("The object was pushed back to its original 2D form."); return;
+      const selectedIndex = whiteboardObjects.findIndex((object) => object.id === selected.id);
+      whiteboardObjects.splice(selectedIndex, 1, ...flattened); whiteboardSelectedObjectId = flattened[0]?.id ?? "";
+      renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus(flattened.length > 1 ? `The 3D shape was unfolded into ${flattened.length} editable 2D shapes.` : "The object was pushed back to its original 2D form."); return;
     }
     if (["whiteboard-rotate-left", "whiteboard-rotate-right"].includes(action.dataset.action)) {
       if (["path", "dimension"].includes(selected.type)) { setWhiteboardStatus("Rotation is available for images, text, lines, arrows, and 2D or 3D shapes."); return; }

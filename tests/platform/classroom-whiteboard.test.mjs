@@ -365,8 +365,18 @@ test("selection corner handles update triangle angles and circle radius", () => 
 test("selected 3D shapes show live angle and radius measurements outside their lines", () => {
   assert.match(app, /\["cylinder", "cone"\]\.includes\(object\.type\)/);
   assert.match(app, /label\(`r = \$\{Math\.round\(radius\)\}`, centerX, bounds\.y \+ bounds\.height \+ 34\)/);
-  assert.match(app, /\["triangle", "pyramid"\]\.includes\(object\.type\)/);
+  assert.match(app, /\["triangle", "pyramid", "cone"\]\.includes\(object\.type\)/);
   assert.match(app, /\["rectangle", "cube", "rectangular-prism"\]\.includes\(object\.type\)/);
+});
+
+test("every built-in 3D shape pushes back into one or more editable 2D shapes", () => {
+  assert.match(app, /function flattenWhiteboard3DShape\(object\)/);
+  for (const type of ["cube", "rectangular-prism", "cylinder", "cone", "pyramid", "sphere"]) assert.match(app, new RegExp(`type === "${type}"|"${type}"`));
+  assert.match(app, /part\("rectangle"/);
+  assert.match(app, /part\("ellipse"/);
+  assert.match(app, /part\("triangle"/);
+  assert.match(app, /whiteboardObjects\.splice\(selectedIndex, 1, \.\.\.flattened\)/);
+  assert.match(app, /was unfolded into \$\{flattened\.length\} editable 2D shapes/);
 });
 
 test("selected text drawings and lines can be made 3D and restored to 2D", () => {
@@ -377,7 +387,7 @@ test("selected text drawings and lines can be made 3D and restored to 2D", () =>
   assert.match(app, /const layers = Math\.max\(4, Math\.ceil\(depth \/ 2\)\)/);
   assert.match(app, /drawWhiteboardExtrusion\(context, object\)/);
   assert.match(app, /Selected object is now 3D with thickness \$\{depth\}\. Use Push Back to 2D to reverse it\./);
-  assert.match(app, /delete selected\.extruded3D/);
+  assert.match(app, /delete restored\.extruded3D/);
   assert.match(app, /The object was pushed back to its original 2D form\./);
 });
 
