@@ -3342,7 +3342,7 @@ function openWhiteboardTextEntry(point, canvas) {
       reminder.textContent = "Press Return to complete this line of text.";
       reminder.style.left = entry.style.left; reminder.style.top = `${entry.offsetTop + entry.offsetHeight + 6}px`;
       surface.append(reminder);
-    }, 60000);
+    }, 10000);
   };
   const close = () => { if (finished) return; finished = true; window.clearTimeout(returnReminderTimer); surface.querySelector("[data-whiteboard-return-reminder]")?.remove(); surface.querySelector("[data-whiteboard-cursive-coach-preview]")?.remove(); surface.querySelector("[data-whiteboard-live-cursive]")?.remove(); entry.remove(); canvas.focus({ preventScroll: true }); };
   const commit = () => {

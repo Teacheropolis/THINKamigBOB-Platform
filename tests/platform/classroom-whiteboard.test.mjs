@@ -311,7 +311,9 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /How to hold a pencil for cursive writing/);
   assert.match(app, /pathLength="1"/);
   assert.match(css, /animation: platform-cursive-pen-stroke 0\.75s linear calc\(var\(--stroke-order\) \* 0\.85s\)/);
-  assert.match(app, /60000/);
+  assert.match(css, /stroke-dashoffset: 1; opacity: 0; animation: platform-cursive-pen-stroke/);
+  assert.match(css, /from \{ opacity: 1; stroke-dashoffset: 1; \} to \{ opacity: 1; stroke-dashoffset: 0; \}/);
+  assert.match(app, /10000/);
   assert.match(app, /Press Return to complete this line of text/);
   assert.match(app, /scheduleReturnReminder/);
   assert.match(css, /platform-whiteboard-return-reminder/);
