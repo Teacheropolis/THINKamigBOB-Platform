@@ -1131,6 +1131,10 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-whiteboard-quick-actions button[aria-pressed="true"] { border-color: var(--platform-blue-dark); color: #fff; background: var(--platform-blue-dark); }
 .platform-whiteboard-quick-actions button:disabled { opacity: 0.4; }
 .platform-whiteboard-quick-actions button > span { font-size: 1.25rem; line-height: 1; }
+.platform-whiteboard-quick-actions .platform-whiteboard-paint-can-icon { display: block; width: 1.55rem; height: 1.3rem; }
+.platform-whiteboard-paint-can-icon svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.platform-whiteboard-paint-can-icon path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.platform-whiteboard-paint-can-icon .platform-whiteboard-paint-can-body { fill: var(--whiteboard-selected-color, #12384d); }
 .platform-whiteboard-quick-actions button > small { font-size: 0.62rem; font-weight: 750; }
 .platform-whiteboard-tool-divider { flex: 0 0 1px; width: 1px; height: 2.4rem; margin: 0 0.12rem; background: #c8d0d5; }
 .platform-whiteboard-quick-actions .platform-whiteboard-object-actions { align-self: center; }

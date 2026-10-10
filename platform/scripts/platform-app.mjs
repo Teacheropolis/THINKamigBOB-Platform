@@ -1698,7 +1698,7 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="erase-object">Erase object</button>
         </div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span class="platform-whiteboard-color-chip" data-whiteboard-color-chip style="--whiteboard-selected-color:#12384d" aria-hidden="true"></span><small>Color</small></summary><div data-whiteboard-color-panel></div></details>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="fill" title="Fill a closed shape with the selected color"><span aria-hidden="true">◩</span><small>Paint Can</small></button>
+        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="fill" title="Fill a closed shape with the selected color"><span class="platform-whiteboard-paint-can-icon" data-whiteboard-paint-can-icon style="--whiteboard-selected-color:#12384d" aria-hidden="true"><svg viewBox="0 0 28 24"><path class="platform-whiteboard-paint-can-body" d="M5 8h15l-2 12H7L5 8Z"/><path d="M4 7h17M7 8c0-7 11-7 11 0M20 12l4 4 2-2-4-4"/></svg></span><small>Paint Can</small></button>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">✎</span><small>Pen</small></summary><div data-whiteboard-pen-panel>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pen">Pen</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="calligraphy">Calligraphy pen</button>
@@ -3251,8 +3251,9 @@ function openWhiteboardTextEntry(point, canvas) {
     const object = createWhiteboardObject("text", { text: value, x: point.x, y: point.y, width: Math.min(canvas.width - point.x, Math.max(180, value.length * size * 0.55)), height: size * 1.3, fontSize: size, fontFamily: document.querySelector("[data-whiteboard-text-font]")?.value ?? "Arial", color: document.querySelector("[data-whiteboard-text-color]")?.value ?? document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d", background: document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent", cursiveGuide: document.querySelector("[data-whiteboard-cursive-lines]")?.value ?? "none", bold: document.querySelector('[data-text-command="bold"]')?.getAttribute("aria-pressed") === "true", italic: document.querySelector('[data-text-command="italic"]')?.getAttribute("aria-pressed") === "true", underline: document.querySelector('[data-text-command="underline"]')?.getAttribute("aria-pressed") === "true", rotation: 0 });
     whiteboardObjects.push(object); whiteboardSelectedObjectId = object.id; close(); renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls(); setWhiteboardStatus("Text added at the selected spot. Drag it to reposition it.");
   };
-  entry.addEventListener("blur", () => {
+  entry.addEventListener("blur", (event) => {
     if (entry.value.trim()) { commit(); return; }
+    if (event.relatedTarget?.closest?.(".platform-whiteboard-quick-actions")) return;
     window.requestAnimationFrame(() => { if (entry.isConnected) entry.focus({ preventScroll: true }); });
   });
   entry.addEventListener("input", () => { entry.style.height = "auto"; entry.style.height = `${Math.min(180, Math.max(48, entry.scrollHeight))}px`; });
@@ -3263,6 +3264,10 @@ function openWhiteboardTextEntry(point, canvas) {
   surface.append(entry);
   window.requestAnimationFrame(() => { if (entry.isConnected) entry.focus({ preventScroll: true }); });
   setWhiteboardStatus("Type directly on the board. Press Enter or click elsewhere to finish; Escape cancels.");
+}
+
+function cancelPendingWhiteboardTextEntry() {
+  document.querySelector("[data-whiteboard-text-entry]")?.remove();
 }
 
 function whiteboardRichTextRuns(html, fallbackText, fallbackSize = 36, fallbackColor = "#12384d", fallbackFont = "Arial") {
@@ -4038,6 +4043,7 @@ function mountWhiteboard() {
     menu.querySelector("summary")?.addEventListener("click", () => {
       const primaryTool = menu.dataset.whiteboardPrimaryTool;
       if (!primaryTool) return;
+      if (primaryTool !== "text") cancelPendingWhiteboardTextEntry();
       whiteboardDeleteNextObject = false;
       const tool = document.querySelector("[data-whiteboard-tool]");
       if (tool) { tool.value = primaryTool; tool.dispatchEvent(new Event("change", { bubbles: true })); }
@@ -4775,6 +4781,7 @@ function handleClick(event) {
     whiteboardDeleteNextObject = false;
     const tool = document.querySelector("[data-whiteboard-tool]");
     const nextTool = action.dataset.whiteboardQuickTool;
+    if (nextTool !== "text") cancelPendingWhiteboardTextEntry();
     if (nextTool === "pull-3d") {
       const selectedIndex = whiteboardObjects.findIndex((object) => object.id === whiteboardSelectedObjectId);
       const selected = whiteboardObjects[selectedIndex];
@@ -4797,7 +4804,7 @@ function handleClick(event) {
     whiteboardCanvas()?.focus({ preventScroll: true });
     return;
   }
-  if (action.dataset.action === "whiteboard-tool-select") { whiteboardDeleteNextObject = false; const tool = document.querySelector("[data-whiteboard-tool]"); if (tool) { tool.value = "select"; tool.dispatchEvent(new Event("change", { bubbles: true })); } document.querySelectorAll("[data-whiteboard-quick-tool]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.whiteboardQuickTool === "select"))); whiteboardCanvas()?.focus({ preventScroll: true }); setWhiteboardStatus("Select and move is active."); return; }
+  if (action.dataset.action === "whiteboard-tool-select") { cancelPendingWhiteboardTextEntry(); whiteboardDeleteNextObject = false; const tool = document.querySelector("[data-whiteboard-tool]"); if (tool) { tool.value = "select"; tool.dispatchEvent(new Event("change", { bubbles: true })); } document.querySelectorAll("[data-whiteboard-quick-tool]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.whiteboardQuickTool === "select"))); whiteboardCanvas()?.focus({ preventScroll: true }); setWhiteboardStatus("Select and move is active."); return; }
   if (action.dataset.action === "whiteboard-cut") { cutSelectedWhiteboardObject(); whiteboardCanvas()?.focus({ preventScroll: true }); return; }
   if (action.dataset.action === "whiteboard-copy-image") { const menu = document.querySelector("[data-whiteboard-context-menu]"); if (menu) menu.hidden = true; void copySelectedWhiteboardObjectAsImage(); return; }
   if (action.dataset.action === "whiteboard-cut-image") { const menu = document.querySelector("[data-whiteboard-context-menu]"); if (menu) menu.hidden = true; cutSelectedWhiteboardObject(); return; }
@@ -6055,13 +6062,13 @@ root.addEventListener("change", (event) => {
   if (textBackground) {
     const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
     if (selected?.type === "text") { pushWhiteboardHistory(); selected.background = textBackground.value; renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); }
-    activateWhiteboardTextTool("Text background selected. Click anywhere on the whiteboard to start typing."); return;
+    setWhiteboardStatus(`${textBackground.options[textBackground.selectedIndex].text} text background selected.`); return;
   }
   const cursiveLines = event.target.closest("[data-whiteboard-cursive-lines]");
   if (cursiveLines) {
     const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
     if (selected?.type === "text") { pushWhiteboardHistory(); selected.cursiveGuide = cursiveLines.value; renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); }
-    activateWhiteboardTextTool(cursiveLines.value === "none" ? "No cursive lines selected. Click anywhere on the whiteboard to start typing." : `${cursiveLines.options[cursiveLines.selectedIndex].text} selected. Click anywhere on the whiteboard to start typing.`); return;
+    setWhiteboardStatus(`${cursiveLines.options[cursiveLines.selectedIndex].text} selected for School Cursive text.`); return;
   }
   const emojiChoice = event.target.closest("[data-whiteboard-emoji]");
   if (emojiChoice) {
@@ -6409,7 +6416,9 @@ root.addEventListener("input", (event) => {
   const whiteboardColor = event.target.closest("[data-whiteboard-color]");
   if (whiteboardColor) {
     const chip = document.querySelector("[data-whiteboard-color-chip]");
+    const paintCan = document.querySelector("[data-whiteboard-paint-can-icon]");
     if (chip) chip.style.setProperty("--whiteboard-selected-color", whiteboardColor.value);
+    if (paintCan) paintCan.style.setProperty("--whiteboard-selected-color", whiteboardColor.value);
     return;
   }
   const whiteboardLineSize = event.target.closest("[data-whiteboard-line-size]");

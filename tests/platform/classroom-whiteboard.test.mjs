@@ -105,7 +105,7 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   assert.match(app, /openWhiteboardTextEntry\(point, canvas\)/);
   assert.match(app, /data-whiteboard-text-entry/);
   assert.match(app, /Type directly on the board\. Press Enter or click elsewhere to finish; Escape cancels\./);
-  assert.match(app, /entry\.addEventListener\("blur", \(\) =>/);
+  assert.match(app, /entry\.addEventListener\("blur", \(event\) =>/);
   assert.match(app, /event\.key === "Enter" && !event\.shiftKey/);
   assert.match(app, /Text added at the selected spot\. Drag it to reposition it\./);
   assert.doesNotMatch(app, /directTools && tool !== "select" && selected/);
@@ -242,6 +242,7 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.doesNotMatch(app, /<input type="hidden" data-whiteboard-tool/);
   assert.match(app, /requestAnimationFrame\(\(\) => \{ if \(entry\.isConnected\) entry\.focus\(\{ preventScroll: true \}\); \}\)/);
   assert.match(app, /if \(entry\.value\.trim\(\)\) \{ commit\(\); return; \}/);
+  assert.match(app, /event\.relatedTarget\?\.closest\?\.\("\.platform-whiteboard-quick-actions"\)/);
   assert.match(app, /data-whiteboard-text-font/);
   assert.match(app, /data-whiteboard-text-color/);
   assert.match(app, /platform-whiteboard-font-examples/);
@@ -270,6 +271,9 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /context\.setLineDash\(\[7, 5\]\)/);
   assert.match(app, /drawWhiteboardCursiveGuides\(context, object\)/);
   assert.match(app, /selected\.cursiveGuide = cursiveLines\.value/);
+  assert.match(app, /function cancelPendingWhiteboardTextEntry\(\)/);
+  assert.match(app, /if \(nextTool !== "text"\) cancelPendingWhiteboardTextEntry\(\)/);
+  assert.match(app, /action\.dataset\.action === "whiteboard-tool-select"\) \{ cancelPendingWhiteboardTextEntry\(\)/);
 });
 
 test("dragging a selected object corner resizes regardless of the active tool", () => {
@@ -287,6 +291,9 @@ test("color toolbar circle matches the selected drawing color", () => {
   assert.match(app, /chip\.style\.setProperty\("--whiteboard-selected-color", whiteboardColor\.value\)/);
   assert.match(css, /background: var\(--whiteboard-selected-color, #12384d\)/);
   assert.match(css, /border-radius: 50%/);
+  assert.match(app, /data-whiteboard-paint-can-icon style="--whiteboard-selected-color:#12384d"/);
+  assert.match(app, /paintCan\.style\.setProperty\("--whiteboard-selected-color", whiteboardColor\.value\)/);
+  assert.match(css, /platform-whiteboard-paint-can-body \{ fill: var\(--whiteboard-selected-color, #12384d\)/);
 });
 
 test("erase object removes a connected drawing or filled shape with one click", () => {
@@ -378,7 +385,7 @@ test("images and text rotate while text supports solid and highlighter backgroun
   for (const text of ["Rotate left", "Rotate right", "Text background", "Transparent", "White", "Black", "Yellow highlighter", "Green highlighter", "Pink highlighter", "Blue highlighter"]) assert.match(app, new RegExp(text));
   assert.doesNotMatch(app, />Apply Text Background<\/button>/);
   assert.doesNotMatch(app, /placeholder="Type text for the board"/);
-  assert.match(app, /Text background selected\. Click anywhere on the whiteboard to start typing\./);
+  assert.match(app, /text background selected\./);
   assert.match(app, /selected\.rotation =/);
   assert.match(app, /context\.rotate\(object\.rotation \?\? 0\)/);
   assert.match(app, /whiteboardTextBackground/);
