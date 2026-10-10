@@ -56,6 +56,7 @@ test("whiteboard supports named, saved, and presentable pages", () => {
   assert.match(app, /data-whiteboard-page-tabs/);
   assert.match(app, /data-whiteboard-page-dock/);
   assert.match(app, /Page thumbnails/);
+  assert.match(app, /panelWidth = Math\.min\(menu\.matches\("\[data-whiteboard-more-menu\]"\) \? 448 : 240/);
   assert.match(app, /page\.thumbnail = preview\.toDataURL/);
   assert.match(app, /data-whiteboard-page-name/);
   assert.match(app, /whiteboard-page-rename-save/);
@@ -64,6 +65,7 @@ test("whiteboard supports named, saved, and presentable pages", () => {
   assert.match(css, /grid-area: pages/);
   assert.match(css, /data-page-dock="right"/);
   assert.match(css, /data-page-dock="hidden"/);
+  assert.match(css, /overflow-x: hidden; overflow-y: auto;/);
   assert.match(css, /\.platform-whiteboard-page-rename\[hidden\]/);
   assert.match(css, /button\[aria-current="page"\]/);
 });
