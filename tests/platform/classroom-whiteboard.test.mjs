@@ -71,6 +71,8 @@ test("whiteboard menus collapse and dock around the canvas", () => {
   assert.match(css, /data-controls-dock="right"/);
   assert.match(css, /data-controls-dock="bottom"/);
   assert.match(css, /data-controls-hidden="true"/);
+  assert.match(css, /data-controls-dock="right"\] \.platform-whiteboard-library \{ display: grid; grid-template-columns: minmax\(0, 1fr\); grid-auto-rows: max-content;/);
+  assert.match(css, /data-controls-dock="right"\] \.platform-whiteboard-controls \{[^}]*align-content: start;/);
 });
 
 test("hidden board menus retain a compact full drawing toolbox", () => {
