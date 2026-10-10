@@ -217,6 +217,15 @@ test("erase object removes a connected drawing or filled shape with one click", 
   assert.match(app, /Click a connected drawing, line, or filled shape to erase the whole object\./);
 });
 
+test("delete selected arms a one-click delete when nothing is selected", () => {
+  assert.match(app, /let whiteboardDeleteNextObject = false/);
+  assert.match(app, /!selected && action\.dataset\.action === "whiteboard-delete-object"/);
+  assert.match(app, /Delete is ready\. Click the next object you want to remove\./);
+  assert.match(app, /if \(whiteboardDeleteNextObject\)/);
+  assert.match(app, /Object deleted\. Select and move is active again\./);
+  assert.match(app, /whiteboardDeleteNextObject = false;\n\s+const selectTool/);
+});
+
 test("whiteboard provides a categorized movable emoji stamp tool", () => {
   for (const text of ["Choose an emoji stamp", "Faces and feelings", "STEM and school", "Animals", "Marks and symbols", "emoji stamped"]) assert.match(app, new RegExp(text));
   assert.match(app, /WHITEBOARD_EMOJI_STAMPS/);

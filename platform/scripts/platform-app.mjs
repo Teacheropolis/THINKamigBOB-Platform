@@ -207,6 +207,7 @@ let whiteboardLassoPoints = [];
 let whiteboardLassoBounds = null;
 let whiteboardSelectionDownload = "";
 let whiteboardContextPoint = null;
+let whiteboardDeleteNextObject = false;
 
 function lessonTimerDisplayIsStoredOpen() {
   try {
@@ -3751,6 +3752,13 @@ function mountWhiteboard() {
     if (event.button !== undefined && event.button !== 0) return; event.preventDefault(); canvas.focus({ preventScroll: true });
     const point = whiteboardPoint(event, canvas), tool = document.querySelector("[data-whiteboard-tool]")?.value ?? "select";
     const selected = hitTestObjects(whiteboardObjects.filter((object) => object.strokeStyle !== "eraser"), point);
+    if (whiteboardDeleteNextObject) {
+      if (!selected) { setWhiteboardStatus("Delete is ready. Click the object you want to remove."); return; }
+      pushWhiteboardHistory(); whiteboardObjects = whiteboardObjects.filter((object) => object.id !== selected.id); whiteboardSelectedObjectId = ""; whiteboardDeleteNextObject = false;
+      const selectTool = document.querySelector("[data-whiteboard-tool]"); if (selectTool) { selectTool.value = "select"; selectTool.dispatchEvent(new Event("change", { bubbles: true })); }
+      document.querySelectorAll("[data-whiteboard-quick-tool]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.whiteboardQuickTool === "select")));
+      renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls(); setWhiteboardStatus("Object deleted. Select and move is active again."); return;
+    }
     const directTools = !["lasso-select", "emoji-stamp", "pull-3d", "laser-dimension", "fill", "eraser", "erase-object"].includes(tool);
     if (directTools && whiteboardRulerUnit !== "none") {
       const local = whiteboardRulerLocalPoint(point);
@@ -4423,6 +4431,7 @@ function handleClick(event) {
     return;
   }
   if (action.dataset.action === "whiteboard-quick-tool") {
+    whiteboardDeleteNextObject = false;
     const tool = document.querySelector("[data-whiteboard-tool]");
     const nextTool = action.dataset.whiteboardQuickTool;
     if (tool && nextTool) {
@@ -4435,7 +4444,7 @@ function handleClick(event) {
     whiteboardCanvas()?.focus({ preventScroll: true });
     return;
   }
-  if (action.dataset.action === "whiteboard-tool-select") { const tool = document.querySelector("[data-whiteboard-tool]"); if (tool) { tool.value = "select"; tool.dispatchEvent(new Event("change", { bubbles: true })); } document.querySelectorAll("[data-whiteboard-quick-tool]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.whiteboardQuickTool === "select"))); whiteboardCanvas()?.focus({ preventScroll: true }); setWhiteboardStatus("Select and move is active."); return; }
+  if (action.dataset.action === "whiteboard-tool-select") { whiteboardDeleteNextObject = false; const tool = document.querySelector("[data-whiteboard-tool]"); if (tool) { tool.value = "select"; tool.dispatchEvent(new Event("change", { bubbles: true })); } document.querySelectorAll("[data-whiteboard-quick-tool]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.whiteboardQuickTool === "select"))); whiteboardCanvas()?.focus({ preventScroll: true }); setWhiteboardStatus("Select and move is active."); return; }
   if (action.dataset.action === "whiteboard-cut") { cutSelectedWhiteboardObject(); whiteboardCanvas()?.focus({ preventScroll: true }); return; }
   if (action.dataset.action === "whiteboard-copy-image") { const menu = document.querySelector("[data-whiteboard-context-menu]"); if (menu) menu.hidden = true; void copySelectedWhiteboardObjectAsImage(); return; }
   if (action.dataset.action === "whiteboard-cut-image") { const menu = document.querySelector("[data-whiteboard-context-menu]"); if (menu) menu.hidden = true; cutSelectedWhiteboardObject(); return; }
@@ -4722,6 +4731,7 @@ function handleClick(event) {
     const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
     if (action.dataset.action === "whiteboard-copy") { if (selected) { whiteboardClipboard = structuredClone(serializableWhiteboardObjects().find((object) => object.id === selected.id)); setWhiteboardStatus("Selected object copied."); } else setWhiteboardStatus("Select an object first."); return; }
     if (action.dataset.action === "whiteboard-paste") { if (!whiteboardClipboard) { setWhiteboardStatus("Copy an object before pasting."); return; } pushWhiteboardHistory(); const copy = duplicateWhiteboardObject(whiteboardClipboard); whiteboardObjects.push(copy); whiteboardSelectedObjectId = copy.id; hydrateWhiteboardImages(() => renderWhiteboardObjects()); saveWhiteboard(); return; }
+    if (!selected && action.dataset.action === "whiteboard-delete-object") { whiteboardDeleteNextObject = true; whiteboardCanvas()?.focus({ preventScroll: true }); setWhiteboardStatus("Delete is ready. Click the next object you want to remove."); return; }
     if (!selected) { setWhiteboardStatus("Select an object first."); return; }
     if (action.dataset.action === "whiteboard-push-2d") {
       if (!["rectangle", "ellipse", "triangle"].includes(selected.original2DType)) { setWhiteboardStatus("Select a shape that was pulled from 2D into 3D first."); return; }
