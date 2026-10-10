@@ -273,8 +273,9 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
 });
 
 test("dragging a selected object corner resizes regardless of the active tool", () => {
+  assert.match(app, /activeSelected && activeSelected\.type !== "dimension"/);
   assert.match(app, /const activeSelected = whiteboardObjects\.find\(\(object\) => object\.id === whiteboardSelectedObjectId\)/);
-  assert.match(app, /const activeResizeCorner = activeSelected\?\.type !== "dimension" \? whiteboardResizeCorner/);
+  assert.match(app, /const activeResizeCorner = activeSelected && activeSelected\.type !== "dimension" \? whiteboardResizeCorner/);
   assert.match(app, /if \(!whiteboardDeleteNextObject && activeSelected && activeResizeCorner\)/);
   assert.match(app, /resize: true, resizeCorner: activeResizeCorner/);
   assert.match(app, /Drag the selected corner to resize the object\./);

@@ -4081,7 +4081,7 @@ function mountWhiteboard() {
     const point = whiteboardPoint(event, canvas), tool = document.querySelector("[data-whiteboard-tool]")?.value ?? "select";
     const selected = hitTestObjects(whiteboardObjects.filter((object) => object.strokeStyle !== "eraser"), point);
     const activeSelected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
-    const activeResizeCorner = activeSelected?.type !== "dimension" ? whiteboardResizeCorner(objectBounds(activeSelected), point) : "";
+    const activeResizeCorner = activeSelected && activeSelected.type !== "dimension" ? whiteboardResizeCorner(objectBounds(activeSelected), point) : "";
     if (!whiteboardDeleteNextObject && activeSelected && activeResizeCorner) {
       pushWhiteboardHistory(); whiteboardDrawing = { tool: "select", objectId: activeSelected.id, start: point, original: cloneEditableWhiteboardObject(activeSelected), resize: true, resizeCorner: activeResizeCorner };
       canvas.setPointerCapture?.(event.pointerId); setWhiteboardStatus("Drag the selected corner to resize the object."); return;
