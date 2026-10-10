@@ -3267,12 +3267,13 @@ function updateWhiteboardCursiveCoach() {
   const coach = document.createElement("aside");
   coach.className = "platform-whiteboard-cursive-coach"; coach.dataset.whiteboardCursiveCoachPreview = "true"; coach.setAttribute("aria-live", "polite");
   const demonstration = mode === "word" ? lastWord : letter;
-  coach.innerHTML = `<span class="platform-whiteboard-cursive-demo" aria-label="Cursive demonstration">${escapeHtml(demonstration)}</span><ol>${(mode === "word" ? ["Begin with the entry stroke", "Connect each letter without lifting", "Finish with the exit stroke"] : steps).map((step) => `<li>${escapeHtml(step)}</li>`).join("")}</ol><svg class="platform-whiteboard-writing-hand" viewBox="0 0 120 70" role="img" aria-label="Temporary hand and pencil positioning guide"><path class="hand" d="M18 49c14-19 28-24 43-16l19 10c8 4 15 3 24-3l9 12c-18 14-34 14-50 7L42 52c-7 8-16 9-24-3Z"/><path class="finger" d="M42 52c5-10 12-17 21-22M56 57c4-9 10-15 18-20"/><path class="pencil" d="M48 42 96 9l8 10-49 32Z"/><path class="nib" d="m96 9 14-5-6 15Z"/></svg>`;
-  coach.style.left = `${Math.min(surface.clientWidth - 250, entry.offsetLeft + Math.min(entry.offsetWidth, 150))}px`;
+  const writtenStrokes = [...demonstration].map((character, index) => `<span class="platform-whiteboard-cursive-stroke" style="--stroke-order:${index}">${escapeHtml(character)}</span>`).join("");
+  coach.innerHTML = `<span class="platform-whiteboard-hand-guide"><svg class="platform-whiteboard-writing-hand" viewBox="0 0 120 70" role="img" aria-label="Temporary hand and pencil positioning guide"><path class="hand" d="M18 49c14-19 28-24 43-16l19 10c8 4 15 3 24-3l9 12c-18 14-34 14-50 7L42 52c-7 8-16 9-24-3Z"/><path class="finger" d="M42 52c5-10 12-17 21-22M56 57c4-9 10-15 18-20"/><path class="pencil" d="M48 42 96 9l8 10-49 32Z"/><path class="nib" d="m96 9 14-5-6 15Z"/></svg><small>Hand position</small></span><span class="platform-whiteboard-cursive-demo" aria-label="Cursive demonstration">${writtenStrokes}</span><ol>${(mode === "word" ? ["Begin with the entry stroke", "Connect each letter without lifting", "Finish with the exit stroke"] : steps).map((step) => `<li>${escapeHtml(step)}</li>`).join("")}</ol>`;
+  coach.style.left = `${Math.max(4, Math.min(surface.clientWidth - 390, entry.offsetLeft - 115))}px`;
   coach.style.top = `${Math.min(surface.clientHeight - 120, entry.offsetTop + entry.offsetHeight - 8)}px`;
   surface.append(coach);
-  window.setTimeout(() => coach.classList.add("is-fading"), 2200);
-  window.setTimeout(() => coach.remove(), 3000);
+  window.setTimeout(() => coach.classList.add("is-fading"), 5800);
+  window.setTimeout(() => coach.remove(), 6600);
 }
 
 function openWhiteboardTextEntry(point, canvas) {

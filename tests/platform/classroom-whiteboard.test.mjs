@@ -284,8 +284,13 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /function updateWhiteboardCursiveCoach\(\)/);
   assert.match(app, /platform-whiteboard-writing-hand/);
   assert.match(app, /Temporary hand and pencil positioning guide/);
+  assert.match(app, /platform-whiteboard-hand-guide/);
+  assert.match(app, /platform-whiteboard-cursive-stroke/);
+  assert.match(app, /--stroke-order/);
+  assert.match(app, /5800/);
+  assert.match(css, /background: #fff/);
+  assert.match(css, /calc\(var\(--stroke-order\) \* 1\.2s\)/);
   assert.match(css, /@keyframes platform-cursive-stroke-reveal/);
-  assert.match(css, /@keyframes platform-writing-hand/);
   assert.match(app, /selected\.cursiveGuide = cursiveLines\.value/);
   assert.match(app, /function cancelPendingWhiteboardTextEntry\(\)/);
   assert.match(app, /data-whiteboard-primary-tool="pen"/);
