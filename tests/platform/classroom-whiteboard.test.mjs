@@ -340,15 +340,16 @@ test("push back to 2D is located in the Shapes dropdown", () => {
   assert.match(app, />Push Back to 2D<\/button>/);
 });
 
-test("selected shapes expose angle degrees and circle radius controls", () => {
-  assert.match(app, /Angle \(degrees\)<input type="number" data-whiteboard-shape-angle min="-180" max="180"/);
-  assert.match(app, /Circle radius<input type="number" data-whiteboard-circle-radius min="5" max="500"/);
-  assert.match(app, /function syncWhiteboardShapeControls\(\)/);
-  assert.match(app, /selected\.rotation = Number\(shapeAngle\.value\) \* Math\.PI \/ 180/);
-  assert.match(app, /\["ellipse", "sphere"\]\.includes\(selected\.type\)/);
-  assert.match(app, /selected\.width = radius \* 2; selected\.height = radius \* 2/);
-  assert.match(app, /Shape angle set to \$\{Math\.round\(Number\(shapeAngle\.value\)\)\} degrees\./);
-  assert.match(app, /Circle radius set to \$\{radius\}\./);
+test("selected shapes temporarily display angle and radius measurements", () => {
+  assert.doesNotMatch(app, /data-whiteboard-shape-angle/);
+  assert.doesNotMatch(app, /data-whiteboard-circle-radius/);
+  assert.match(app, /function drawWhiteboardSelectionMeasurements\(context, object\)/);
+  assert.match(app, /\["ellipse", "sphere"\]\.includes\(object\.type\)/);
+  assert.match(app, /fillText\(`r = \$\{Math\.round\(radius\)\}`/);
+  assert.match(app, /object\.type === "triangle"/);
+  assert.match(app, /fillText\(`\$\{degrees\}°`/);
+  assert.match(app, /fillText\("90°"/);
+  assert.match(app, /drawWhiteboardSelectionMeasurements\(context, selected\)/);
 });
 
 test("selected text drawings and lines can be made 3D and restored to 2D", () => {
