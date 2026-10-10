@@ -13,6 +13,7 @@ import {
   validateTeacherCredentials,
 } from "./platform-fixtures.mjs";
 import { createSessionStore, PLATFORM_ROLES } from "./platform-session.mjs";
+import { customLetters as CURSIVE_STROKE_LETTERS } from "./cursive-strokes.mjs";
 import {
   createLessonTimer,
   formatLessonTime,
@@ -160,9 +161,6 @@ const WHITEBOARD_EMOJI_STAMPS = Object.freeze([
   { category: "Food and objects", emojis: [["🍎", "Apple"], ["🍕", "Pizza"], ["🍪", "Cookie"], ["🧁", "Cupcake"], ["🥤", "Drink"], ["⚽", "Soccer ball"], ["🏀", "Basketball"], ["🎨", "Art"], ["🎵", "Music"], ["🎲", "Game die"], ["🧩", "Puzzle"], ["🎯", "Target"], ["🏆", "Trophy"], ["🎁", "Gift"], ["⏰", "Clock"], ["🔔", "Bell"]] },
   { category: "Marks and symbols", emojis: [["✅", "Complete"], ["❌", "Incorrect"], ["⭐", "Star"], ["❤️", "Heart"], ["💛", "Yellow heart"], ["💚", "Green heart"], ["💙", "Blue heart"], ["💜", "Purple heart"], ["❗", "Important"], ["❓", "Question"], ["➡️", "Right arrow"], ["⬅️", "Left arrow"], ["⬆️", "Up arrow"], ["⬇️", "Down arrow"], ["➕", "Plus"], ["➖", "Minus"], ["💯", "One hundred"], ["✨", "Sparkles"]] },
 ]);
-const CURSIVE_STROKE_COACH = Object.freeze({
-  a: ["Curve up and around", "Close the oval", "Downstroke and exit"], b: ["Upstroke to the top", "Down to the baseline", "Loop right and exit"], c: ["Curve up", "Round back", "Sweep out"], d: ["Make an oval", "Rise to the top", "Downstroke and exit"], e: ["Enter at the baseline", "Loop through the middle", "Curve out"], f: ["Loop above", "Sweep below the baseline", "Cross and exit"], g: ["Make an oval", "Descend below the baseline", "Loop back and exit"], h: ["Rise to the top", "Downstroke", "Hump and exit"], i: ["Short upstroke", "Downstroke and exit", "Add the dot"], j: ["Short upstroke", "Descend and loop", "Add the dot"], k: ["Rise and return", "Loop from the middle", "Slant out"], l: ["Loop to the top", "Down to the baseline", "Exit stroke"], m: ["Entry stroke", "Two rounded humps", "Exit stroke"], n: ["Entry stroke", "One rounded hump", "Exit stroke"], o: ["Curve into an oval", "Close near the top", "Exit stroke"], p: ["Down below the baseline", "Return and loop", "Exit stroke"], q: ["Make an oval", "Descend below the baseline", "Sweep out right"], r: ["Rise to the middle", "Small shoulder", "Exit stroke"], s: ["Curve up", "Wind back", "Finish at the baseline"], t: ["Rise tall", "Downstroke and exit", "Cross the stem"], u: ["Curve down and up", "Repeat the downstroke", "Exit stroke"], v: ["Slant down", "Curve up", "Exit from the top"], w: ["Two joined curves", "Rise to the top", "Exit stroke"], x: ["Slant down and curve", "Cross with a second stroke", "Exit stroke"], y: ["Form a joined curve", "Descend below the baseline", "Loop back and exit"], z: ["Curve across", "Slant below the baseline", "Loop and exit"]
-});
 const knownRoutes = new Set(Object.values(ROUTES));
 let lessonTimerPresentationInterval = null;
 let lessonTimerDisplayTrigger = null;
@@ -1774,7 +1772,7 @@ function teacherDashboardView(state) {
         <label>Line size<input type="range" data-whiteboard-size min="2" max="32" value="6"><output data-whiteboard-size-output>6</output></label>
         <label>Text background<select data-whiteboard-text-background><option value="transparent">Transparent</option><option value="white">White</option><option value="black">Black</option><option value="highlight-yellow">Yellow highlighter</option><option value="highlight-green">Green highlighter</option><option value="highlight-pink">Pink highlighter</option><option value="highlight-blue">Blue highlighter</option></select></label>
         <label>Cursive writing lines<select data-whiteboard-cursive-lines><option value="none">No lines</option><option value="wide">Wide ruled</option><option value="practice">Handwriting practice — 3 lines</option></select></label>
-        <label>Cursive Coach<select data-whiteboard-cursive-coach><option value="off">Off</option><option value="letter">Demonstrate each letter</option><option value="word">Demonstrate the word</option></select></label>
+        <label>Cursive Coach<select data-whiteboard-cursive-coach><option value="off">Off</option><option value="letter">Show slow live strokes</option></select></label>
         <label>Image<input type="file" data-whiteboard-image accept="image/*"></label>
         <span class="platform-whiteboard-object-actions" role="group" aria-label="Selected object actions">
           <button type="button" data-action="whiteboard-copy">Copy</button><button type="button" data-action="whiteboard-paste">Paste</button><button type="button" data-action="whiteboard-duplicate">Duplicate</button><span class="platform-whiteboard-push-help-wrap"><button type="button" data-action="whiteboard-push-2d">Push Back to 2D</button><span class="platform-whiteboard-push-help" data-whiteboard-push-help role="status" hidden>Select the 3D shape, then use this button to return it to its original 2D shape.</span></span><button type="button" data-action="whiteboard-rotate-left">Rotate left</button><button type="button" data-action="whiteboard-rotate-right">Rotate right</button>
@@ -3269,7 +3267,12 @@ function updateWhiteboardCursiveCoach() {
   liveWriting.style.left = entry.style.left; liveWriting.style.top = entry.style.top; liveWriting.style.width = entry.style.width; liveWriting.style.height = entry.style.height;
   liveWriting.style.fontFamily = entry.style.fontFamily; liveWriting.style.fontSize = entry.style.fontSize; liveWriting.style.lineHeight = entry.style.lineHeight;
   liveWriting.style.color = entry.style.caretColor;
-  liveWriting.innerHTML = [...text].map((character, index, characters) => `<span${index === characters.length - 1 ? ' class="is-writing"' : ""}>${escapeHtml(character === " " ? "\u00a0" : character)}</span>`).join("");
+  const characters = [...text];
+  const activeCharacter = characters.at(-1) ?? "";
+  const completedText = characters.slice(0, -1).join("");
+  const glyph = CURSIVE_STROKE_LETTERS[activeCharacter.toLowerCase()];
+  const activeStroke = glyph ? `<svg class="platform-whiteboard-active-cursive-stroke" viewBox="-7 -15 34 40" aria-label="${escapeHtml(activeCharacter)} being written one stroke at a time">${glyph.paths.map((path, index) => path.dot ? `<circle class="platform-whiteboard-cursive-dot" cx="${path.dot.cx}" cy="${path.dot.cy}" r="${path.dot.r}" style="--stroke-order:${index}"/>` : `<path pathLength="1" d="${path.d}" style="--stroke-order:${index}"/>`).join("")}</svg>` : `<span class="platform-whiteboard-cursive-fallback">${escapeHtml(activeCharacter)}</span>`;
+  liveWriting.innerHTML = `<span>${escapeHtml(completedText).replaceAll(" ", "&nbsp;")}</span>${activeStroke}`;
   surface.append(liveWriting);
   const coach = document.createElement("aside");
   coach.className = "platform-whiteboard-pencil-grip-photo"; coach.dataset.whiteboardCursiveCoachPreview = "true";

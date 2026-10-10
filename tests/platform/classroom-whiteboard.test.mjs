@@ -1,9 +1,18 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { customLetters as cursiveStrokeLetters } from "../../platform/scripts/cursive-strokes.mjs";
 
 const app = readFileSync(new URL("../../platform/scripts/platform-app.mjs", import.meta.url), "utf8");
 const css = readFileSync(new URL("../../platform/styles/platform.css", import.meta.url), "utf8");
+
+test("cursive coach covers every lowercase letter with ordered visible strokes", () => {
+  assert.deepEqual(Object.keys(cursiveStrokeLetters), [..."abcdefghijklmnopqrstuvwxyz"]);
+  for (const letter of "abcdefghijklmnopqrstuvwxyz") assert.ok(cursiveStrokeLetters[letter].paths.length >= 1, `${letter} needs a visible stroke`);
+  for (const letter of "fgjpqy") assert.match(cursiveStrokeLetters[letter].paths.map(({ d }) => d).join(" "), /(?: 1[5-9](?:\.| )| 2[0-9](?:\.| ))/, `${letter} needs a descender below the baseline`);
+  assert.ok(cursiveStrokeLetters.i.paths.some(({ dot }) => dot), "i needs a separate dot stroke");
+  assert.ok(cursiveStrokeLetters.j.paths.some(({ dot }) => dot), "j needs a separate dot stroke");
+});
 
 test("Today workspace launches a browser-session classroom whiteboard", () => {
   for (const text of ["Open Whiteboard", "Close Whiteboard", "Pen", "Highlighter", "Eraser", "Line", "Rectangle", "Text", "Undo", "Redo", "Clear Board"]) {
@@ -279,8 +288,7 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /size \* 1\.55 \* scaleY/);
   assert.match(css, /background-position: left 0\.08em, left 0\.55em, left 1\.02em/);
   assert.match(app, /data-whiteboard-cursive-coach/);
-  assert.match(app, /Demonstrate each letter/);
-  assert.match(app, /const CURSIVE_STROKE_COACH/);
+  assert.match(app, /Show slow live strokes/);
   assert.match(app, /function updateWhiteboardCursiveCoach\(\)/);
   assert.match(app, /platform-whiteboard-pencil-grip-photo/);
   assert.match(app, /proper-pencil-grip\.jpg/);
@@ -290,8 +298,15 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /5800/);
   assert.match(css, /platform-whiteboard-pencil-grip-photo/);
   assert.match(css, /object-position: 28% center/);
-  assert.match(css, /animation: platform-cursive-stroke-reveal 2\.4s/);
+  assert.match(app, /CURSIVE_STROKE_LETTERS/);
+  assert.match(app, /platform-whiteboard-active-cursive-stroke/);
+  assert.match(app, /being written one stroke at a time/);
+  assert.match(app, /pathLength="1"/);
+  assert.match(css, /animation: platform-cursive-pen-stroke 1\.1s linear calc\(var\(--stroke-order\) \* 1\.15s\)/);
+  assert.match(css, /platform-whiteboard-cursive-dot/);
+  assert.match(css, /overflow: visible/);
   assert.match(css, /@keyframes platform-cursive-stroke-reveal/);
+  assert.match(css, /@keyframes platform-cursive-pen-stroke/);
   assert.match(app, /selected\.cursiveGuide = cursiveLines\.value/);
   assert.match(app, /function cancelPendingWhiteboardTextEntry\(\)/);
   assert.match(app, /data-whiteboard-primary-tool="pen"/);
