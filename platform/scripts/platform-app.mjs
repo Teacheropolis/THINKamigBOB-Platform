@@ -1690,7 +1690,8 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="lasso-select">Lasso select for image</button>
         </div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">⌫</span><small>Erase</small></summary><div>
-          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="eraser">Eraser object</button>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="eraser">Erase by dragging</button>
+          <label>Eraser thickness<input type="range" data-whiteboard-eraser-size min="12" max="140" value="40"><output data-whiteboard-eraser-size-output>40</output></label>
           <button type="button" data-action="whiteboard-delete-object">Delete selected object</button>
         </div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">✎</span><small>Pen</small></summary><div data-whiteboard-pen-panel>
@@ -3804,7 +3805,17 @@ function mountWhiteboard() {
     }
     if (tool === "select") { whiteboardSelectedObjectId = selected?.id ?? ""; if (selected) { pushWhiteboardHistory(); const bounds = objectBounds(selected); const resizeCorner = selected.type !== "dimension" ? whiteboardResizeCorner(bounds, point) : ""; whiteboardDrawing = { tool, objectId: selected.id, start: point, original: cloneEditableWhiteboardObject(selected), resize: Boolean(resizeCorner), resizeCorner }; if (selected.type === "dimension") setWhiteboardStatus("Drag the red measurement to the object perimeter, or choose its comparison unit above."); } syncWhiteboardDimensionCompareControl(); renderWhiteboardObjects(canvas); return; }
     if (tool === "fill") { if (selected && ["rectangle", "ellipse", "triangle", "cube", "rectangular-prism", "cylinder", "cone", "pyramid", "sphere"].includes(selected.type)) { pushWhiteboardHistory(); selected.fillColor = document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d"; whiteboardSelectedObjectId = selected.id; renderWhiteboardObjects(canvas); saveWhiteboard(canvas); setWhiteboardStatus("Shape filled. Use Undo to restore its previous color."); } else setWhiteboardStatus("Use the Paint Can on a closed 2D or 3D shape."); return; }
-    if (tool === "eraser") { if (selected) { pushWhiteboardHistory(); whiteboardObjects = whiteboardObjects.filter((object) => object.id !== selected.id); whiteboardSelectedObjectId = ""; renderWhiteboardObjects(canvas); saveWhiteboard(canvas); } return; }
+    if (tool === "eraser") {
+      pushWhiteboardHistory();
+      whiteboardDrawing = { tool, lastPoint: point, erased: false };
+      canvas.setPointerCapture?.(event.pointerId);
+      const radius = Number(document.querySelector("[data-whiteboard-eraser-size]")?.value ?? 40) / 2;
+      const before = whiteboardObjects.length;
+      whiteboardObjects = whiteboardObjects.filter((object) => { const bounds = objectBounds(object); return !(point.x >= bounds.x - radius && point.x <= bounds.x + bounds.width + radius && point.y >= bounds.y - radius && point.y <= bounds.y + bounds.height + radius); });
+      whiteboardDrawing.erased = whiteboardObjects.length !== before;
+      if (whiteboardDrawing.erased) { whiteboardSelectedObjectId = ""; renderWhiteboardObjects(canvas); }
+      setWhiteboardStatus("Drag the eraser across anything you want to remove."); return;
+    }
     pushWhiteboardHistory(); const color = document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d", size = Number(document.querySelector("[data-whiteboard-size]")?.value ?? 6);
     const isDrawingStroke = ["pen", "calligraphy", "brush", "highlighter"].includes(tool);
     const strokeSize = tool === "highlighter" ? size * 2.5 : tool === "brush" ? size * 3 : tool === "calligraphy" ? size * 1.6 : size;
@@ -3819,6 +3830,18 @@ function mountWhiteboard() {
       return;
     }
     event.preventDefault();
+    if (whiteboardDrawing.tool === "eraser") {
+      const radius = Number(document.querySelector("[data-whiteboard-eraser-size]")?.value ?? 40) / 2;
+      const previous = whiteboardDrawing.lastPoint ?? point;
+      const distance = Math.hypot(point.x - previous.x, point.y - previous.y);
+      const steps = Math.max(1, Math.ceil(distance / Math.max(4, radius / 2)));
+      const samples = Array.from({ length: steps }, (_, index) => ({ x: previous.x + (point.x - previous.x) * ((index + 1) / steps), y: previous.y + (point.y - previous.y) * ((index + 1) / steps) }));
+      const before = whiteboardObjects.length;
+      whiteboardObjects = whiteboardObjects.filter((object) => { const bounds = objectBounds(object); return !samples.some((sample) => sample.x >= bounds.x - radius && sample.x <= bounds.x + bounds.width + radius && sample.y >= bounds.y - radius && sample.y <= bounds.y + bounds.height + radius); });
+      whiteboardDrawing.lastPoint = point;
+      if (whiteboardObjects.length !== before) { whiteboardDrawing.erased = true; whiteboardSelectedObjectId = ""; renderWhiteboardObjects(canvas); }
+      return;
+    }
     if (whiteboardDrawing.tool === "lasso-select") { whiteboardLassoPoints.push(point); renderWhiteboardObjects(canvas); return; }
     if (whiteboardDrawing.tool === "ruler-adjust") {
       const original = whiteboardDrawing.originalRuler;
@@ -3849,7 +3872,7 @@ function mountWhiteboard() {
     else { object.width = point.x - whiteboardDrawing.start.x; object.height = point.y - whiteboardDrawing.start.y; }
     renderWhiteboardObjects(canvas);
   };
-  const end = () => { if (!whiteboardDrawing) return; const completedTool = whiteboardDrawing.tool; whiteboardDrawing = null; if (completedTool === "lasso-select") { updateWhiteboardLassoBounds(); renderWhiteboardObjects(canvas); setWhiteboardStatus(whiteboardLassoBounds ? "Selection ready. Remove its background or download it as a PNG." : "Draw a larger loop around the work you want to select."); return; } saveWhiteboard(canvas); setWhiteboardStatus("Board saved. Select any object to move, resize, copy, or delete it."); };
+  const end = () => { if (!whiteboardDrawing) return; const completedTool = whiteboardDrawing.tool, erased = whiteboardDrawing.erased; whiteboardDrawing = null; if (completedTool === "lasso-select") { updateWhiteboardLassoBounds(); renderWhiteboardObjects(canvas); setWhiteboardStatus(whiteboardLassoBounds ? "Selection ready. Remove its background or download it as a PNG." : "Draw a larger loop around the work you want to select."); return; } saveWhiteboard(canvas); setWhiteboardStatus(completedTool === "eraser" ? (erased ? "Erased. Use Undo to restore the removed objects." : "Nothing was under the eraser.") : "Board saved. Select any object to move, resize, copy, or delete it."); };
   canvas.addEventListener("pointerdown", start); canvas.addEventListener("pointermove", move); canvas.addEventListener("pointerup", end); canvas.addEventListener("pointercancel", end);
   canvas.addEventListener("dblclick", (event) => { const selected = hitTestObjects(whiteboardObjects, whiteboardPoint(event, canvas)); if (selected?.type === "text" && !selected.emojiStamp) { event.preventDefault(); whiteboardSelectedObjectId = selected.id; openWhiteboardRichTextEditor(selected, canvas); } });
   canvas.addEventListener("contextmenu", (event) => {
@@ -6012,6 +6035,12 @@ root.addEventListener("input", (event) => {
     const output = document.querySelector("[data-whiteboard-line-size-output]");
     if (size) { size.value = whiteboardLineSize.value; size.dispatchEvent(new Event("input", { bubbles: true })); }
     if (output) output.textContent = whiteboardLineSize.value;
+    return;
+  }
+  const whiteboardEraserSize = event.target.closest("[data-whiteboard-eraser-size]");
+  if (whiteboardEraserSize) {
+    const output = document.querySelector("[data-whiteboard-eraser-size-output]");
+    if (output) output.textContent = whiteboardEraserSize.value;
     return;
   }
   const scheduleDuration = event.target.closest('form[data-form="class-timer-schedule"] [name="durationMinutes"]');
