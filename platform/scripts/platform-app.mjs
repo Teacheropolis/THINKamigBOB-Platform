@@ -3678,6 +3678,28 @@ function makeWhiteboardObject3D(object, depth = 24) {
 }
 
 const WHITEBOARD_CLOSED_2D_SHAPES = Object.freeze(["rectangle", "ellipse", "triangle", "diamond", "pentagon", "hexagon", "star"]);
+const WHITEBOARD_3D_SHAPES = Object.freeze(["cube", "rectangular-prism", "triangular-prism", "hexagonal-prism", "cylinder", "cone", "pyramid", "sphere", "hemisphere"]);
+
+function bisectWhiteboardShapeWithLine(line) {
+  if (!line || line.type !== "line") return false;
+  const x1 = line.x, y1 = line.y, x2 = line.x + line.width, y2 = line.y + line.height;
+  if (Math.hypot(x2 - x1, y2 - y1) < 20) return false;
+  const lineBounds = { x: Math.min(x1, x2), y: Math.min(y1, y2), width: Math.abs(x2 - x1), height: Math.abs(y2 - y1) };
+  const candidate = [...whiteboardObjects].reverse().find((object) => {
+    if (object.id === line.id || ![...WHITEBOARD_CLOSED_2D_SHAPES, ...WHITEBOARD_3D_SHAPES].includes(object.type)) return false;
+    const bounds = objectBounds(object);
+    if (lineBounds.x > bounds.x + bounds.width || lineBounds.x + lineBounds.width < bounds.x || lineBounds.y > bounds.y + bounds.height || lineBounds.y + lineBounds.height < bounds.y) return false;
+    const signed = (x, y) => (x2 - x1) * (y - y1) - (y2 - y1) * (x - x1);
+    const corners = [[bounds.x, bounds.y], [bounds.x + bounds.width, bounds.y], [bounds.x, bounds.y + bounds.height], [bounds.x + bounds.width, bounds.y + bounds.height]].map(([x, y]) => signed(x, y));
+    return Math.min(...corners) < 0 && Math.max(...corners) > 0;
+  });
+  if (!candidate) return false;
+  const bounds = objectBounds(candidate), normalizedCut = { x1: (x1 - bounds.x) / bounds.width, y1: (y1 - bounds.y) / bounds.height, x2: (x2 - bounds.x) / bounds.width, y2: (y2 - bounds.y) / bounds.height };
+  const base = structuredClone(serializableWhiteboardObjects().find((object) => object.id === candidate.id)); delete base.id; delete base.type;
+  const fragments = [-1, 1].map((cutSide) => createWhiteboardObject("shape-fragment", { ...base, sourceType: candidate.type, cutSide, normalizedCut }));
+  whiteboardObjects = whiteboardObjects.filter((object) => object.id !== candidate.id && object.id !== line.id); whiteboardObjects.push(...fragments); whiteboardSelectedObjectId = fragments[0].id;
+  return true;
+}
 
 function flattenWhiteboard3DShape(object) {
   if (object.original2DType) {
@@ -3741,6 +3763,19 @@ function drawWhiteboardExtrusion(context, object) {
     }
     context.restore();
   }
+}
+
+function drawWhiteboardShapeFragment(context, object) {
+  const bounds = objectBounds(object), cut = object.normalizedCut;
+  if (!cut) return;
+  const x1 = bounds.x + cut.x1 * bounds.width, y1 = bounds.y + cut.y1 * bounds.height, x2 = bounds.x + cut.x2 * bounds.width, y2 = bounds.y + cut.y2 * bounds.height;
+  const dx = x2 - x1, dy = y2 - y1, length = Math.max(1, Math.hypot(dx, dy)), ux = dx / length, uy = dy / length, nx = -uy * object.cutSide, ny = ux * object.cutSide, far = Math.max(4000, bounds.width * 8, bounds.height * 8);
+  context.save(); context.beginPath(); context.moveTo(x1 - ux * far, y1 - uy * far); context.lineTo(x2 + ux * far, y2 + uy * far); context.lineTo(x2 + ux * far + nx * far, y2 + uy * far + ny * far); context.lineTo(x1 - ux * far + nx * far, y1 - uy * far + ny * far); context.closePath(); context.clip();
+  const source = { ...object, type: object.sourceType };
+  if (WHITEBOARD_3D_SHAPES.includes(source.type)) drawWhiteboard3DShape(context, source);
+  else { context.beginPath(); if (source.type === "rectangle") context.rect(source.x, source.y, source.width, source.height); if (source.type === "ellipse") context.ellipse(source.x + source.width / 2, source.y + source.height / 2, Math.abs(source.width / 2), Math.abs(source.height / 2), 0, 0, Math.PI * 2); if (source.type === "triangle") { context.moveTo(source.x + source.width / 2, source.y); context.lineTo(source.x + source.width, source.y + source.height); context.lineTo(source.x, source.y + source.height); context.closePath(); } if (source.type === "diamond") traceWhiteboardPolygon(context, source, 4); if (source.type === "pentagon") traceWhiteboardPolygon(context, source, 5); if (source.type === "hexagon") traceWhiteboardPolygon(context, source, 6); if (source.type === "star") traceWhiteboardPolygon(context, source, 5, 0.44); if (source.fillColor) { context.fillStyle = source.fillColor; context.fill(); } context.stroke(); }
+  context.restore();
+  context.save(); context.strokeStyle = object.color ?? "#12384d"; context.lineWidth = object.size ?? 6; context.beginPath(); context.moveTo(x1, y1); context.lineTo(x2, y2); context.stroke(); context.restore();
 }
 
 function whiteboardRulerLocalPoint(point) {
@@ -3824,7 +3859,8 @@ function renderWhiteboardObjects(canvas = whiteboardCanvas()) {
     else if (object.type === "image" && object.element) { context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(object.rotation ?? 0); context.drawImage(object.element, -object.width / 2, -object.height / 2, object.width, object.height); }
     else if (object.type === "dimension") drawWhiteboardDimension(context, object);
     else if (object.type === "line" || object.type === "arrow") { context.beginPath(); context.moveTo(object.x, object.y); context.lineTo(object.x + object.width, object.y + object.height); context.stroke(); if (object.type === "arrow") { const angle = Math.atan2(object.height, object.width); context.beginPath(); context.moveTo(object.x + object.width, object.y + object.height); context.lineTo(object.x + object.width - 18 * Math.cos(angle - 0.55), object.y + object.height - 18 * Math.sin(angle - 0.55)); context.moveTo(object.x + object.width, object.y + object.height); context.lineTo(object.x + object.width - 18 * Math.cos(angle + 0.55), object.y + object.height - 18 * Math.sin(angle + 0.55)); context.stroke(); } }
-    else if (["cube", "rectangular-prism", "triangular-prism", "hexagonal-prism", "cylinder", "cone", "pyramid", "sphere", "hemisphere"].includes(object.type)) drawWhiteboard3DShape(context, object);
+    else if (object.type === "shape-fragment") drawWhiteboardShapeFragment(context, object);
+    else if (WHITEBOARD_3D_SHAPES.includes(object.type)) drawWhiteboard3DShape(context, object);
     else { context.beginPath(); if (object.type === "rectangle") context.rect(object.x, object.y, object.width, object.height); if (object.type === "ellipse") context.ellipse(object.x + object.width / 2, object.y + object.height / 2, Math.abs(object.width / 2), Math.abs(object.height / 2), 0, 0, Math.PI * 2); if (object.type === "triangle") { context.moveTo(object.x + object.width / 2, object.y); context.lineTo(object.x + object.width, object.y + object.height); context.lineTo(object.x, object.y + object.height); context.closePath(); } if (object.type === "diamond") traceWhiteboardPolygon(context, object, 4); if (object.type === "pentagon") traceWhiteboardPolygon(context, object, 5); if (object.type === "hexagon") traceWhiteboardPolygon(context, object, 6); if (object.type === "star") traceWhiteboardPolygon(context, object, 5, 0.44); if (object.fillColor && !object.extruded3D) { context.fillStyle = object.fillColor; context.fill(); } context.stroke(); }
     context.restore();
   }
@@ -4081,7 +4117,7 @@ function mountWhiteboard() {
     else { object.width = point.x - whiteboardDrawing.start.x; object.height = point.y - whiteboardDrawing.start.y; }
     renderWhiteboardObjects(canvas);
   };
-  const end = () => { if (!whiteboardDrawing) return; const completedTool = whiteboardDrawing.tool, completedObjectId = whiteboardDrawing.objectId; whiteboardDrawing = null; if (completedTool === "lasso-select") { updateWhiteboardLassoBounds(); renderWhiteboardObjects(canvas); setWhiteboardStatus(whiteboardLassoBounds ? "Selection ready. Remove its background or download it as a PNG." : "Draw a larger loop around the work you want to select."); return; } const completedObject = whiteboardObjects.find((object) => object.id === completedObjectId); if (isAccidentalWhiteboardDot(completedObject)) { whiteboardObjects = whiteboardObjects.filter((object) => object.id !== completedObjectId); whiteboardSelectedObjectId = ""; renderWhiteboardObjects(canvas); saveWhiteboard(canvas); setWhiteboardStatus("No mark added. Drag on the board to draw a line or shape."); return; } saveWhiteboard(canvas); setWhiteboardStatus(completedTool === "eraser" ? "Eraser stroke saved. Use Undo to restore the erased area." : "Board saved. Select any object to move, resize, copy, or delete it."); };
+  const end = () => { if (!whiteboardDrawing) return; const completedTool = whiteboardDrawing.tool, completedObjectId = whiteboardDrawing.objectId; whiteboardDrawing = null; if (completedTool === "lasso-select") { updateWhiteboardLassoBounds(); renderWhiteboardObjects(canvas); setWhiteboardStatus(whiteboardLassoBounds ? "Selection ready. Remove its background or download it as a PNG." : "Draw a larger loop around the work you want to select."); return; } const completedObject = whiteboardObjects.find((object) => object.id === completedObjectId); if (completedTool === "line" && bisectWhiteboardShapeWithLine(completedObject)) { renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls(); setWhiteboardStatus("Shape divided into two independently editable objects along the line."); return; } if (isAccidentalWhiteboardDot(completedObject)) { whiteboardObjects = whiteboardObjects.filter((object) => object.id !== completedObjectId); whiteboardSelectedObjectId = ""; renderWhiteboardObjects(canvas); saveWhiteboard(canvas); setWhiteboardStatus("No mark added. Drag on the board to draw a line or shape."); return; } saveWhiteboard(canvas); setWhiteboardStatus(completedTool === "eraser" ? "Eraser stroke saved. Use Undo to restore the erased area." : "Board saved. Select any object to move, resize, copy, or delete it."); };
   canvas.addEventListener("pointerdown", start); canvas.addEventListener("pointermove", move); canvas.addEventListener("pointerup", end); canvas.addEventListener("pointercancel", end);
   canvas.addEventListener("dblclick", (event) => { const selected = hitTestObjects(whiteboardObjects.filter((object) => object.strokeStyle !== "eraser"), whiteboardPoint(event, canvas)); if (selected?.type === "text" && !selected.emojiStamp) { event.preventDefault(); whiteboardSelectedObjectId = selected.id; openWhiteboardRichTextEditor(selected, canvas); } });
   canvas.addEventListener("contextmenu", (event) => {

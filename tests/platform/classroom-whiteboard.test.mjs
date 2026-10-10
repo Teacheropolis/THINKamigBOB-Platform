@@ -441,6 +441,17 @@ test("all three 3D face colors can be chosen and applied together", () => {
   assert.match(app, /Front, side, and top or back face colors updated together/);
 });
 
+test("a line through a closed 2D or 3D shape bisects it into two editable fragments", () => {
+  assert.match(app, /function bisectWhiteboardShapeWithLine\(line\)/);
+  assert.match(app, /createWhiteboardObject\("shape-fragment"/);
+  assert.match(app, /cutSide/);
+  assert.match(app, /normalizedCut/);
+  assert.match(app, /function drawWhiteboardShapeFragment\(context, object\)/);
+  assert.match(app, /context\.clip\(\)/);
+  assert.match(app, /completedTool === "line" && bisectWhiteboardShapeWithLine\(completedObject\)/);
+  assert.match(app, /Shape divided into two independently editable objects along the line/);
+});
+
 test("chosen built-in 3D face colors use transparent fills with strong outlines", () => {
   assert.match(app, /if \(object\.faceColors\?\.\[face\]\)/);
   assert.match(app, /context\.globalAlpha = 0\.2/);
