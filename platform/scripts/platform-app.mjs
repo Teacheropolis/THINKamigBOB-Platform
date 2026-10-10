@@ -160,6 +160,9 @@ const WHITEBOARD_EMOJI_STAMPS = Object.freeze([
   { category: "Food and objects", emojis: [["🍎", "Apple"], ["🍕", "Pizza"], ["🍪", "Cookie"], ["🧁", "Cupcake"], ["🥤", "Drink"], ["⚽", "Soccer ball"], ["🏀", "Basketball"], ["🎨", "Art"], ["🎵", "Music"], ["🎲", "Game die"], ["🧩", "Puzzle"], ["🎯", "Target"], ["🏆", "Trophy"], ["🎁", "Gift"], ["⏰", "Clock"], ["🔔", "Bell"]] },
   { category: "Marks and symbols", emojis: [["✅", "Complete"], ["❌", "Incorrect"], ["⭐", "Star"], ["❤️", "Heart"], ["💛", "Yellow heart"], ["💚", "Green heart"], ["💙", "Blue heart"], ["💜", "Purple heart"], ["❗", "Important"], ["❓", "Question"], ["➡️", "Right arrow"], ["⬅️", "Left arrow"], ["⬆️", "Up arrow"], ["⬇️", "Down arrow"], ["➕", "Plus"], ["➖", "Minus"], ["💯", "One hundred"], ["✨", "Sparkles"]] },
 ]);
+const CURSIVE_STROKE_COACH = Object.freeze({
+  a: ["Curve up and around", "Close the oval", "Downstroke and exit"], b: ["Upstroke to the top", "Down to the baseline", "Loop right and exit"], c: ["Curve up", "Round back", "Sweep out"], d: ["Make an oval", "Rise to the top", "Downstroke and exit"], e: ["Enter at the baseline", "Loop through the middle", "Curve out"], f: ["Loop above", "Sweep below the baseline", "Cross and exit"], g: ["Make an oval", "Descend below the baseline", "Loop back and exit"], h: ["Rise to the top", "Downstroke", "Hump and exit"], i: ["Short upstroke", "Downstroke and exit", "Add the dot"], j: ["Short upstroke", "Descend and loop", "Add the dot"], k: ["Rise and return", "Loop from the middle", "Slant out"], l: ["Loop to the top", "Down to the baseline", "Exit stroke"], m: ["Entry stroke", "Two rounded humps", "Exit stroke"], n: ["Entry stroke", "One rounded hump", "Exit stroke"], o: ["Curve into an oval", "Close near the top", "Exit stroke"], p: ["Down below the baseline", "Return and loop", "Exit stroke"], q: ["Make an oval", "Descend below the baseline", "Sweep out right"], r: ["Rise to the middle", "Small shoulder", "Exit stroke"], s: ["Curve up", "Wind back", "Finish at the baseline"], t: ["Rise tall", "Downstroke and exit", "Cross the stem"], u: ["Curve down and up", "Repeat the downstroke", "Exit stroke"], v: ["Slant down", "Curve up", "Exit from the top"], w: ["Two joined curves", "Rise to the top", "Exit stroke"], x: ["Slant down and curve", "Cross with a second stroke", "Exit stroke"], y: ["Form a joined curve", "Descend below the baseline", "Loop back and exit"], z: ["Curve across", "Slant below the baseline", "Loop and exit"]
+});
 const knownRoutes = new Set(Object.values(ROUTES));
 let lessonTimerPresentationInterval = null;
 let lessonTimerDisplayTrigger = null;
@@ -1771,6 +1774,7 @@ function teacherDashboardView(state) {
         <label>Line size<input type="range" data-whiteboard-size min="2" max="32" value="6"><output data-whiteboard-size-output>6</output></label>
         <label>Text background<select data-whiteboard-text-background><option value="transparent">Transparent</option><option value="white">White</option><option value="black">Black</option><option value="highlight-yellow">Yellow highlighter</option><option value="highlight-green">Green highlighter</option><option value="highlight-pink">Pink highlighter</option><option value="highlight-blue">Blue highlighter</option></select></label>
         <label>Cursive writing lines<select data-whiteboard-cursive-lines><option value="none">No lines</option><option value="wide">Wide ruled</option><option value="practice">Handwriting practice — 3 lines</option></select></label>
+        <label>Cursive Coach<select data-whiteboard-cursive-coach><option value="off">Off</option><option value="letter">Demonstrate each letter</option><option value="word">Demonstrate the word</option></select></label>
         <label>Image<input type="file" data-whiteboard-image accept="image/*"></label>
         <span class="platform-whiteboard-object-actions" role="group" aria-label="Selected object actions">
           <button type="button" data-action="whiteboard-copy">Copy</button><button type="button" data-action="whiteboard-paste">Paste</button><button type="button" data-action="whiteboard-duplicate">Duplicate</button><span class="platform-whiteboard-push-help-wrap"><button type="button" data-action="whiteboard-push-2d">Push Back to 2D</button><span class="platform-whiteboard-push-help" data-whiteboard-push-help role="status" hidden>Select the 3D shape, then use this button to return it to its original 2D shape.</span></span><button type="button" data-action="whiteboard-rotate-left">Rotate left</button><button type="button" data-action="whiteboard-rotate-right">Rotate right</button>
@@ -3249,6 +3253,28 @@ function refreshPendingWhiteboardTextEntryStyle() {
   entry.style.minHeight = entry.style.height;
 }
 
+function updateWhiteboardCursiveCoach() {
+  const entry = document.querySelector("[data-whiteboard-text-entry]");
+  const surface = entry?.parentElement;
+  surface?.querySelector("[data-whiteboard-cursive-coach-preview]")?.remove();
+  const mode = document.querySelector("[data-whiteboard-cursive-coach]")?.value ?? "off";
+  const font = document.querySelector("[data-whiteboard-text-font]")?.value ?? "Arial";
+  const text = entry?.value.trim() ?? "";
+  if (!entry || !surface || mode === "off" || font !== "School Cursive" || !text) return;
+  const lastWord = text.split(/\s+/).at(-1) ?? "";
+  const letter = [...lastWord].at(-1) ?? "";
+  const steps = CURSIVE_STROKE_COACH[letter.toLowerCase()] ?? ["Begin at the top guide", "Form the letter smoothly", "Finish toward the next letter"];
+  const coach = document.createElement("aside");
+  coach.className = "platform-whiteboard-cursive-coach"; coach.dataset.whiteboardCursiveCoachPreview = "true"; coach.setAttribute("aria-live", "polite");
+  const demonstration = mode === "word" ? lastWord : letter;
+  coach.innerHTML = `<span class="platform-whiteboard-cursive-demo" aria-label="Cursive demonstration">${escapeHtml(demonstration)}</span><ol>${(mode === "word" ? ["Begin with the entry stroke", "Connect each letter without lifting", "Finish with the exit stroke"] : steps).map((step) => `<li>${escapeHtml(step)}</li>`).join("")}</ol><svg class="platform-whiteboard-writing-hand" viewBox="0 0 120 70" role="img" aria-label="Temporary hand and pencil positioning guide"><path class="hand" d="M18 49c14-19 28-24 43-16l19 10c8 4 15 3 24-3l9 12c-18 14-34 14-50 7L42 52c-7 8-16 9-24-3Z"/><path class="finger" d="M42 52c5-10 12-17 21-22M56 57c4-9 10-15 18-20"/><path class="pencil" d="M48 42 96 9l8 10-49 32Z"/><path class="nib" d="m96 9 14-5-6 15Z"/></svg>`;
+  coach.style.left = `${Math.min(surface.clientWidth - 250, entry.offsetLeft + Math.min(entry.offsetWidth, 150))}px`;
+  coach.style.top = `${Math.min(surface.clientHeight - 120, entry.offsetTop + entry.offsetHeight - 8)}px`;
+  surface.append(coach);
+  window.setTimeout(() => coach.classList.add("is-fading"), 2200);
+  window.setTimeout(() => coach.remove(), 3000);
+}
+
 function openWhiteboardTextEntry(point, canvas) {
   const surface = canvas.parentElement;
   if (!surface) return;
@@ -3264,7 +3290,7 @@ function openWhiteboardTextEntry(point, canvas) {
   entry.style.left = `${Math.max(4, Math.min(canvas.clientWidth - 230, point.x * scaleX))}px`;
   entry.style.top = `${Math.max(4, Math.min(canvas.clientHeight - 55, point.y * scaleY))}px`;
   let finished = false;
-  const close = () => { if (finished) return; finished = true; entry.remove(); canvas.focus({ preventScroll: true }); };
+  const close = () => { if (finished) return; finished = true; surface.querySelector("[data-whiteboard-cursive-coach-preview]")?.remove(); entry.remove(); canvas.focus({ preventScroll: true }); };
   const commit = () => {
     if (finished) return;
     const value = entry.value.trim().slice(0, 120);
@@ -3279,7 +3305,7 @@ function openWhiteboardTextEntry(point, canvas) {
     if (event.relatedTarget?.closest?.(".platform-whiteboard-quick-actions")) return;
     window.requestAnimationFrame(() => { if (entry.isConnected) entry.focus({ preventScroll: true }); });
   });
-  entry.addEventListener("input", refreshPendingWhiteboardTextEntryStyle);
+  entry.addEventListener("input", () => { refreshPendingWhiteboardTextEntryStyle(); updateWhiteboardCursiveCoach(); });
   entry.addEventListener("keydown", (event) => {
     if (event.key === "Escape") { event.preventDefault(); close(); setWhiteboardStatus("Text placement canceled."); }
     else if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); commit(); }
@@ -3291,6 +3317,7 @@ function openWhiteboardTextEntry(point, canvas) {
 }
 
 function cancelPendingWhiteboardTextEntry() {
+  document.querySelector("[data-whiteboard-cursive-coach-preview]")?.remove();
   document.querySelector("[data-whiteboard-text-entry]")?.remove();
 }
 
@@ -4044,7 +4071,7 @@ function mountWhiteboard() {
     const shapeControls = [drawingToolbar.querySelector(".platform-whiteboard-push-help-wrap")].filter(Boolean);
     const colorControls = [drawingToolbar.querySelector("[data-whiteboard-color]")?.closest("label")].filter(Boolean);
     const penControls = [drawingToolbar.querySelector("[data-whiteboard-size]")?.closest("label")].filter(Boolean);
-    const textControls = [drawingToolbar.querySelector("[data-whiteboard-text-background]")?.closest("label"), drawingToolbar.querySelector("[data-whiteboard-cursive-lines]")?.closest("label")].filter(Boolean);
+    const textControls = [drawingToolbar.querySelector("[data-whiteboard-text-background]")?.closest("label"), drawingToolbar.querySelector("[data-whiteboard-cursive-lines]")?.closest("label"), drawingToolbar.querySelector("[data-whiteboard-cursive-coach]")?.closest("label")].filter(Boolean);
     const emojiControls = [drawingToolbar.querySelector("[data-whiteboard-emoji-label]")].filter(Boolean);
     drawingToolbar.querySelectorAll('[data-action="whiteboard-undo"], [data-action="whiteboard-redo"]').forEach((button) => button.remove());
     selectPanel?.append(...selectControls);
@@ -6096,6 +6123,8 @@ root.addEventListener("change", (event) => {
     refreshPendingWhiteboardTextEntryStyle();
     setWhiteboardStatus(`${cursiveLines.options[cursiveLines.selectedIndex].text} selected for School Cursive text.`); return;
   }
+  const cursiveCoach = event.target.closest("[data-whiteboard-cursive-coach]");
+  if (cursiveCoach) { updateWhiteboardCursiveCoach(); setWhiteboardStatus(cursiveCoach.value === "off" ? "Cursive Coach is off." : `${cursiveCoach.options[cursiveCoach.selectedIndex].text} is active.`); return; }
   const emojiChoice = event.target.closest("[data-whiteboard-emoji]");
   if (emojiChoice) {
     const tool = document.querySelector("[data-whiteboard-tool]");
