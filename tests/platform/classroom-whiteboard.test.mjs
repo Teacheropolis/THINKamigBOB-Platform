@@ -147,7 +147,7 @@ test("saved boards support repeating weekdays or a specific calendar date", () =
 });
 
 test("every whiteboard element remains an editable object", () => {
-  for (const text of ["Select and move", "Erase by dragging", "Arrow", "Circle or oval", "Triangle", "Copy", "Paste", "Duplicate", "Delete selected"]) assert.match(app, new RegExp(text));
+  for (const text of ["Select and move", "Eraser", "Arrow", "Circle or oval", "Triangle", "Copy", "Paste", "Duplicate", "Delete selected"]) assert.match(app, new RegExp(text));
   assert.match(app, /WHITEBOARD_OBJECT_SESSION_KEY/);
   assert.match(app, /hitTestObjects/);
   assert.match(app, /resizeWhiteboardObject/);
@@ -196,14 +196,16 @@ test("whiteboard offers paint fill, calligraphy, and brush tools", () => {
   assert.match(app, /size\.dispatchEvent\(new Event\("input", \{ bubbles: true \}\)\)/);
 });
 
-test("eraser removes objects continuously with its own adjustable thickness", () => {
-  assert.match(app, /Erase by dragging/);
+test("eraser removes only its stroke area with its own adjustable thickness", () => {
+  assert.match(app, />Eraser<\/button>/);
   assert.match(app, /data-whiteboard-eraser-size min="12" max="140" value="40"/);
   assert.match(app, /data-whiteboard-eraser-size-output/);
-  assert.match(app, /whiteboardDrawing = \{ tool, lastPoint: point, erased: false \}/);
-  assert.match(app, /whiteboardDrawing\.tool === "eraser"/);
-  assert.match(app, /Array\.from\(\{ length: steps \}/);
-  assert.match(app, /Erased\. Use Undo to restore the removed objects\./);
+  assert.match(app, /strokeStyle: "eraser"/);
+  assert.match(app, /object\.strokeStyle === "eraser"/);
+  assert.match(app, /globalCompositeOperation = "destination-out"/);
+  assert.match(app, /filter\(\(object\) => object\.strokeStyle !== "eraser"\)/);
+  assert.match(app, /context\.lineWidth = object\.size \?\? 40/);
+  assert.match(app, /Eraser stroke saved\. Use Undo to restore the erased area\./);
   assert.match(app, />Delete selected object<\/button>/);
 });
 
