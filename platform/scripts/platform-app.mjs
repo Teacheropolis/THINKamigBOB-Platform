@@ -1729,9 +1729,8 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="hemisphere">Hemisphere</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pull-3d">Make selected object 3D</button>
           <label>3D thickness<input type="range" data-whiteboard-3d-depth min="10" max="120" value="24"><output data-whiteboard-3d-depth-output>24</output></label>
-          <label>3D face<select data-whiteboard-3d-face><option value="front">Front face</option><option value="side">Side face</option><option value="top">Top or back face</option></select></label>
-          <label>Face color<input type="color" data-whiteboard-3d-face-color value="#287da0"></label>
-          <button type="button" data-action="whiteboard-apply-3d-face-color">Apply face color</button>
+          <fieldset class="platform-whiteboard-face-colors"><legend>3D face colors</legend><label>Front<input type="color" data-whiteboard-3d-front-color value="#287da0"></label><label>Side<input type="color" data-whiteboard-3d-side-color value="#f0a52b"></label><label>Top or back<input type="color" data-whiteboard-3d-top-color value="#55a875"></label></fieldset>
+          <button type="button" data-action="whiteboard-apply-all-3d-face-colors">Apply all face colors</button>
         </div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">T</span><small>Text</small></summary><div data-whiteboard-text-panel><button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="text">Place a text box</button></div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">☺</span><small>Emoji</small></summary><div data-whiteboard-emoji-panel></div></details>
@@ -4942,13 +4941,12 @@ function handleClick(event) {
     if (selected?.type !== "text") { setWhiteboardStatus("Select a text object before applying a text background."); return; }
     pushWhiteboardHistory(); selected.background = document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent"; renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus("Text background updated."); return;
   }
-  if (action.dataset.action === "whiteboard-apply-3d-face-color") {
+  if (action.dataset.action === "whiteboard-apply-all-3d-face-colors") {
     const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
     const is3D = Boolean(selected?.extruded3D || ["cube", "rectangular-prism", "triangular-prism", "hexagonal-prism", "cylinder", "cone", "pyramid", "sphere", "hemisphere"].includes(selected?.type));
-    if (!selected || !is3D) { setWhiteboardStatus("Select a 3D shape before changing a face color."); return; }
-    const face = document.querySelector("[data-whiteboard-3d-face]")?.value ?? "front";
-    const color = document.querySelector("[data-whiteboard-3d-face-color]")?.value ?? "#287da0";
-    pushWhiteboardHistory(); selected.faceColors = { ...(selected.faceColors ?? {}), [face]: color }; renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); setWhiteboardStatus(`${face === "top" ? "Top or back" : face[0].toUpperCase() + face.slice(1)} face color updated.`); return;
+    if (!selected || !is3D) { setWhiteboardStatus("Select a 3D shape before changing its face colors."); return; }
+    const faceColors = { front: document.querySelector("[data-whiteboard-3d-front-color]")?.value ?? "#287da0", side: document.querySelector("[data-whiteboard-3d-side-color]")?.value ?? "#f0a52b", top: document.querySelector("[data-whiteboard-3d-top-color]")?.value ?? "#55a875" };
+    pushWhiteboardHistory(); selected.faceColors = faceColors; renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); setWhiteboardStatus("Front, side, and top or back face colors updated together."); return;
   }
   if (["whiteboard-copy", "whiteboard-paste", "whiteboard-duplicate", "whiteboard-push-2d", "whiteboard-rotate-left", "whiteboard-rotate-right", "whiteboard-delete-object"].includes(action.dataset.action)) {
     const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);

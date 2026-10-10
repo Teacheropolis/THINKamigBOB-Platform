@@ -424,13 +424,21 @@ test("ruler ticks reach its endpoint and written measurements include true-scale
 test("comparison scale key is blue and 3D faces have independent colors", () => {
   assert.match(app, /drawUnitKey\(object\.unit, 39, object\.color \?\? "#b52222"\)/);
   assert.match(app, /drawUnitKey\(compareUnit, 71, "#1769aa"\)/);
-  assert.match(app, /data-whiteboard-3d-face/);
-  assert.match(app, /data-whiteboard-3d-face-color/);
-  assert.match(app, /data-action="whiteboard-apply-3d-face-color"/);
-  assert.match(app, /selected\.faceColors = \{ \.\.\.\(selected\.faceColors \?\? \{\}\), \[face\]: color \}/);
+  assert.match(app, /data-whiteboard-3d-front-color/);
+  assert.match(app, /data-whiteboard-3d-side-color/);
+  assert.match(app, /data-whiteboard-3d-top-color/);
+  assert.match(app, /data-action="whiteboard-apply-all-3d-face-colors"/);
+  assert.match(app, /selected\.faceColors = faceColors/);
   assert.match(app, /object\.faceColors\?\.front/);
   assert.match(app, /object\.faceColors\?\.side/);
   assert.match(app, /object\.faceColors\?\.top/);
+});
+
+test("all three 3D face colors can be chosen and applied together", () => {
+  assert.match(app, /<legend>3D face colors<\/legend>/);
+  assert.match(app, />Apply all face colors<\/button>/);
+  assert.match(app, /const faceColors = \{ front:/);
+  assert.match(app, /Front, side, and top or back face colors updated together/);
 });
 
 test("chosen built-in 3D face colors use transparent fills with strong outlines", () => {
