@@ -347,9 +347,18 @@ test("selected text drawings and lines can be made 3D and restored to 2D", () =>
   assert.match(app, /function drawWhiteboardExtrusion\(context, object\)/);
   assert.match(app, /const layers = Math\.max\(4, Math\.ceil\(depth \/ 2\)\)/);
   assert.match(app, /drawWhiteboardExtrusion\(context, object\)/);
-  assert.match(app, /Selected object is now 3D\. Use Push Back to 2D to reverse it\./);
+  assert.match(app, /Selected object is now 3D with thickness \$\{depth\}\. Use Push Back to 2D to reverse it\./);
   assert.match(app, /delete selected\.extruded3D/);
   assert.match(app, /The object was pushed back to its original 2D form\./);
+});
+
+test("3D conversion thickness can be chosen and adjusted", () => {
+  assert.match(app, /3D thickness<input type="range" data-whiteboard-3d-depth min="10" max="120" value="24"/);
+  assert.match(app, /data-whiteboard-3d-depth-output/);
+  assert.match(app, /querySelector\("\[data-whiteboard-3d-depth\]"\)\?\.value \?\? 24/);
+  assert.match(app, /selected\?\.original2DType/);
+  assert.match(app, /selected\.depth = depth/);
+  assert.match(app, /3D thickness set to \$\{depth\}/);
 });
 
 test("CAD laser selects two points, asks concise questions, and creates dimensions", () => {

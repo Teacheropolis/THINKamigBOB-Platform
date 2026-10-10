@@ -1721,6 +1721,7 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pyramid">Pyramid</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="sphere">Sphere</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pull-3d">Make selected object 3D</button>
+          <label>3D thickness<input type="range" data-whiteboard-3d-depth min="10" max="120" value="24"><output data-whiteboard-3d-depth-output>24</output></label>
         </div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">T</span><small>Text</small></summary><div data-whiteboard-text-panel><button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="text">Place a text box</button></div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">☺</span><small>Emoji</small></summary><div data-whiteboard-emoji-panel></div></details>
@@ -4496,7 +4497,8 @@ function handleClick(event) {
       const selectedIndex = whiteboardObjects.findIndex((object) => object.id === whiteboardSelectedObjectId);
       const selected = whiteboardObjects[selectedIndex];
       if (selected && ["rectangle", "ellipse", "triangle", "text", "path", "line", "arrow"].includes(selected.type) && selected.strokeStyle !== "eraser" && !selected.original2DType) {
-        pushWhiteboardHistory(); whiteboardObjects[selectedIndex] = makeWhiteboardObject3D(selected, 24); renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); setWhiteboardStatus("Selected object is now 3D. Use Push Back to 2D to reverse it."); return;
+        const depth = Number(document.querySelector("[data-whiteboard-3d-depth]")?.value ?? 24);
+        pushWhiteboardHistory(); whiteboardObjects[selectedIndex] = makeWhiteboardObject3D(selected, depth); renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); setWhiteboardStatus(`Selected object is now 3D with thickness ${depth}. Use Push Back to 2D to reverse it.`); return;
       }
     }
     if (tool && nextTool) {
@@ -6121,6 +6123,15 @@ root.addEventListener("input", (event) => {
   if (whiteboardEraserSize) {
     const output = document.querySelector("[data-whiteboard-eraser-size-output]");
     if (output) output.textContent = whiteboardEraserSize.value;
+    return;
+  }
+  const whiteboard3DDepth = event.target.closest("[data-whiteboard-3d-depth]");
+  if (whiteboard3DDepth) {
+    const depth = Number(whiteboard3DDepth.value);
+    const output = document.querySelector("[data-whiteboard-3d-depth-output]");
+    if (output) output.textContent = String(depth);
+    const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
+    if (selected?.original2DType) { selected.depth = depth; renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus(`3D thickness set to ${depth}.`); }
     return;
   }
   const scheduleDuration = event.target.closest('form[data-form="class-timer-schedule"] [name="durationMinutes"]');
