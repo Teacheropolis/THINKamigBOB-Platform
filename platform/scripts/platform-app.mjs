@@ -1729,8 +1729,6 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="hemisphere">Hemisphere</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pull-3d">Make selected object 3D</button>
           <label>3D thickness<input type="range" data-whiteboard-3d-depth min="10" max="120" value="24"><output data-whiteboard-3d-depth-output>24</output></label>
-          <button type="button" data-action="whiteboard-turn-3d-left">Turn 3D left</button>
-          <button type="button" data-action="whiteboard-turn-3d-right">Turn 3D right</button>
         </div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">T</span><small>Text</small></summary><div data-whiteboard-text-panel><button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="text">Place a text box</button></div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">☺</span><small>Emoji</small></summary><div data-whiteboard-emoji-panel></div></details>
@@ -3320,7 +3318,7 @@ function drawWhiteboardTitleBar(context, canvas) {
 function drawWhiteboardRuler(context, canvas) {
   if (whiteboardRulerUnit === "none") return;
   const metric = whiteboardRulerUnit === "metric";
-  const unit = metric ? 37.8 : 72;
+  const unit = metric ? 37.8 : 96;
   const subdivisions = metric ? 10 : 8;
   const width = Math.max(150, whiteboardRuler.length);
   const units = Math.max(1, Math.floor(width / unit));
@@ -3716,14 +3714,6 @@ function drawWhiteboardExtrusion(context, object) {
   }
 }
 
-function applyWhiteboardSideTurn(context, object) {
-  const turn = Number(object.sideTurn ?? 0);
-  if (!turn) return;
-  const bounds = objectBounds(object), centerX = bounds.x + bounds.width / 2, centerY = bounds.y + bounds.height / 2;
-  const scaleX = 0.62 + Math.abs(Math.cos(turn)) * 0.38, skewY = Math.sin(turn) * 0.08;
-  context.translate(centerX, centerY); context.transform(scaleX, skewY, 0, 1, 0, 0); context.translate(-centerX, -centerY);
-}
-
 function whiteboardRulerLocalPoint(point) {
   const dx = point.x - whiteboardRuler.x, dy = point.y - whiteboardRuler.y, cosine = Math.cos(-whiteboardRuler.angle), sine = Math.sin(-whiteboardRuler.angle);
   return { x: dx * cosine - dy * sine, y: dx * sine + dy * cosine };
@@ -3797,8 +3787,8 @@ function renderWhiteboardObjects(canvas = whiteboardCanvas()) {
   const context = canvas.getContext("2d");
   context.clearRect(0, 0, canvas.width, canvas.height); context.fillStyle = "#fff"; context.fillRect(0, 0, canvas.width, canvas.height); drawWhiteboardGrid(context, canvas);
   for (const object of whiteboardObjects) {
-    context.save(); applyWhiteboardSideTurn(context, object); drawWhiteboardExtrusion(context, object); context.restore();
-    context.save(); applyWhiteboardSideTurn(context, object); context.globalAlpha = object.opacity ?? 1; context.strokeStyle = object.color ?? "#12384d"; context.fillStyle = object.color ?? "#12384d"; context.lineWidth = object.size ?? 6; context.lineCap = "round"; context.lineJoin = "round";
+    drawWhiteboardExtrusion(context, object);
+    context.save(); context.globalAlpha = object.opacity ?? 1; context.strokeStyle = object.color ?? "#12384d"; context.fillStyle = object.color ?? "#12384d"; context.lineWidth = object.size ?? 6; context.lineCap = "round"; context.lineJoin = "round";
     if (object.rotation && !["text", "image", "path", "dimension"].includes(object.type)) { const bounds = objectBounds(object), centerX = bounds.x + bounds.width / 2, centerY = bounds.y + bounds.height / 2; context.translate(centerX, centerY); context.rotate(object.rotation); context.translate(-centerX, -centerY); }
     if (object.type === "path") drawWhiteboardPath(context, object);
     else if (object.type === "text") { const angle = object.rotation ?? 0, background = whiteboardTextBackground(object.background); context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(angle); if (background) { context.fillStyle = background; context.fillRect(-object.width / 2 - 8, -object.height / 2 - 5, object.width + 16, object.height + 10); } let cursorX = -object.width / 2; const baseline = -object.height / 2 + (object.fontSize ?? 36); whiteboardRichTextRuns(object.richHtml, object.text, object.fontSize, object.background === "black" ? "#ffffff" : object.color).forEach((run) => { context.font = `${run.italic ? "italic " : ""}${run.bold ? "700" : "400"} ${run.size}px sans-serif`; context.fillStyle = run.color; context.fillText(run.text, cursorX, baseline); const width = context.measureText(run.text).width; if (run.underline) context.fillRect(cursorX, baseline + 3, width, Math.max(1.5, run.size / 18)); cursorX += width; }); }
@@ -4922,7 +4912,7 @@ function handleClick(event) {
     if (selected?.type !== "text") { setWhiteboardStatus("Select a text object before applying a text background."); return; }
     pushWhiteboardHistory(); selected.background = document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent"; renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus("Text background updated."); return;
   }
-  if (["whiteboard-copy", "whiteboard-paste", "whiteboard-duplicate", "whiteboard-push-2d", "whiteboard-rotate-left", "whiteboard-rotate-right", "whiteboard-turn-3d-left", "whiteboard-turn-3d-right", "whiteboard-delete-object"].includes(action.dataset.action)) {
+  if (["whiteboard-copy", "whiteboard-paste", "whiteboard-duplicate", "whiteboard-push-2d", "whiteboard-rotate-left", "whiteboard-rotate-right", "whiteboard-delete-object"].includes(action.dataset.action)) {
     const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
     if (action.dataset.action === "whiteboard-copy") { if (selected) { whiteboardClipboard = structuredClone(serializableWhiteboardObjects().find((object) => object.id === selected.id)); setWhiteboardStatus("Selected object copied."); } else setWhiteboardStatus("Select an object first."); return; }
     if (action.dataset.action === "whiteboard-paste") { if (!whiteboardClipboard) { setWhiteboardStatus("Copy an object before pasting."); return; } pushWhiteboardHistory(); const copy = duplicateWhiteboardObject(whiteboardClipboard); whiteboardObjects.push(copy); whiteboardSelectedObjectId = copy.id; hydrateWhiteboardImages(() => renderWhiteboardObjects()); saveWhiteboard(); return; }
@@ -4939,11 +4929,6 @@ function handleClick(event) {
     if (["whiteboard-rotate-left", "whiteboard-rotate-right"].includes(action.dataset.action)) {
       if (["path", "dimension"].includes(selected.type)) { setWhiteboardStatus("Rotation is available for images, text, lines, arrows, and 2D or 3D shapes."); return; }
       pushWhiteboardHistory(); selected.rotation = (selected.rotation ?? 0) + (action.dataset.action === "whiteboard-rotate-left" ? -Math.PI / 12 : Math.PI / 12); renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus("Selected object rotated 15 degrees."); return;
-    }
-    if (["whiteboard-turn-3d-left", "whiteboard-turn-3d-right"].includes(action.dataset.action)) {
-      const is3D = Boolean(selected.extruded3D || ["cube", "rectangular-prism", "triangular-prism", "hexagonal-prism", "cylinder", "cone", "pyramid", "sphere", "hemisphere"].includes(selected.type));
-      if (!is3D) { setWhiteboardStatus("Select a 3D shape before turning it sideways."); return; }
-      pushWhiteboardHistory(); selected.sideTurn = Number(selected.sideTurn ?? 0) + (action.dataset.action === "whiteboard-turn-3d-left" ? -Math.PI / 12 : Math.PI / 12); renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus("3D shape turned 15 degrees sideways."); return;
     }
     pushWhiteboardHistory();
     if (action.dataset.action === "whiteboard-duplicate") { const copy = duplicateWhiteboardObject(selected); whiteboardObjects.push(copy); whiteboardSelectedObjectId = copy.id; hydrateWhiteboardImages(() => renderWhiteboardObjects()); }

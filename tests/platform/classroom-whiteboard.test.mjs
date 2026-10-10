@@ -397,15 +397,20 @@ test("pulled 3D layers use a readable light-to-shadow gradient", () => {
   assert.match(app, /Math\.min\(14, Math\.ceil\(depth \/ 3\)\)/);
 });
 
-test("all closed shapes show angles or radius measurements and 3D shapes turn sideways", () => {
-  for (const text of ["r =", "Turn 3D left", "Turn 3D right"]) assert.match(app, new RegExp(text));
+test("all closed shapes show angles or radius measurements", () => {
+  assert.match(app, /r =/);
   assert.doesNotMatch(app, /label\(`d =/);
   assert.doesNotMatch(app, /label\(`C =/);
   assert.match(app, /\["diamond", "pentagon", "hexagon", "star", "hexagonal-prism"\]/);
   assert.match(app, /\["triangle", "pyramid", "cone", "triangular-prism"\]/);
-  assert.match(app, /function applyWhiteboardSideTurn\(context, object\)/);
-  assert.match(app, /0\.62 \+ Math\.abs\(Math\.cos\(turn\)\) \* 0\.38/);
-  assert.match(app, /selected\.sideTurn = Number\(selected\.sideTurn \?\? 0\)/);
+  assert.doesNotMatch(app, /whiteboard-turn-3d-left/);
+  assert.doesNotMatch(app, /whiteboard-turn-3d-right/);
+});
+
+test("English ruler and dimension calculations share the same 96 pixel inch", () => {
+  assert.match(app, /const unit = metric \? 37\.8 : 96/);
+  assert.match(app, /in: 96/);
+  assert.doesNotMatch(app, /metric \? 37\.8 : 72/);
 });
 
 test("3D shapes use gradient line layers without solid fills", () => {
