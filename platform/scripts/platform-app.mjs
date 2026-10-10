@@ -3438,28 +3438,28 @@ function drawWhiteboard3DShape(context, object) {
   }
   context.stroke();
   const faceColors = { front: object.faceColors?.front ?? object.color ?? "#12384d", side: object.faceColors?.side ?? object.color ?? "#287da0", top: object.faceColors?.top ?? object.color ?? "#6aa9bf" };
-  const strokeFace = (color, trace) => { context.save(); context.strokeStyle = color; context.beginPath(); trace(); context.stroke(); context.restore(); };
+  const strokeFace = (face, trace) => { const color = faceColors[face]; context.save(); context.strokeStyle = color; context.beginPath(); trace(); if (object.faceColors?.[face]) { context.save(); context.globalAlpha = 0.2; context.fillStyle = color; context.fill(); context.restore(); } context.stroke(); context.restore(); };
   if (["cube", "rectangular-prism", "triangular-prism", "hexagonal-prism"].includes(object.type)) {
-    strokeFace(faceColors.front, () => context.rect(x, y + depth, width - depth, height - depth));
-    strokeFace(faceColors.top, () => { context.moveTo(x, y + depth); context.lineTo(x + depth, y); context.lineTo(x + width, y); context.lineTo(x + width - depth, y + depth); context.closePath(); });
-    strokeFace(faceColors.side, () => { context.moveTo(x + width - depth, y + depth); context.lineTo(x + width, y); context.lineTo(x + width, y + height - depth); context.lineTo(x + width - depth, y + height); context.closePath(); });
-    if (object.type === "triangular-prism") strokeFace(faceColors.front, () => { context.moveTo(x, y + height - depth); context.lineTo(x + (width - depth) / 2, y + depth); context.lineTo(x + width - depth, y + height - depth); context.closePath(); });
-    if (object.type === "hexagonal-prism") strokeFace(faceColors.front, () => { context.moveTo(x, y + height / 2); context.lineTo(x + depth, y + depth); context.lineTo(x + width - depth, y + depth); context.lineTo(x + width, y + height / 2); });
+    strokeFace("front", () => context.rect(x, y + depth, width - depth, height - depth));
+    strokeFace("top", () => { context.moveTo(x, y + depth); context.lineTo(x + depth, y); context.lineTo(x + width, y); context.lineTo(x + width - depth, y + depth); context.closePath(); });
+    strokeFace("side", () => { context.moveTo(x + width - depth, y + depth); context.lineTo(x + width, y); context.lineTo(x + width, y + height - depth); context.lineTo(x + width - depth, y + height); context.closePath(); });
+    if (object.type === "triangular-prism") strokeFace("front", () => { context.moveTo(x, y + height - depth); context.lineTo(x + (width - depth) / 2, y + depth); context.lineTo(x + width - depth, y + height - depth); context.closePath(); });
+    if (object.type === "hexagonal-prism") strokeFace("front", () => { context.moveTo(x, y + height / 2); context.lineTo(x + depth, y + depth); context.lineTo(x + width - depth, y + depth); context.lineTo(x + width, y + height / 2); context.closePath(); });
   } else if (object.type === "cylinder") {
-    strokeFace(faceColors.top, () => context.ellipse(x + width / 2, y + depth / 2, width / 2, depth / 2, 0, 0, Math.PI * 2));
-    strokeFace(faceColors.side, () => { context.moveTo(x, y + depth / 2); context.lineTo(x, y + height - depth / 2); context.moveTo(x + width, y + depth / 2); context.lineTo(x + width, y + height - depth / 2); });
-    strokeFace(faceColors.front, () => context.ellipse(x + width / 2, y + height - depth / 2, width / 2, depth / 2, 0, 0, Math.PI * 2));
+    strokeFace("top", () => context.ellipse(x + width / 2, y + depth / 2, width / 2, depth / 2, 0, 0, Math.PI * 2));
+    strokeFace("side", () => { context.moveTo(x, y + depth / 2); context.lineTo(x, y + height - depth / 2); context.lineTo(x + width, y + height - depth / 2); context.lineTo(x + width, y + depth / 2); context.closePath(); });
+    strokeFace("front", () => context.ellipse(x + width / 2, y + height - depth / 2, width / 2, depth / 2, 0, 0, Math.PI * 2));
   } else if (object.type === "pyramid") {
-    strokeFace(faceColors.front, () => { context.moveTo(x + width / 2, y); context.lineTo(x, y + height - depth); context.lineTo(x + width / 2, y + height); context.closePath(); });
-    strokeFace(faceColors.side, () => { context.moveTo(x + width / 2, y); context.lineTo(x + width / 2, y + height); context.lineTo(x + width, y + height - depth); context.closePath(); });
-    strokeFace(faceColors.top, () => { context.moveTo(x, y + height - depth); context.lineTo(x + width / 2, y + height); context.lineTo(x + width, y + height - depth); });
+    strokeFace("front", () => { context.moveTo(x + width / 2, y); context.lineTo(x, y + height - depth); context.lineTo(x + width / 2, y + height); context.closePath(); });
+    strokeFace("side", () => { context.moveTo(x + width / 2, y); context.lineTo(x + width / 2, y + height); context.lineTo(x + width, y + height - depth); context.closePath(); });
+    strokeFace("top", () => { context.moveTo(x, y + height - depth); context.lineTo(x + width / 2, y + height); context.lineTo(x + width, y + height - depth); context.closePath(); });
   } else if (object.type === "cone") {
-    strokeFace(faceColors.side, () => { context.moveTo(x + width / 2, y); context.lineTo(x, y + height - depth / 2); context.moveTo(x + width / 2, y); context.lineTo(x + width, y + height - depth / 2); });
-    strokeFace(faceColors.front, () => context.ellipse(x + width / 2, y + height - depth / 2, width / 2, depth / 2, 0, 0, Math.PI * 2));
+    strokeFace("side", () => { context.moveTo(x + width / 2, y); context.lineTo(x, y + height - depth / 2); context.lineTo(x + width, y + height - depth / 2); context.closePath(); });
+    strokeFace("front", () => context.ellipse(x + width / 2, y + height - depth / 2, width / 2, depth / 2, 0, 0, Math.PI * 2));
   } else if (["sphere", "hemisphere"].includes(object.type)) {
-    strokeFace(faceColors.front, () => context.ellipse(x + width / 2, y + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2));
-    strokeFace(faceColors.side, () => { context.moveTo(x + width / 2, y); context.bezierCurveTo(x + width * 0.35, y + height * 0.2, x + width * 0.35, y + height * 0.8, x + width / 2, y + height); });
-    strokeFace(faceColors.top, () => { context.moveTo(x, y + height / 2); context.bezierCurveTo(x + width * 0.2, y + height * 0.35, x + width * 0.8, y + height * 0.35, x + width, y + height / 2); });
+    strokeFace("front", () => context.ellipse(x + width / 2, y + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2));
+    strokeFace("side", () => { context.moveTo(x + width / 2, y); context.bezierCurveTo(x + width * 0.35, y + height * 0.2, x + width * 0.35, y + height * 0.8, x + width / 2, y + height); });
+    strokeFace("top", () => { context.moveTo(x, y + height / 2); context.bezierCurveTo(x + width * 0.2, y + height * 0.35, x + width * 0.8, y + height * 0.35, x + width, y + height / 2); });
   }
   if (object.shapeLabel) {
     const name = ({ "rectangular-prism": "Rectangular Prism", "triangular-prism": "Triangular Prism", "hexagonal-prism": "Hexagonal Prism", cylinder: "Cylinder", pyramid: "Pyramid", hemisphere: "Hemisphere" })[object.type] ?? "3D Shape";

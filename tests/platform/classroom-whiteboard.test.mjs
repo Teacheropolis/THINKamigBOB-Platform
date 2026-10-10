@@ -433,6 +433,14 @@ test("comparison scale key is blue and 3D faces have independent colors", () => 
   assert.match(app, /object\.faceColors\?\.top/);
 });
 
+test("chosen built-in 3D face colors use transparent fills with strong outlines", () => {
+  assert.match(app, /if \(object\.faceColors\?\.\[face\]\)/);
+  assert.match(app, /context\.globalAlpha = 0\.2/);
+  assert.match(app, /context\.fillStyle = color; context\.fill\(\)/);
+  assert.match(app, /context\.strokeStyle = color/);
+  assert.match(app, /const strokeFace = \(face, trace\)/);
+});
+
 test("3D shapes use gradient line layers without solid fills", () => {
   assert.match(app, /context\.strokeStyle = gradient/);
   assert.match(app, /if \(object\.fillColor && !object\.extruded3D\)/);
