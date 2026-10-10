@@ -1768,6 +1768,7 @@ function teacherDashboardView(state) {
         <label data-whiteboard-emoji-label>Choose an emoji<select data-whiteboard-emoji aria-label="Choose an emoji stamp">${WHITEBOARD_EMOJI_STAMPS.map((group) => `<optgroup label="${escapeHtml(group.category)}">${group.emojis.map(([emoji, name]) => `<option value="${emoji}">${emoji} ${escapeHtml(name)}</option>`).join("")}</optgroup>`).join("")}</select></label>
         <label>Line size<input type="range" data-whiteboard-size min="2" max="32" value="6"><output data-whiteboard-size-output>6</output></label>
         <label>Text background<select data-whiteboard-text-background><option value="transparent">Transparent</option><option value="white">White</option><option value="black">Black</option><option value="highlight-yellow">Yellow highlighter</option><option value="highlight-green">Green highlighter</option><option value="highlight-pink">Pink highlighter</option><option value="highlight-blue">Blue highlighter</option></select></label>
+        <label>Cursive writing lines<select data-whiteboard-cursive-lines><option value="none">No lines</option><option value="wide">Wide ruled</option><option value="practice">Handwriting practice — 3 lines</option></select></label>
         <label>Image<input type="file" data-whiteboard-image accept="image/*"></label>
         <span class="platform-whiteboard-object-actions" role="group" aria-label="Selected object actions">
           <button type="button" data-action="whiteboard-copy">Copy</button><button type="button" data-action="whiteboard-paste">Paste</button><button type="button" data-action="whiteboard-duplicate">Duplicate</button><span class="platform-whiteboard-push-help-wrap"><button type="button" data-action="whiteboard-push-2d">Push Back to 2D</button><span class="platform-whiteboard-push-help" data-whiteboard-push-help role="status" hidden>Select the 3D shape, then use this button to return it to its original 2D shape.</span></span><button type="button" data-action="whiteboard-rotate-left">Rotate left</button><button type="button" data-action="whiteboard-rotate-right">Rotate right</button>
@@ -3245,7 +3246,7 @@ function openWhiteboardTextEntry(point, canvas) {
     if (!value) { close(); setWhiteboardStatus("Text placement canceled."); return; }
     pushWhiteboardHistory();
     const size = Math.max(22, Number(document.querySelector("[data-whiteboard-size]")?.value ?? 6) * 5);
-    const object = createWhiteboardObject("text", { text: value, x: point.x, y: point.y, width: Math.min(canvas.width - point.x, Math.max(180, value.length * size * 0.55)), height: size * 1.3, fontSize: size, fontFamily: document.querySelector("[data-whiteboard-text-font]")?.value ?? "Arial", color: document.querySelector("[data-whiteboard-text-color]")?.value ?? document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d", background: document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent", bold: document.querySelector('[data-text-command="bold"]')?.getAttribute("aria-pressed") === "true", italic: document.querySelector('[data-text-command="italic"]')?.getAttribute("aria-pressed") === "true", underline: document.querySelector('[data-text-command="underline"]')?.getAttribute("aria-pressed") === "true", rotation: 0 });
+    const object = createWhiteboardObject("text", { text: value, x: point.x, y: point.y, width: Math.min(canvas.width - point.x, Math.max(180, value.length * size * 0.55)), height: size * 1.3, fontSize: size, fontFamily: document.querySelector("[data-whiteboard-text-font]")?.value ?? "Arial", color: document.querySelector("[data-whiteboard-text-color]")?.value ?? document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d", background: document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent", cursiveGuide: document.querySelector("[data-whiteboard-cursive-lines]")?.value ?? "none", bold: document.querySelector('[data-text-command="bold"]')?.getAttribute("aria-pressed") === "true", italic: document.querySelector('[data-text-command="italic"]')?.getAttribute("aria-pressed") === "true", underline: document.querySelector('[data-text-command="underline"]')?.getAttribute("aria-pressed") === "true", rotation: 0 });
     whiteboardObjects.push(object); whiteboardSelectedObjectId = object.id; close(); renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls(); setWhiteboardStatus("Text added at the selected spot. Drag it to reposition it.");
   };
   entry.addEventListener("blur", commit);
@@ -3344,6 +3345,20 @@ function drawWhiteboardRuler(context, canvas) {
 
 function whiteboardTextBackground(value) {
   return ({ white: "#ffffff", black: "#111820", "highlight-yellow": "rgba(255, 226, 88, 0.62)", "highlight-green": "rgba(116, 219, 148, 0.58)", "highlight-pink": "rgba(255, 145, 196, 0.58)", "highlight-blue": "rgba(105, 196, 235, 0.58)" })[value] ?? "";
+}
+
+function drawWhiteboardCursiveGuides(context, object) {
+  if (object.fontFamily !== "School Cursive" || !["wide", "practice"].includes(object.cursiveGuide)) return;
+  const left = -object.width / 2 - 6, right = object.width / 2 + 6, top = -object.height / 2, bottom = object.height / 2;
+  context.save(); context.lineWidth = 1.5; context.strokeStyle = "rgba(64, 142, 190, 0.72)";
+  if (object.cursiveGuide === "wide") {
+    const spacing = Math.max(26, (object.fontSize ?? 36) * (object.textScale ?? 1) * 1.35);
+    for (let y = bottom - 3; y >= top; y -= spacing) { context.beginPath(); context.moveTo(left, y); context.lineTo(right, y); context.stroke(); }
+  } else {
+    [top + 3, bottom - 3].forEach((y) => { context.beginPath(); context.moveTo(left, y); context.lineTo(right, y); context.stroke(); });
+    context.setLineDash([7, 5]); context.strokeStyle = "rgba(207, 82, 82, 0.68)"; context.beginPath(); context.moveTo(left, 0); context.lineTo(right, 0); context.stroke();
+  }
+  context.restore();
 }
 
 function traceWhiteboardPath(context, points, offsetX = 0, offsetY = 0) {
@@ -3918,7 +3933,7 @@ function renderWhiteboardObjects(canvas = whiteboardCanvas()) {
     context.save(); context.globalAlpha = object.opacity ?? 1; context.strokeStyle = object.faceColors?.front ?? object.color ?? "#12384d"; context.fillStyle = object.faceColors?.front ?? object.color ?? "#12384d"; context.lineWidth = object.size ?? 6; context.lineCap = "round"; context.lineJoin = "round";
     if (object.rotation && !["text", "image", "path", "dimension"].includes(object.type)) { const bounds = objectBounds(object), centerX = bounds.x + bounds.width / 2, centerY = bounds.y + bounds.height / 2; context.translate(centerX, centerY); context.rotate(object.rotation); context.translate(-centerX, -centerY); }
     if (object.type === "path") drawWhiteboardPath(context, object);
-    else if (object.type === "text") { const angle = object.rotation ?? 0, background = whiteboardTextBackground(object.background), textScale = object.textScale ?? 1; context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(angle); if (background) { context.fillStyle = background; context.fillRect(-object.width / 2 - 8, -object.height / 2 - 5, object.width + 16, object.height + 10); } let cursorX = -object.width / 2; const baseline = -object.height / 2 + (object.fontSize ?? 36) * textScale; whiteboardRichTextRuns(object.richHtml, object.text, object.fontSize, object.background === "black" ? "#ffffff" : object.color, object.fontFamily ?? "Arial").forEach((run) => { const runSize = run.size * textScale, runFont = run.fontFamily || object.fontFamily || "Arial"; context.font = `${object.italic || run.italic ? "italic " : ""}${object.bold || run.bold ? "700" : "400"} ${runSize}px "${runFont}"`; context.fillStyle = run.color; context.fillText(run.text, cursorX, baseline); const width = context.measureText(run.text).width; if (object.underline || run.underline) context.fillRect(cursorX, baseline + 3, width, Math.max(1.5, runSize / 18)); cursorX += width; }); }
+    else if (object.type === "text") { const angle = object.rotation ?? 0, background = whiteboardTextBackground(object.background), textScale = object.textScale ?? 1; context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(angle); if (background) { context.fillStyle = background; context.fillRect(-object.width / 2 - 8, -object.height / 2 - 5, object.width + 16, object.height + 10); } drawWhiteboardCursiveGuides(context, object); let cursorX = -object.width / 2; const baseline = -object.height / 2 + (object.fontSize ?? 36) * textScale; whiteboardRichTextRuns(object.richHtml, object.text, object.fontSize, object.background === "black" ? "#ffffff" : object.color, object.fontFamily ?? "Arial").forEach((run) => { const runSize = run.size * textScale, runFont = run.fontFamily || object.fontFamily || "Arial"; context.font = `${object.italic || run.italic ? "italic " : ""}${object.bold || run.bold ? "700" : "400"} ${runSize}px "${runFont}"`; context.fillStyle = run.color; context.fillText(run.text, cursorX, baseline); const width = context.measureText(run.text).width; if (object.underline || run.underline) context.fillRect(cursorX, baseline + 3, width, Math.max(1.5, runSize / 18)); cursorX += width; }); }
     else if (object.type === "image" && object.element) { context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(object.rotation ?? 0); context.drawImage(object.element, -object.width / 2, -object.height / 2, object.width, object.height); }
     else if (object.type === "dimension") drawWhiteboardDimension(context, object);
     else if (object.type === "line" || object.type === "arrow") { context.beginPath(); context.moveTo(object.x, object.y); context.lineTo(object.x + object.width, object.y + object.height); context.stroke(); if (object.type === "arrow") { const angle = Math.atan2(object.height, object.width); context.beginPath(); context.moveTo(object.x + object.width, object.y + object.height); context.lineTo(object.x + object.width - 18 * Math.cos(angle - 0.55), object.y + object.height - 18 * Math.sin(angle - 0.55)); context.moveTo(object.x + object.width, object.y + object.height); context.lineTo(object.x + object.width - 18 * Math.cos(angle + 0.55), object.y + object.height - 18 * Math.sin(angle + 0.55)); context.stroke(); } }
@@ -3995,7 +4010,7 @@ function mountWhiteboard() {
     const shapeControls = [drawingToolbar.querySelector(".platform-whiteboard-push-help-wrap")].filter(Boolean);
     const colorControls = [drawingToolbar.querySelector("[data-whiteboard-color]")?.closest("label")].filter(Boolean);
     const penControls = [drawingToolbar.querySelector("[data-whiteboard-size]")?.closest("label")].filter(Boolean);
-    const textControls = [drawingToolbar.querySelector("[data-whiteboard-text-background]")?.closest("label")].filter(Boolean);
+    const textControls = [drawingToolbar.querySelector("[data-whiteboard-text-background]")?.closest("label"), drawingToolbar.querySelector("[data-whiteboard-cursive-lines]")?.closest("label")].filter(Boolean);
     const emojiControls = [drawingToolbar.querySelector("[data-whiteboard-emoji-label]")].filter(Boolean);
     drawingToolbar.querySelectorAll('[data-action="whiteboard-undo"], [data-action="whiteboard-redo"]').forEach((button) => button.remove());
     selectPanel?.append(...selectControls);
@@ -5051,7 +5066,7 @@ function handleClick(event) {
     if (!canvas || !text) return;
     pushWhiteboardHistory();
     const size = Math.max(22, Number(document.querySelector("[data-whiteboard-size]")?.value ?? 6) * 5);
-    const object = createWhiteboardObject("text", { text, x: 35, y: Math.min(canvas.height - 80, 30 + whiteboardObjects.length * 24), width: Math.min(canvas.width - 70, Math.max(180, text.length * size * 0.55)), height: size * 1.3, fontSize: size, fontFamily: document.querySelector("[data-whiteboard-text-font]")?.value ?? "Arial", color: document.querySelector("[data-whiteboard-text-color]")?.value ?? document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d", background: document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent", bold: document.querySelector('[data-text-command="bold"]')?.getAttribute("aria-pressed") === "true", italic: document.querySelector('[data-text-command="italic"]')?.getAttribute("aria-pressed") === "true", underline: document.querySelector('[data-text-command="underline"]')?.getAttribute("aria-pressed") === "true", rotation: 0 });
+    const object = createWhiteboardObject("text", { text, x: 35, y: Math.min(canvas.height - 80, 30 + whiteboardObjects.length * 24), width: Math.min(canvas.width - 70, Math.max(180, text.length * size * 0.55)), height: size * 1.3, fontSize: size, fontFamily: document.querySelector("[data-whiteboard-text-font]")?.value ?? "Arial", color: document.querySelector("[data-whiteboard-text-color]")?.value ?? document.querySelector("[data-whiteboard-color]")?.value ?? "#12384d", background: document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent", cursiveGuide: document.querySelector("[data-whiteboard-cursive-lines]")?.value ?? "none", bold: document.querySelector('[data-text-command="bold"]')?.getAttribute("aria-pressed") === "true", italic: document.querySelector('[data-text-command="italic"]')?.getAttribute("aria-pressed") === "true", underline: document.querySelector('[data-text-command="underline"]')?.getAttribute("aria-pressed") === "true", rotation: 0 });
     whiteboardObjects.push(object); whiteboardSelectedObjectId = object.id; field.value = ""; renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls();
     return;
   }
@@ -6034,9 +6049,14 @@ root.addEventListener("change", (event) => {
   const textBackground = event.target.closest("[data-whiteboard-text-background]");
   if (textBackground) {
     const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
-    if (selected?.type === "text") { pushWhiteboardHistory(); selected.background = textBackground.value; renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus("Text background updated."); }
-    else setWhiteboardStatus("Text background selected for the next text box.");
-    return;
+    if (selected?.type === "text") { pushWhiteboardHistory(); selected.background = textBackground.value; renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); }
+    activateWhiteboardTextTool("Text background selected. Click anywhere on the whiteboard to start typing."); return;
+  }
+  const cursiveLines = event.target.closest("[data-whiteboard-cursive-lines]");
+  if (cursiveLines) {
+    const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
+    if (selected?.type === "text") { pushWhiteboardHistory(); selected.cursiveGuide = cursiveLines.value; renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); }
+    activateWhiteboardTextTool(cursiveLines.value === "none" ? "No cursive lines selected. Click anywhere on the whiteboard to start typing." : `${cursiveLines.options[cursiveLines.selectedIndex].text} selected. Click anywhere on the whiteboard to start typing.`); return;
   }
   const emojiChoice = event.target.closest("[data-whiteboard-emoji]");
   if (emojiChoice) {

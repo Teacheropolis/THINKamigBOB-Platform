@@ -258,6 +258,14 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /if \(event\.target\.closest\("\[data-whiteboard-text-font\]"\)\)/);
   assert.match(app, /if \(event\.target\.closest\("\[data-whiteboard-text-color\]"\)\)/);
   assert.match(app, /getAttribute\("aria-pressed"\) !== "true"/);
+  assert.match(app, /data-whiteboard-cursive-lines/);
+  for (const label of ["No lines", "Wide ruled", "Handwriting practice — 3 lines"]) assert.match(app, new RegExp(label));
+  assert.match(app, /function drawWhiteboardCursiveGuides\(context, object\)/);
+  assert.match(app, /object\.fontFamily !== "School Cursive"/);
+  assert.match(app, /object\.cursiveGuide === "wide"/);
+  assert.match(app, /context\.setLineDash\(\[7, 5\]\)/);
+  assert.match(app, /drawWhiteboardCursiveGuides\(context, object\)/);
+  assert.match(app, /selected\.cursiveGuide = cursiveLines\.value/);
 });
 
 test("dragging a selected object corner resizes regardless of the active tool", () => {
@@ -365,7 +373,7 @@ test("images and text rotate while text supports solid and highlighter backgroun
   for (const text of ["Rotate left", "Rotate right", "Text background", "Transparent", "White", "Black", "Yellow highlighter", "Green highlighter", "Pink highlighter", "Blue highlighter"]) assert.match(app, new RegExp(text));
   assert.doesNotMatch(app, />Apply Text Background<\/button>/);
   assert.doesNotMatch(app, /placeholder="Type text for the board"/);
-  assert.match(app, /Text background selected for the next text box/);
+  assert.match(app, /Text background selected\. Click anywhere on the whiteboard to start typing\./);
   assert.match(app, /selected\.rotation =/);
   assert.match(app, /context\.rotate\(object\.rotation \?\? 0\)/);
   assert.match(app, /whiteboardTextBackground/);
