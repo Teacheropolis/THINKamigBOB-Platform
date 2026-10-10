@@ -3226,6 +3226,29 @@ function whiteboardPoint(event, canvas) {
   return { x: (event.clientX - bounds.left) * canvas.width / bounds.width, y: (event.clientY - bounds.top) * canvas.height / bounds.height };
 }
 
+function refreshPendingWhiteboardTextEntryStyle() {
+  const entry = document.querySelector("[data-whiteboard-text-entry]");
+  const canvas = whiteboardCanvas();
+  if (!entry || !canvas) return;
+  const scaleX = canvas.clientWidth / canvas.width, scaleY = canvas.clientHeight / canvas.height;
+  const size = Math.max(22, Number(document.querySelector("[data-whiteboard-size]")?.value ?? 6) * 5);
+  const fontFamily = document.querySelector("[data-whiteboard-text-font]")?.value ?? "Arial";
+  const backgroundName = document.querySelector("[data-whiteboard-text-background]")?.value ?? "transparent";
+  const guide = fontFamily === "School Cursive" ? document.querySelector("[data-whiteboard-cursive-lines]")?.value ?? "none" : "none";
+  entry.dataset.cursiveGuide = guide;
+  entry.style.fontFamily = `"${fontFamily}"`;
+  entry.style.fontSize = `${size * scaleY}px`;
+  entry.style.lineHeight = "1.3";
+  entry.style.fontWeight = document.querySelector('[data-text-command="bold"]')?.getAttribute("aria-pressed") === "true" ? "700" : "400";
+  entry.style.fontStyle = document.querySelector('[data-text-command="italic"]')?.getAttribute("aria-pressed") === "true" ? "italic" : "normal";
+  entry.style.textDecoration = document.querySelector('[data-text-command="underline"]')?.getAttribute("aria-pressed") === "true" ? "underline" : "none";
+  entry.style.color = backgroundName === "black" ? "#ffffff" : document.querySelector("[data-whiteboard-text-color]")?.value ?? "#12384d";
+  entry.style.backgroundColor = whiteboardTextBackground(backgroundName) || "transparent";
+  entry.style.width = `${Math.min(canvas.clientWidth - entry.offsetLeft - 4, Math.max(180 * scaleX, (entry.value.length + 2) * size * 0.55 * scaleX))}px`;
+  entry.style.height = `${Math.max(34, size * 1.3 * scaleY)}px`;
+  entry.style.minHeight = entry.style.height;
+}
+
 function openWhiteboardTextEntry(point, canvas) {
   const surface = canvas.parentElement;
   if (!surface) return;
@@ -3256,12 +3279,13 @@ function openWhiteboardTextEntry(point, canvas) {
     if (event.relatedTarget?.closest?.(".platform-whiteboard-quick-actions")) return;
     window.requestAnimationFrame(() => { if (entry.isConnected) entry.focus({ preventScroll: true }); });
   });
-  entry.addEventListener("input", () => { entry.style.height = "auto"; entry.style.height = `${Math.min(180, Math.max(48, entry.scrollHeight))}px`; });
+  entry.addEventListener("input", refreshPendingWhiteboardTextEntryStyle);
   entry.addEventListener("keydown", (event) => {
     if (event.key === "Escape") { event.preventDefault(); close(); setWhiteboardStatus("Text placement canceled."); }
     else if (event.key === "Enter" && !event.shiftKey) { event.preventDefault(); commit(); }
   });
   surface.append(entry);
+  refreshPendingWhiteboardTextEntryStyle();
   window.requestAnimationFrame(() => { if (entry.isConnected) entry.focus({ preventScroll: true }); });
   setWhiteboardStatus("Type directly on the board. Press Enter or click elsewhere to finish; Escape cancels.");
 }
@@ -3943,7 +3967,7 @@ function renderWhiteboardObjects(canvas = whiteboardCanvas()) {
     context.save(); context.globalAlpha = object.opacity ?? 1; context.strokeStyle = object.faceColors?.front ?? object.color ?? "#12384d"; context.fillStyle = object.faceColors?.front ?? object.color ?? "#12384d"; context.lineWidth = object.size ?? 6; context.lineCap = "round"; context.lineJoin = "round";
     if (object.rotation && !["text", "image", "path", "dimension"].includes(object.type)) { const bounds = objectBounds(object), centerX = bounds.x + bounds.width / 2, centerY = bounds.y + bounds.height / 2; context.translate(centerX, centerY); context.rotate(object.rotation); context.translate(-centerX, -centerY); }
     if (object.type === "path") drawWhiteboardPath(context, object);
-    else if (object.type === "text") { const angle = object.rotation ?? 0, background = whiteboardTextBackground(object.background), textScale = object.textScale ?? 1; context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(angle); if (background) { context.fillStyle = background; context.fillRect(-object.width / 2 - 8, -object.height / 2 - 5, object.width + 16, object.height + 10); } drawWhiteboardCursiveGuides(context, object); let cursorX = -object.width / 2; const baseline = -object.height / 2 + (object.fontSize ?? 36) * textScale; whiteboardRichTextRuns(object.richHtml, object.text, object.fontSize, object.background === "black" ? "#ffffff" : object.color, object.fontFamily ?? "Arial").forEach((run) => { const runSize = run.size * textScale, runFont = run.fontFamily || object.fontFamily || "Arial"; context.font = `${object.italic || run.italic ? "italic " : ""}${object.bold || run.bold ? "700" : "400"} ${runSize}px "${runFont}"`; context.fillStyle = run.color; context.fillText(run.text, cursorX, baseline); const width = context.measureText(run.text).width; if (object.underline || run.underline) context.fillRect(cursorX, baseline + 3, width, Math.max(1.5, runSize / 18)); cursorX += width; }); }
+    else if (object.type === "text") { const angle = object.rotation ?? 0, background = whiteboardTextBackground(object.background), textScale = object.textScale ?? 1; context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(angle); if (background) { context.fillStyle = background; context.fillRect(-object.width / 2 - 8, -object.height / 2 - 5, object.width + 16, object.height + 10); } drawWhiteboardCursiveGuides(context, object); let cursorX = -object.width / 2; const baseline = object.height / 2 - Math.max(3, (object.fontSize ?? 36) * textScale * 0.12); whiteboardRichTextRuns(object.richHtml, object.text, object.fontSize, object.background === "black" ? "#ffffff" : object.color, object.fontFamily ?? "Arial").forEach((run) => { const runSize = run.size * textScale, runFont = run.fontFamily || object.fontFamily || "Arial"; context.font = `${object.italic || run.italic ? "italic " : ""}${object.bold || run.bold ? "700" : "400"} ${runSize}px "${runFont}"`; context.fillStyle = run.color; context.fillText(run.text, cursorX, baseline); const width = context.measureText(run.text).width; if (object.underline || run.underline) context.fillRect(cursorX, baseline + 3, width, Math.max(1.5, runSize / 18)); cursorX += width; }); }
     else if (object.type === "image" && object.element) { context.translate(object.x + object.width / 2, object.y + object.height / 2); context.rotate(object.rotation ?? 0); context.drawImage(object.element, -object.width / 2, -object.height / 2, object.width, object.height); }
     else if (object.type === "dimension") drawWhiteboardDimension(context, object);
     else if (object.type === "line" || object.type === "arrow") { context.beginPath(); context.moveTo(object.x, object.y); context.lineTo(object.x + object.width, object.y + object.height); context.stroke(); if (object.type === "arrow") { const angle = Math.atan2(object.height, object.width); context.beginPath(); context.moveTo(object.x + object.width, object.y + object.height); context.lineTo(object.x + object.width - 18 * Math.cos(angle - 0.55), object.y + object.height - 18 * Math.sin(angle - 0.55)); context.moveTo(object.x + object.width, object.y + object.height); context.lineTo(object.x + object.width - 18 * Math.cos(angle + 0.55), object.y + object.height - 18 * Math.sin(angle + 0.55)); context.stroke(); } }
@@ -4392,13 +4416,13 @@ function handleClick(event) {
   if (action.dataset.action === "whiteboard-activate-text") { activateWhiteboardTextTool(); return; }
   if (action.dataset.action === "whiteboard-format-text") {
     if (!formatSelectedWhiteboardText(action.dataset.textCommand)) action.setAttribute("aria-pressed", String(action.getAttribute("aria-pressed") !== "true"));
-    activateWhiteboardTextTool(); return;
+    activateWhiteboardTextTool(); refreshPendingWhiteboardTextEntryStyle(); return;
   }
   if (action.dataset.action === "whiteboard-choose-text-font") {
     const font = action.dataset.textFont, fontControl = document.querySelector("[data-whiteboard-text-font]"); if (fontControl) fontControl.value = font;
     const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
     if (selected?.type === "text" && !selected.emojiStamp) formatSelectedWhiteboardText("font");
-    activateWhiteboardTextTool(`${font} selected. Click anywhere on the whiteboard to start typing.`);
+    activateWhiteboardTextTool(`${font} selected. Click anywhere on the whiteboard to start typing.`); refreshPendingWhiteboardTextEntryStyle();
     return;
   }
   if (action.closest("[data-class-resource-teacher]") || action.dataset.action?.startsWith("timer-") || action.dataset.action === "instant-timer") window.setTimeout(refreshCurrentClassPlan, 0);
@@ -5945,8 +5969,8 @@ root.addEventListener("drop", (event) => {
 });
 
 root.addEventListener("change", (event) => {
-  if (event.target.closest("[data-whiteboard-text-font]")) { if (whiteboardSelectedObjectId) formatSelectedWhiteboardText("font"); activateWhiteboardTextTool(`${event.target.value} selected. Click anywhere on the whiteboard to start typing.`); return; }
-  if (event.target.closest("[data-whiteboard-text-color]")) { if (whiteboardSelectedObjectId) formatSelectedWhiteboardText("color"); activateWhiteboardTextTool("Font color selected. Click anywhere on the whiteboard to start typing."); return; }
+  if (event.target.closest("[data-whiteboard-text-font]")) { if (whiteboardSelectedObjectId) formatSelectedWhiteboardText("font"); activateWhiteboardTextTool(`${event.target.value} selected. Click anywhere on the whiteboard to start typing.`); refreshPendingWhiteboardTextEntryStyle(); return; }
+  if (event.target.closest("[data-whiteboard-text-color]")) { if (whiteboardSelectedObjectId) formatSelectedWhiteboardText("color"); activateWhiteboardTextTool("Font color selected. Click anywhere on the whiteboard to start typing."); refreshPendingWhiteboardTextEntryStyle(); return; }
   if (event.target.closest("[data-class-resource-teacher]")) window.setTimeout(refreshCurrentClassPlan, 0);
   const planResourceToggle = event.target.closest("[data-current-plan-resource-toggle]");
   if (planResourceToggle) {
@@ -6062,12 +6086,14 @@ root.addEventListener("change", (event) => {
   if (textBackground) {
     const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
     if (selected?.type === "text") { pushWhiteboardHistory(); selected.background = textBackground.value; renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); }
+    refreshPendingWhiteboardTextEntryStyle();
     setWhiteboardStatus(`${textBackground.options[textBackground.selectedIndex].text} text background selected.`); return;
   }
   const cursiveLines = event.target.closest("[data-whiteboard-cursive-lines]");
   if (cursiveLines) {
     const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
     if (selected?.type === "text") { pushWhiteboardHistory(); selected.cursiveGuide = cursiveLines.value; renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); }
+    refreshPendingWhiteboardTextEntryStyle();
     setWhiteboardStatus(`${cursiveLines.options[cursiveLines.selectedIndex].text} selected for School Cursive text.`); return;
   }
   const emojiChoice = event.target.closest("[data-whiteboard-emoji]");
