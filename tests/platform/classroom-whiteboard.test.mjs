@@ -119,7 +119,7 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   assert.match(app, /data-rich-color/);
   assert.match(app, /data-rich-size/);
   assert.match(app, /data-rich-font/);
-  for (const font of ["Arial", "Verdana", "Courier New", "Comic Sans MS"]) assert.match(app, new RegExp(font));
+  for (const font of ["Arial", "Verdana", "Courier New", "Comic Sans MS", "School Cursive"]) assert.match(app, new RegExp(font));
   assert.doesNotMatch(app, /data-text-font="Georgia"|data-text-font="Trebuchet MS"/);
   assert.match(app, /whiteboardRichTextRuns/);
   assert.match(css, /\.platform-whiteboard-rich-editor/);
@@ -243,6 +243,7 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /data-action="whiteboard-choose-text-font"/);
   assert.match(app, /Aa Bb Cc/);
   assert.match(css, /\.platform-whiteboard-font-examples/);
+  assert.match(css, /@font-face \{ font-family: "School Cursive"; src: url\("\.\.\/assets\/fonts\/PlaywriteUSTrad\.ttf"\)/);
   for (const command of ["bold", "italic", "underline"]) assert.match(app, new RegExp(`data-text-command="${command}"`));
   assert.match(app, /function formatSelectedWhiteboardText\(command\)/);
   assert.match(app, /\["b", "i", "u"\]\.includes\(shortcutKey\)/);
