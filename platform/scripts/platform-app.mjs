@@ -1695,7 +1695,7 @@ function teacherDashboardView(state) {
           <label>Eraser thickness<input type="range" data-whiteboard-eraser-size min="12" max="140" value="40"><output data-whiteboard-eraser-size-output>40</output></label>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="erase-object">Erase object</button>
         </div></details>
-        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">●</span><small>Color</small></summary><div data-whiteboard-color-panel></div></details>
+        <details class="platform-whiteboard-quick-menu"><summary><span class="platform-whiteboard-color-chip" data-whiteboard-color-chip style="--whiteboard-selected-color:#12384d" aria-hidden="true"></span><small>Color</small></summary><div data-whiteboard-color-panel></div></details>
         <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="fill" title="Fill a closed shape with the selected color"><span aria-hidden="true">◩</span><small>Paint Can</small></button>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">✎</span><small>Pen</small></summary><div data-whiteboard-pen-panel>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pen">Pen</button>
@@ -6065,6 +6065,12 @@ root.addEventListener("input", (event) => {
   if (whiteboardSize) {
     const output = document.querySelector("[data-whiteboard-size-output]");
     if (output) output.textContent = whiteboardSize.value;
+    return;
+  }
+  const whiteboardColor = event.target.closest("[data-whiteboard-color]");
+  if (whiteboardColor) {
+    const chip = document.querySelector("[data-whiteboard-color-chip]");
+    if (chip) chip.style.setProperty("--whiteboard-selected-color", whiteboardColor.value);
     return;
   }
   const whiteboardLineSize = event.target.closest("[data-whiteboard-line-size]");

@@ -220,6 +220,14 @@ test("top toolbar starts with select erase color and paint can", () => {
   assert.match(app, /data-whiteboard-quick-tool="fill" title="Fill a closed shape with the selected color"/);
 });
 
+test("color toolbar circle matches the selected drawing color", () => {
+  assert.match(app, /data-whiteboard-color-chip style="--whiteboard-selected-color:#12384d"/);
+  assert.match(app, /event\.target\.closest\("\[data-whiteboard-color\]"\)/);
+  assert.match(app, /chip\.style\.setProperty\("--whiteboard-selected-color", whiteboardColor\.value\)/);
+  assert.match(css, /background: var\(--whiteboard-selected-color, #12384d\)/);
+  assert.match(css, /border-radius: 50%/);
+});
+
 test("erase object removes a connected drawing or filled shape with one click", () => {
   assert.match(app, /data-whiteboard-quick-tool="erase-object">Erase object/);
   assert.match(app, /tool === "erase-object"/);
