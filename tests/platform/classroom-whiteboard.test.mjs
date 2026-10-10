@@ -100,6 +100,7 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   assert.match(app, /menu\.addEventListener\("mouseenter", \(\) => \{ cancelClose\(\); menu\.open = true; \}\)/);
   assert.match(app, /action\.dataset\.action === "whiteboard-quick-tool"/);
   assert.match(app, /data-whiteboard-primary-tool="text"/);
+  assert.match(app, /data-action="whiteboard-activate-text"/);
   assert.doesNotMatch(app, />Place a text box<\/button>/);
   assert.match(app, /openWhiteboardTextEntry\(point, canvas\)/);
   assert.match(app, /data-whiteboard-text-entry/);
@@ -251,6 +252,12 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /object\.type === "text" && !object\.emojiStamp/);
   assert.match(app, /resized\.textScale = Math\.max/);
   assert.match(app, /run\.size \* textScale/);
+  assert.match(app, /function activateWhiteboardTextTool\(message/);
+  assert.match(app, /action\.dataset\.action === "whiteboard-activate-text"/);
+  assert.match(app, /activateWhiteboardTextTool\(\); return/);
+  assert.match(app, /if \(event\.target\.closest\("\[data-whiteboard-text-font\]"\)\)/);
+  assert.match(app, /if \(event\.target\.closest\("\[data-whiteboard-text-color\]"\)\)/);
+  assert.match(app, /getAttribute\("aria-pressed"\) !== "true"/);
 });
 
 test("dragging a selected object corner resizes regardless of the active tool", () => {
