@@ -1686,7 +1686,7 @@ function teacherDashboardView(state) {
       <button class="platform-whiteboard-exit-presentation" type="button" data-action="whiteboard-exit-presentation" hidden>Exit Presentation</button>
       <label class="platform-whiteboard-page-dock-control">Pages<select data-whiteboard-page-dock aria-label="Page thumbnails position"><option value="left">Show left</option><option value="right">Show right</option><option value="hidden">Hide</option></select></label>
       <nav class="platform-whiteboard-quick-actions" aria-label="Whiteboard quick actions">
-        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">➤</span><small>Select</small></summary><div data-whiteboard-select-panel>
+        <details class="platform-whiteboard-quick-menu" data-whiteboard-primary-tool="select"><summary><span aria-hidden="true">➤</span><small>Select</small></summary><div data-whiteboard-select-panel>
           <button type="button" data-action="whiteboard-tool-select" data-whiteboard-quick-tool="select" aria-pressed="true">Select and move</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="lasso-select">Lasso select for image</button>
         </div></details>
@@ -3844,7 +3844,6 @@ function drawWhiteboardSelectionMeasurements(context, object) {
       const acuteAngle = Math.max(1, Math.min(89, Math.round(Math.atan2(Math.abs(dy), Math.abs(dx)) * 180 / Math.PI)));
       label(`${acuteAngle}°`, segment.start.x + normal.x, segment.start.y + normal.y);
       label(`${180 - acuteAngle}°`, segment.end.x + normal.x, segment.end.y + normal.y);
-      label(`cut = ${Math.round(length)}`, (segment.start.x + segment.end.x) / 2 + normal.x, (segment.start.y + segment.end.y) / 2 + normal.y);
     }
     if (["ellipse", "cylinder", "sphere", "hemisphere", "cone"].includes(object.sourceType)) {
       const radius = Math.min(bounds.width, bounds.height) / 2;
@@ -3994,6 +3993,15 @@ function mountWhiteboard() {
     menu.addEventListener("mouseenter", () => { cancelClose(); menu.open = true; });
     menu.addEventListener("mouseleave", scheduleClose);
     menu.addEventListener("focusout", scheduleClose);
+    menu.querySelector("summary")?.addEventListener("click", () => {
+      const primaryTool = menu.dataset.whiteboardPrimaryTool;
+      if (!primaryTool) return;
+      whiteboardDeleteNextObject = false;
+      const tool = document.querySelector("[data-whiteboard-tool]");
+      if (tool) { tool.value = primaryTool; tool.dispatchEvent(new Event("change", { bubbles: true })); }
+      document.querySelectorAll("[data-whiteboard-quick-tool]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.whiteboardQuickTool === primaryTool)));
+      whiteboardCanvas()?.focus({ preventScroll: true }); setWhiteboardStatus("Select and move is active.");
+    });
     menu.addEventListener("toggle", () => {
       if (!menu.open) return;
       document.querySelectorAll(".platform-whiteboard-quick-menu[open]").forEach((other) => { if (other !== menu) other.removeAttribute("open"); });

@@ -224,6 +224,10 @@ test("top toolbar starts with select erase color and paint can", () => {
   assert.match(app, /data-whiteboard-color-panel/);
   assert.match(app, /querySelector\("\[data-whiteboard-color-panel\]"\)\?\.append\(\.\.\.colorControls\)/);
   assert.match(app, /data-whiteboard-quick-tool="fill" title="Fill a closed shape with the selected color"/);
+  assert.match(app, /data-whiteboard-primary-tool="select"/);
+  assert.match(app, /menu\.querySelector\("summary"\)\?\.addEventListener\("click"/);
+  assert.match(app, /const primaryTool = menu\.dataset\.whiteboardPrimaryTool/);
+  assert.match(app, /setWhiteboardStatus\("Select and move is active\."\)/);
 });
 
 test("color toolbar circle matches the selected drawing color", () => {
@@ -460,7 +464,7 @@ test("a line through a closed 2D or 3D shape bisects it into two editable fragme
 
 test("selected split pieces show cut measurements and 3D pieces can return to 2D", () => {
   assert.match(app, /function whiteboardFragmentCutSegment\(object\)/);
-  assert.match(app, /label\(`cut = \$\{Math\.round\(length\)\}`/);
+  assert.doesNotMatch(app, /label\(`cut = /);
   assert.match(app, /label\(`\$\{acuteAngle\}°`/);
   assert.match(app, /\["ellipse", "cylinder", "sphere", "hemisphere", "cone"\]\.includes\(object\.sourceType\)/);
   assert.match(app, /if \(object\.type === "shape-fragment"\)/);
