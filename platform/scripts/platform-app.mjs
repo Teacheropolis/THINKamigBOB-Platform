@@ -3257,20 +3257,25 @@ function updateWhiteboardCursiveCoach() {
   const entry = document.querySelector("[data-whiteboard-text-entry]");
   const surface = entry?.parentElement;
   surface?.querySelector("[data-whiteboard-cursive-coach-preview]")?.remove();
+  surface?.querySelector("[data-whiteboard-live-cursive]")?.remove();
   const mode = document.querySelector("[data-whiteboard-cursive-coach]")?.value ?? "off";
   const font = document.querySelector("[data-whiteboard-text-font]")?.value ?? "Arial";
-  const text = entry?.value.trim() ?? "";
-  if (!entry || !surface || mode === "off" || font !== "School Cursive" || !text) return;
-  const lastWord = text.split(/\s+/).at(-1) ?? "";
-  const letter = [...lastWord].at(-1) ?? "";
-  const steps = CURSIVE_STROKE_COACH[letter.toLowerCase()] ?? ["Begin at the top guide", "Form the letter smoothly", "Finish toward the next letter"];
+  const text = entry?.value ?? "";
+  if (!entry || !surface || mode === "off" || font !== "School Cursive" || !text) { refreshPendingWhiteboardTextEntryStyle(); return; }
+  entry.style.color = "transparent";
+  entry.style.caretColor = document.querySelector("[data-whiteboard-text-color]")?.value ?? "#12384d";
+  const liveWriting = document.createElement("span");
+  liveWriting.className = "platform-whiteboard-live-cursive"; liveWriting.dataset.whiteboardLiveCursive = "true";
+  liveWriting.style.left = entry.style.left; liveWriting.style.top = entry.style.top; liveWriting.style.width = entry.style.width; liveWriting.style.height = entry.style.height;
+  liveWriting.style.fontFamily = entry.style.fontFamily; liveWriting.style.fontSize = entry.style.fontSize; liveWriting.style.lineHeight = entry.style.lineHeight;
+  liveWriting.style.color = entry.style.caretColor;
+  liveWriting.innerHTML = [...text].map((character, index, characters) => `<span${index === characters.length - 1 ? ' class="is-writing"' : ""}>${escapeHtml(character === " " ? "\u00a0" : character)}</span>`).join("");
+  surface.append(liveWriting);
   const coach = document.createElement("aside");
-  coach.className = "platform-whiteboard-cursive-coach"; coach.dataset.whiteboardCursiveCoachPreview = "true"; coach.setAttribute("aria-live", "polite");
-  const demonstration = mode === "word" ? lastWord : letter;
-  const writtenStrokes = [...demonstration].map((character, index) => `<span class="platform-whiteboard-cursive-stroke" style="--stroke-order:${index}">${escapeHtml(character)}</span>`).join("");
-  coach.innerHTML = `<span class="platform-whiteboard-hand-guide"><svg class="platform-whiteboard-writing-hand" viewBox="0 0 120 70" role="img" aria-label="Temporary hand and pencil positioning guide"><path class="hand" d="M18 49c14-19 28-24 43-16l19 10c8 4 15 3 24-3l9 12c-18 14-34 14-50 7L42 52c-7 8-16 9-24-3Z"/><path class="finger" d="M42 52c5-10 12-17 21-22M56 57c4-9 10-15 18-20"/><path class="pencil" d="M48 42 96 9l8 10-49 32Z"/><path class="nib" d="m96 9 14-5-6 15Z"/></svg><small>Hand position</small></span><span class="platform-whiteboard-cursive-demo" aria-label="Cursive demonstration">${writtenStrokes}</span><ol>${(mode === "word" ? ["Begin with the entry stroke", "Connect each letter without lifting", "Finish with the exit stroke"] : steps).map((step) => `<li>${escapeHtml(step)}</li>`).join("")}</ol>`;
-  coach.style.left = `${Math.max(4, Math.min(surface.clientWidth - 390, entry.offsetLeft - 115))}px`;
-  coach.style.top = `${Math.min(surface.clientHeight - 120, entry.offsetTop + entry.offsetHeight - 8)}px`;
+  coach.className = "platform-whiteboard-pencil-grip-photo"; coach.dataset.whiteboardCursiveCoachPreview = "true";
+  coach.innerHTML = `<img src="./assets/images/whiteboard/proper-pencil-grip.jpg" alt="A hand demonstrating a tripod pencil grip while writing"><small>Relaxed tripod pencil grip</small>`;
+  coach.style.left = `${Math.max(4, entry.offsetLeft - 136)}px`;
+  coach.style.top = `${Math.max(4, entry.offsetTop - 18)}px`;
   surface.append(coach);
   window.setTimeout(() => coach.classList.add("is-fading"), 5800);
   window.setTimeout(() => coach.remove(), 6600);
@@ -3291,7 +3296,7 @@ function openWhiteboardTextEntry(point, canvas) {
   entry.style.left = `${Math.max(4, Math.min(canvas.clientWidth - 230, point.x * scaleX))}px`;
   entry.style.top = `${Math.max(4, Math.min(canvas.clientHeight - 55, point.y * scaleY))}px`;
   let finished = false;
-  const close = () => { if (finished) return; finished = true; surface.querySelector("[data-whiteboard-cursive-coach-preview]")?.remove(); entry.remove(); canvas.focus({ preventScroll: true }); };
+  const close = () => { if (finished) return; finished = true; surface.querySelector("[data-whiteboard-cursive-coach-preview]")?.remove(); surface.querySelector("[data-whiteboard-live-cursive]")?.remove(); entry.remove(); canvas.focus({ preventScroll: true }); };
   const commit = () => {
     if (finished) return;
     const value = entry.value.trim().slice(0, 120);
@@ -3319,6 +3324,7 @@ function openWhiteboardTextEntry(point, canvas) {
 
 function cancelPendingWhiteboardTextEntry() {
   document.querySelector("[data-whiteboard-cursive-coach-preview]")?.remove();
+  document.querySelector("[data-whiteboard-live-cursive]")?.remove();
   document.querySelector("[data-whiteboard-text-entry]")?.remove();
 }
 
