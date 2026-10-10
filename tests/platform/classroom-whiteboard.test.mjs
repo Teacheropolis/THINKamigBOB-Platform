@@ -299,6 +299,9 @@ test("text tools provide fonts, formatting shortcuts, color, and corner scaling"
   assert.match(app, /function showWhiteboardCursiveModel/);
   assert.match(app, /platform-whiteboard-cursive-model/);
   assert.match(app, /platform-whiteboard-cursive-connector/);
+  assert.match(app, /M \$\{letterX \+ 11\} 24 C \$\{letterX \+ 14\} 23, \$\{letterX \+ 16\} 21, \$\{letterX \+ 18\} 20/);
+  assert.match(app, /coach\.style\.left = "8px"/);
+  assert.match(app, /coach\.style\.top = "8px"/);
   assert.match(app, /Would you like to replay it once more/);
   assert.match(app, /function openPencilGripTutorial/);
   assert.match(app, /Open the pencil grip tutorial/);

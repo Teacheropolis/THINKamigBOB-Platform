@@ -3273,8 +3273,8 @@ function updateWhiteboardCursiveCoach() {
   coach.className = "platform-whiteboard-pencil-grip-photo"; coach.dataset.whiteboardCursiveCoachPreview = "true";
   coach.innerHTML = `<button type="button" aria-label="Open the pencil grip tutorial"><img src="./assets/images/whiteboard/proper-pencil-grip.jpg" alt="A hand demonstrating a tripod pencil grip while writing"><small>Relaxed tripod pencil grip<br>Click for tutorial</small></button>`;
   coach.querySelector("button")?.addEventListener("click", openPencilGripTutorial);
-  coach.style.left = `${Math.max(4, entry.offsetLeft - 136)}px`;
-  coach.style.top = `${Math.max(4, entry.offsetTop - 18)}px`;
+  coach.style.left = "8px";
+  coach.style.top = "8px";
   surface.append(coach);
   window.setTimeout(() => coach.classList.add("is-fading"), 5800);
   window.setTimeout(() => coach.remove(), 6600);
@@ -3296,7 +3296,7 @@ function showWhiteboardCursiveModel(text, object, canvas) {
     }).join("");
     cursorX += 18;
     const nextCharacter = allCharacters[characterIndex + 1];
-    const connector = nextCharacter && nextCharacter !== " " && CURSIVE_STROKE_LETTERS[nextCharacter] ? `<path class="platform-whiteboard-cursive-connector" pathLength="1" d="M ${letterX + 11} 8 C ${letterX + 14} 7, ${letterX + 16} 5, ${letterX + 18} 4" style="--stroke-order:${strokeOrder++}"/>` : "";
+    const connector = nextCharacter && nextCharacter !== " " && CURSIVE_STROKE_LETTERS[nextCharacter] ? `<path class="platform-whiteboard-cursive-connector" pathLength="1" d="M ${letterX + 11} 24 C ${letterX + 14} 23, ${letterX + 16} 21, ${letterX + 18} 20" style="--stroke-order:${strokeOrder++}"/>` : "";
     return `<g transform="translate(${letterX} 16)">${strokes}</g>${connector}`;
   }).join("");
   const model = document.createElement("aside");
