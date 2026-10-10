@@ -90,12 +90,13 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   for (const tool of ["select", "lasso-select", "eraser", "fill", "pen", "calligraphy", "brush", "highlighter", "line", "arrow", "rectangle", "ellipse", "triangle", "cube", "rectangular-prism", "cylinder", "cone", "pyramid", "sphere", "pull-3d", "emoji-stamp", "laser-dimension"]) {
     assert.match(app, new RegExp(`data-whiteboard-quick-tool="${tool}"`));
   }
-  for (const menu of ["Pen", "Line", "Shapes", "3D Shapes", "Measure", "More"]) assert.match(app, new RegExp(`<small>${menu}</small>`));
+  for (const menu of ["Select", "Erase", "Pen", "Line", "Shapes", "3D Shapes", "Text", "Emoji", "Measure", "History", "Clipboard", "More"]) assert.match(app, new RegExp(`<small>${menu}</small>`));
   assert.doesNotMatch(app, /<select data-whiteboard-tool>/);
   assert.match(app, /<input type="hidden" data-whiteboard-tool value="select">/);
   assert.match(app, /data-whiteboard-quick-tool="ruler-adjust">Adjust Ruler/);
   assert.match(app, /action\.closest\("details"\)\?\.removeAttribute\("open"\)/);
   assert.match(app, /menu\.addEventListener\("mouseleave", \(\) => menu\.removeAttribute\("open"\)\)/);
+  assert.match(app, /menu\.addEventListener\("mouseenter", \(\) => \{ menu\.open = true; \}\)/);
   assert.match(app, /action\.dataset\.action === "whiteboard-quick-tool"/);
   assert.match(app, /data-whiteboard-quick-tool="text"/);
   assert.match(app, /openWhiteboardTextEntry\(point, canvas\)/);
@@ -118,6 +119,10 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   assert.match(app, /whiteboardRichTextRuns/);
   assert.match(css, /\.platform-whiteboard-rich-editor/);
   assert.match(app, /measurePanel\?\.append\(\.\.\.measurementControls\)/);
+  assert.match(app, /selectPanel\?\.append\(\.\.\.selectControls\)/);
+  assert.match(app, /penPanel\?\.append\(\.\.\.penControls\)/);
+  assert.match(app, /textPanel\?\.append\(\.\.\.textControls\)/);
+  assert.match(app, /emojiPanel\?\.append\(\.\.\.emojiControls\)/);
   assert.match(app, /morePanel\?\.append\(\.\.\.drawingToolbar\.children\)/);
   assert.match(app, /drawingToolbar\.remove\(\)/);
   assert.match(css, /\.platform-whiteboard-tool-divider/);

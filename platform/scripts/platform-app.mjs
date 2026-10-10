@@ -1685,12 +1685,15 @@ function teacherDashboardView(state) {
       <button class="platform-whiteboard-exit-presentation" type="button" data-action="whiteboard-exit-presentation" hidden>Exit Presentation</button>
       <label class="platform-whiteboard-page-dock-control">Pages<select data-whiteboard-page-dock aria-label="Page thumbnails position"><option value="left">Show left</option><option value="right">Show right</option><option value="hidden">Hide</option></select></label>
       <nav class="platform-whiteboard-quick-actions" aria-label="Whiteboard quick actions">
-        <button type="button" data-action="whiteboard-tool-select" data-whiteboard-quick-tool="select" aria-pressed="true" title="Select and move"><span aria-hidden="true">➤</span><small>Select</small></button>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="lasso-select" title="Lasso select for image"><span aria-hidden="true">⌁</span><small>Lasso</small></button>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="eraser" title="Eraser object"><span aria-hidden="true">◇</span><small>Eraser</small></button>
-        <button type="button" data-action="whiteboard-delete-object" title="Delete — Backspace or Delete"><span aria-hidden="true">⌫</span><small>Delete</small></button>
-        <span class="platform-whiteboard-tool-divider" aria-hidden="true"></span>
-        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">✎</span><small>Pen</small></summary><div>
+        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">➤</span><small>Select</small></summary><div data-whiteboard-select-panel>
+          <button type="button" data-action="whiteboard-tool-select" data-whiteboard-quick-tool="select" aria-pressed="true">Select and move</button>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="lasso-select">Lasso select for image</button>
+        </div></details>
+        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">⌫</span><small>Erase</small></summary><div>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="eraser">Eraser object</button>
+          <button type="button" data-action="whiteboard-delete-object">Delete selected object</button>
+        </div></details>
+        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">✎</span><small>Pen</small></summary><div data-whiteboard-pen-panel>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pen">Pen</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="calligraphy">Calligraphy pen</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="brush">Brush strokes</button>
@@ -1704,6 +1707,7 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="rectangle">Rectangle</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="ellipse">Circle or oval</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="triangle">Triangle</button>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="fill">Paint can — fill shape</button>
         </div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">◇</span><small>3D Shapes</small></summary><div>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="cube">Cube</button>
@@ -1714,22 +1718,13 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="sphere">Sphere</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pull-3d">Pull selected 2D shape into 3D</button>
         </div></details>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="text" title="Click a blank place on the board to add text"><span aria-hidden="true">T</span><small>Text</small></button>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="fill" title="Paint can — fill shape"><span aria-hidden="true">◩</span><small>Paint</small></button>
-        <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="emoji-stamp" title="Emoji stamp"><span aria-hidden="true">☺</span><small>Emoji</small></button>
-        <span class="platform-whiteboard-tool-divider" aria-hidden="true"></span>
+        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">T</span><small>Text</small></summary><div data-whiteboard-text-panel><button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="text">Place a text box</button></div></details>
+        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">☺</span><small>Emoji</small></summary><div data-whiteboard-emoji-panel><button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="emoji-stamp">Emoji stamp</button></div></details>
         <details class="platform-whiteboard-quick-menu" data-whiteboard-measure-menu><summary><span aria-hidden="true">↔</span><small>Measure</small></summary><div data-whiteboard-measure-panel>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="laser-dimension">Laser measure — select 2 points</button>
         </div></details>
-        <span class="platform-whiteboard-tool-divider" aria-hidden="true"></span>
-        <button type="button" data-action="whiteboard-undo" title="Undo"><span aria-hidden="true">↶</span><small>Undo</small></button>
-        <button type="button" data-action="whiteboard-redo" title="Redo"><span aria-hidden="true">↷</span><small>Redo</small></button>
-        <span class="platform-whiteboard-tool-divider" aria-hidden="true"></span>
-        <button type="button" data-action="whiteboard-copy" title="Copy — Ctrl+C or Command+C"><span aria-hidden="true">⧉</span><small>Copy</small></button>
-        <button type="button" data-action="whiteboard-cut" title="Cut — Ctrl+X or Command+X"><span aria-hidden="true">✂</span><small>Cut</small></button>
-        <button type="button" data-action="whiteboard-paste" title="Paste — Ctrl+V or Command+V"><span aria-hidden="true">▣</span><small>Paste</small></button>
-        <button type="button" data-action="whiteboard-duplicate" title="Duplicate — Ctrl+D or Command+D"><span aria-hidden="true">⧉+</span><small>Duplicate</small></button>
-        <span class="platform-whiteboard-tool-divider" aria-hidden="true"></span>
+        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">↶</span><small>History</small></summary><div><button type="button" data-action="whiteboard-undo">Undo</button><button type="button" data-action="whiteboard-redo">Redo</button></div></details>
+        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">⧉</span><small>Clipboard</small></summary><div><button type="button" data-action="whiteboard-copy">Copy</button><button type="button" data-action="whiteboard-cut">Cut</button><button type="button" data-action="whiteboard-paste">Paste</button><button type="button" data-action="whiteboard-duplicate">Duplicate</button></div></details>
         <button type="button" data-action="whiteboard-keyboard-help" title="Show keyboard and Chromebook shortcuts"><span aria-hidden="true">?</span><small>Help</small></button>
         <details class="platform-whiteboard-quick-menu" data-whiteboard-more-menu><summary><span aria-hidden="true">•••</span><small>More</small></summary><div class="platform-whiteboard-more-panel" data-whiteboard-more-panel></div></details>
       </nav>
@@ -3682,6 +3677,10 @@ function mountWhiteboard() {
   const quickActions = document.querySelector(".platform-whiteboard-quick-actions");
   const drawingToolbar = document.querySelector(".platform-whiteboard-toolbar");
   if (quickActions && drawingToolbar) {
+    const selectPanel = quickActions.querySelector("[data-whiteboard-select-panel]");
+    const penPanel = quickActions.querySelector("[data-whiteboard-pen-panel]");
+    const textPanel = quickActions.querySelector("[data-whiteboard-text-panel]");
+    const emojiPanel = quickActions.querySelector("[data-whiteboard-emoji-panel]");
     const measurePanel = quickActions.querySelector("[data-whiteboard-measure-panel]");
     const morePanel = quickActions.querySelector("[data-whiteboard-more-panel]");
     const measurementControls = [
@@ -3692,11 +3691,21 @@ function mountWhiteboard() {
       drawingToolbar.querySelector("[data-whiteboard-compare-unit]"),
       drawingToolbar.querySelector("[data-whiteboard-zoom]")?.closest("label")
     ].filter(Boolean);
+    const selectControls = [drawingToolbar.querySelector("[data-whiteboard-image]")?.closest("label"), drawingToolbar.querySelector(".platform-whiteboard-object-actions"), drawingToolbar.querySelector("[data-whiteboard-lasso-actions]")].filter(Boolean);
+    const penControls = [drawingToolbar.querySelector("[data-whiteboard-color]")?.closest("label"), drawingToolbar.querySelector("[data-whiteboard-size]")?.closest("label")].filter(Boolean);
+    const textControls = [drawingToolbar.querySelector("[data-whiteboard-text]")?.closest("label"), drawingToolbar.querySelector("[data-whiteboard-text-background]")?.closest("label"), drawingToolbar.querySelector('[data-action="whiteboard-add-text"]'), drawingToolbar.querySelector('[data-action="whiteboard-apply-text-background"]')].filter(Boolean);
+    const emojiControls = [drawingToolbar.querySelector("[data-whiteboard-emoji-label]")].filter(Boolean);
+    drawingToolbar.querySelectorAll('[data-action="whiteboard-undo"], [data-action="whiteboard-redo"]').forEach((button) => button.remove());
+    selectPanel?.append(...selectControls);
+    penPanel?.append(...penControls);
+    textPanel?.append(...textControls);
+    emojiPanel?.append(...emojiControls);
     measurePanel?.append(...measurementControls);
     morePanel?.append(...drawingToolbar.children);
     drawingToolbar.remove();
   }
   document.querySelectorAll(".platform-whiteboard-quick-menu").forEach((menu) => {
+    menu.addEventListener("mouseenter", () => { menu.open = true; });
     menu.addEventListener("mouseleave", () => menu.removeAttribute("open"));
     menu.addEventListener("toggle", () => {
       if (!menu.open) return;
