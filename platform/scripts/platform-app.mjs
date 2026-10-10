@@ -1699,9 +1699,10 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="brush">Brush strokes</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="highlighter">Highlighter</button>
         </div></details>
-        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">╱</span><small>Line</small></summary><div>
+        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">╱</span><small>Line</small></summary><div data-whiteboard-line-panel>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="line">Line</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="arrow">Arrow</button>
+          <label>Line thickness<input type="range" data-whiteboard-line-size min="2" max="32" value="6"><output data-whiteboard-line-size-output>6</output></label>
         </div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">□○△</span><small>Shapes</small></summary><div>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="rectangle">Rectangle</button>
@@ -1719,7 +1720,7 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pull-3d">Pull selected 2D shape into 3D</button>
         </div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">T</span><small>Text</small></summary><div data-whiteboard-text-panel><button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="text">Place a text box</button></div></details>
-        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">☺</span><small>Emoji</small></summary><div data-whiteboard-emoji-panel><button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="emoji-stamp">Emoji stamp</button></div></details>
+        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">☺</span><small>Emoji</small></summary><div data-whiteboard-emoji-panel></div></details>
         <details class="platform-whiteboard-quick-menu" data-whiteboard-measure-menu><summary><span aria-hidden="true">↔</span><small>Measure</small></summary><div data-whiteboard-measure-panel>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="laser-dimension">Laser measure — select 2 points</button>
         </div></details>
@@ -1751,12 +1752,9 @@ function teacherDashboardView(state) {
         <input type="hidden" data-whiteboard-tool value="select">
         <span class="platform-whiteboard-lasso-actions" data-whiteboard-lasso-actions hidden><strong>Selected image actions</strong><button type="button" data-action="whiteboard-remove-selection-background">Remove Selection Background</button><button type="button" data-action="whiteboard-download-selection">Download Selection PNG</button></span>
         <label>Color<input type="color" data-whiteboard-color value="#12384d"></label>
-        <label data-whiteboard-emoji-label hidden>Emoji<select data-whiteboard-emoji aria-label="Choose an emoji stamp">${WHITEBOARD_EMOJI_STAMPS.map((group) => `<optgroup label="${escapeHtml(group.category)}">${group.emojis.map(([emoji, name]) => `<option value="${emoji}">${emoji} ${escapeHtml(name)}</option>`).join("")}</optgroup>`).join("")}</select></label>
+        <label data-whiteboard-emoji-label>Choose an emoji<select data-whiteboard-emoji aria-label="Choose an emoji stamp">${WHITEBOARD_EMOJI_STAMPS.map((group) => `<optgroup label="${escapeHtml(group.category)}">${group.emojis.map(([emoji, name]) => `<option value="${emoji}">${emoji} ${escapeHtml(name)}</option>`).join("")}</optgroup>`).join("")}</select></label>
         <label>Line size<input type="range" data-whiteboard-size min="2" max="32" value="6"><output data-whiteboard-size-output>6</output></label>
-        <label class="platform-whiteboard-text-label">Text<input type="text" data-whiteboard-text maxlength="120" placeholder="Type text for the board"></label>
         <label>Text background<select data-whiteboard-text-background><option value="transparent">Transparent</option><option value="white">White</option><option value="black">Black</option><option value="highlight-yellow">Yellow highlighter</option><option value="highlight-green">Green highlighter</option><option value="highlight-pink">Pink highlighter</option><option value="highlight-blue">Blue highlighter</option></select></label>
-        <button type="button" data-action="whiteboard-add-text">Add Text</button>
-        <button type="button" data-action="whiteboard-apply-text-background">Apply Text Background</button>
         <label>Image<input type="file" data-whiteboard-image accept="image/*"></label>
         <span class="platform-whiteboard-object-actions" role="group" aria-label="Selected object actions">
           <button type="button" data-action="whiteboard-copy">Copy</button><button type="button" data-action="whiteboard-paste">Paste</button><button type="button" data-action="whiteboard-duplicate">Duplicate</button><span class="platform-whiteboard-push-help-wrap"><button type="button" data-action="whiteboard-push-2d">Push Back to 2D</button><span class="platform-whiteboard-push-help" data-whiteboard-push-help role="status" hidden>Select the 3D shape, then use this button to return it to its original 2D shape.</span></span><button type="button" data-action="whiteboard-rotate-left">Rotate left</button><button type="button" data-action="whiteboard-rotate-right">Rotate right</button><button type="button" data-action="whiteboard-delete-object">Delete selected</button>
@@ -3693,7 +3691,7 @@ function mountWhiteboard() {
     ].filter(Boolean);
     const selectControls = [drawingToolbar.querySelector("[data-whiteboard-image]")?.closest("label"), drawingToolbar.querySelector(".platform-whiteboard-object-actions"), drawingToolbar.querySelector("[data-whiteboard-lasso-actions]")].filter(Boolean);
     const penControls = [drawingToolbar.querySelector("[data-whiteboard-color]")?.closest("label"), drawingToolbar.querySelector("[data-whiteboard-size]")?.closest("label")].filter(Boolean);
-    const textControls = [drawingToolbar.querySelector("[data-whiteboard-text]")?.closest("label"), drawingToolbar.querySelector("[data-whiteboard-text-background]")?.closest("label"), drawingToolbar.querySelector('[data-action="whiteboard-add-text"]'), drawingToolbar.querySelector('[data-action="whiteboard-apply-text-background"]')].filter(Boolean);
+    const textControls = [drawingToolbar.querySelector("[data-whiteboard-text-background]")?.closest("label")].filter(Boolean);
     const emojiControls = [drawingToolbar.querySelector("[data-whiteboard-emoji-label]")].filter(Boolean);
     drawingToolbar.querySelectorAll('[data-action="whiteboard-undo"], [data-action="whiteboard-redo"]').forEach((button) => button.remove());
     selectPanel?.append(...selectControls);
@@ -3705,8 +3703,12 @@ function mountWhiteboard() {
     drawingToolbar.remove();
   }
   document.querySelectorAll(".platform-whiteboard-quick-menu").forEach((menu) => {
-    menu.addEventListener("mouseenter", () => { menu.open = true; });
-    menu.addEventListener("mouseleave", () => menu.removeAttribute("open"));
+    let closeTimer = null;
+    const cancelClose = () => { if (closeTimer) window.clearTimeout(closeTimer); closeTimer = null; };
+    const scheduleClose = () => { cancelClose(); closeTimer = window.setTimeout(() => { if (!menu.matches(":hover, :focus-within")) menu.removeAttribute("open"); }, 300); };
+    menu.addEventListener("mouseenter", () => { cancelClose(); menu.open = true; });
+    menu.addEventListener("mouseleave", scheduleClose);
+    menu.addEventListener("focusout", scheduleClose);
     menu.addEventListener("toggle", () => {
       if (!menu.open) return;
       document.querySelectorAll(".platform-whiteboard-quick-menu[open]").forEach((other) => { if (other !== menu) other.removeAttribute("open"); });
@@ -5654,11 +5656,25 @@ root.addEventListener("change", (event) => {
     whiteboardPageDock = ["left", "right", "hidden"].includes(pageDock.value) ? pageDock.value : "left";
     applyWhiteboardControlsLayout({ resizeCanvas: true }); saveWhiteboard(); setWhiteboardStatus(whiteboardPageDock === "hidden" ? "Page thumbnails hidden." : `Page thumbnails moved to the ${whiteboardPageDock}.`); return;
   }
+  const textBackground = event.target.closest("[data-whiteboard-text-background]");
+  if (textBackground) {
+    const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
+    if (selected?.type === "text") { pushWhiteboardHistory(); selected.background = textBackground.value; renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus("Text background updated."); }
+    else setWhiteboardStatus("Text background selected for the next text box.");
+    return;
+  }
+  const emojiChoice = event.target.closest("[data-whiteboard-emoji]");
+  if (emojiChoice) {
+    const tool = document.querySelector("[data-whiteboard-tool]");
+    if (tool) { tool.value = "emoji-stamp"; tool.dispatchEvent(new Event("change", { bubbles: true })); }
+    setWhiteboardStatus(`${emojiChoice.value} selected. Click the whiteboard to place it.`);
+    return;
+  }
   const whiteboardTool = event.target.closest("[data-whiteboard-tool]");
   if (whiteboardTool) {
     document.querySelectorAll("[data-whiteboard-quick-tool]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.whiteboardQuickTool === whiteboardTool.value)));
     const emojiLabel = document.querySelector("[data-whiteboard-emoji-label]");
-    if (emojiLabel) emojiLabel.hidden = whiteboardTool.value !== "emoji-stamp";
+    if (emojiLabel) emojiLabel.hidden = false;
     const lassoActions = document.querySelector("[data-whiteboard-lasso-actions]");
     if (lassoActions) lassoActions.hidden = whiteboardTool.value !== "lasso-select";
     const help = document.querySelector("[data-whiteboard-push-help]");
@@ -5988,6 +6004,14 @@ root.addEventListener("input", (event) => {
   if (whiteboardSize) {
     const output = document.querySelector("[data-whiteboard-size-output]");
     if (output) output.textContent = whiteboardSize.value;
+    return;
+  }
+  const whiteboardLineSize = event.target.closest("[data-whiteboard-line-size]");
+  if (whiteboardLineSize) {
+    const size = document.querySelector("[data-whiteboard-size]");
+    const output = document.querySelector("[data-whiteboard-line-size-output]");
+    if (size) { size.value = whiteboardLineSize.value; size.dispatchEvent(new Event("input", { bubbles: true })); }
+    if (output) output.textContent = whiteboardLineSize.value;
     return;
   }
   const scheduleDuration = event.target.closest('form[data-form="class-timer-schedule"] [name="durationMinutes"]');

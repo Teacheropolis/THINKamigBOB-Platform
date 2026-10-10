@@ -6,7 +6,7 @@ const app = readFileSync(new URL("../../platform/scripts/platform-app.mjs", impo
 const css = readFileSync(new URL("../../platform/styles/platform.css", import.meta.url), "utf8");
 
 test("Today workspace launches a browser-session classroom whiteboard", () => {
-  for (const text of ["Open Whiteboard", "Close Whiteboard", "Pen", "Highlighter", "Eraser", "Line", "Rectangle", "Add Text", "Undo", "Redo", "Clear Board"]) {
+  for (const text of ["Open Whiteboard", "Close Whiteboard", "Pen", "Highlighter", "Eraser", "Line", "Rectangle", "Place a text box", "Undo", "Redo", "Clear Board"]) {
     assert.match(app, new RegExp(text));
   }
   assert.match(app, /data-whiteboard-canvas/);
@@ -87,7 +87,7 @@ test("whiteboard menus collapse and dock around the canvas", () => {
 });
 
 test("hidden board menus retain a compact full drawing toolbox", () => {
-  for (const tool of ["select", "lasso-select", "eraser", "fill", "pen", "calligraphy", "brush", "highlighter", "line", "arrow", "rectangle", "ellipse", "triangle", "cube", "rectangular-prism", "cylinder", "cone", "pyramid", "sphere", "pull-3d", "emoji-stamp", "laser-dimension"]) {
+  for (const tool of ["select", "lasso-select", "eraser", "fill", "pen", "calligraphy", "brush", "highlighter", "line", "arrow", "rectangle", "ellipse", "triangle", "cube", "rectangular-prism", "cylinder", "cone", "pyramid", "sphere", "pull-3d", "laser-dimension"]) {
     assert.match(app, new RegExp(`data-whiteboard-quick-tool="${tool}"`));
   }
   for (const menu of ["Select", "Erase", "Pen", "Line", "Shapes", "3D Shapes", "Text", "Emoji", "Measure", "History", "Clipboard", "More"]) assert.match(app, new RegExp(`<small>${menu}</small>`));
@@ -95,8 +95,9 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   assert.match(app, /<input type="hidden" data-whiteboard-tool value="select">/);
   assert.match(app, /data-whiteboard-quick-tool="ruler-adjust">Adjust Ruler/);
   assert.doesNotMatch(app, /action\.closest\("details"\)\?\.removeAttribute\("open"\)/);
-  assert.match(app, /menu\.addEventListener\("mouseleave", \(\) => menu\.removeAttribute\("open"\)\)/);
-  assert.match(app, /menu\.addEventListener\("mouseenter", \(\) => \{ menu\.open = true; \}\)/);
+  assert.match(app, /menu\.addEventListener\("mouseleave", scheduleClose\)/);
+  assert.match(app, /menu\.matches\(":hover, :focus-within"\)/);
+  assert.match(app, /menu\.addEventListener\("mouseenter", \(\) => \{ cancelClose\(\); menu\.open = true; \}\)/);
   assert.match(app, /action\.dataset\.action === "whiteboard-quick-tool"/);
   assert.match(app, /data-whiteboard-quick-tool="text"/);
   assert.match(app, /openWhiteboardTextEntry\(point, canvas\)/);
@@ -191,16 +192,20 @@ test("whiteboard offers paint fill, calligraphy, and brush tools", () => {
   assert.match(app, /bristleOffsets/);
   assert.match(app, /tool === "brush" \? size \* 3/);
   assert.match(app, /if \(object\.fillColor\)/);
+  assert.match(app, /data-whiteboard-line-size/);
+  assert.match(app, /size\.dispatchEvent\(new Event\("input", \{ bubbles: true \}\)\)/);
 });
 
 test("whiteboard provides a categorized movable emoji stamp tool", () => {
-  for (const text of ["Emoji stamp", "Choose an emoji stamp", "Faces and feelings", "STEM and school", "Animals", "Marks and symbols", "emoji stamped"]) assert.match(app, new RegExp(text));
+  for (const text of ["Choose an emoji stamp", "Faces and feelings", "STEM and school", "Animals", "Marks and symbols", "emoji stamped"]) assert.match(app, new RegExp(text));
   assert.match(app, /WHITEBOARD_EMOJI_STAMPS/);
   assert.match(app, /tool === "emoji-stamp"/);
   assert.match(app, /emojiStamp: true/);
   assert.match(app, /updated\.emojiStamp && whiteboardDrawing\.resize/);
-  assert.match(app, /data-whiteboard-emoji-label hidden/);
-  assert.match(app, /emojiLabel\.hidden = whiteboardTool\.value !== "emoji-stamp"/);
+  assert.match(app, /data-whiteboard-emoji-label>/);
+  assert.match(app, /tool\.value = "emoji-stamp"/);
+  assert.doesNotMatch(app, />Emoji stamp<\/button>/);
+  assert.match(app, /emojiLabel\.hidden = false/);
   assert.match(css, /\.platform-whiteboard-toolbar label\[hidden\]/);
 });
 
@@ -246,7 +251,10 @@ test("measurement view can zoom and the ruler can move, rotate, extend, and chan
 });
 
 test("images and text rotate while text supports solid and highlighter backgrounds", () => {
-  for (const text of ["Rotate left", "Rotate right", "Text background", "Transparent", "White", "Black", "Yellow highlighter", "Green highlighter", "Pink highlighter", "Blue highlighter", "Apply Text Background"]) assert.match(app, new RegExp(text));
+  for (const text of ["Rotate left", "Rotate right", "Text background", "Transparent", "White", "Black", "Yellow highlighter", "Green highlighter", "Pink highlighter", "Blue highlighter"]) assert.match(app, new RegExp(text));
+  assert.doesNotMatch(app, />Apply Text Background<\/button>/);
+  assert.doesNotMatch(app, /placeholder="Type text for the board"/);
+  assert.match(app, /Text background selected for the next text box/);
   assert.match(app, /selected\.rotation =/);
   assert.match(app, /context\.rotate\(object\.rotation \?\? 0\)/);
   assert.match(app, /whiteboardTextBackground/);
