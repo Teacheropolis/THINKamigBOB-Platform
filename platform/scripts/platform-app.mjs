@@ -3314,37 +3314,40 @@ function showWhiteboardCursiveModel(text, object, canvas) {
     const { character, connectsFromPrevious, connectsToNext } = modeledLetters[index];
     const isUppercase = /^[A-Z]$/.test(character);
     const glyph = isUppercase ? null : CURSIVE_STROKE_LETTERS[character];
-    const baselineEntryStroke = isUppercase ? "" : `<path class="platform-whiteboard-cursive-entry${connectsFromPrevious ? " platform-whiteboard-cursive-incoming" : ""}" pathLength="1" d="M -6 9 C -4 9, -2 7, 0 4"/>`;
     const letterStrokes = isUppercase
       ? `<text class="platform-whiteboard-cursive-capital" x="0" y="9">${escapeHtml(character)}</text>`
       : glyph?.paths.map((path) => path.dot
         ? `<circle class="platform-whiteboard-cursive-dot" cx="${path.dot.cx}" cy="${path.dot.cy}" r="${path.dot.r}"/>`
         : `<path pathLength="1" d="${path.d}"/>`).join("") || "";
-    const strokes = `${baselineEntryStroke}${letterStrokes}`;
     modelTitle.textContent = `Letter ${index + 1} of ${modeledLetters.length}: ${character}`;
-    modelSvg.setAttribute("aria-label", `${connectsFromPrevious ? "How to connect from the baseline into and form" : "How to begin at the baseline and form"} the cursive letter ${character}`);
+    modelSvg.setAttribute("aria-label", `${connectsFromPrevious ? "How to continue from the previous letter and form" : "How to begin at the baseline and form"} the cursive letter ${character}`);
     const previousLetter = modelSvg.querySelector("[data-cursive-letter-active]");
-    if (previousLetter) {
-      const previousBounds = previousLetter.getBBox();
-      const previousEndpointX = Number(previousLetter.dataset.cursiveExitX) || previousBounds.x + previousBounds.width;
-      previousLetter.setAttribute("transform", `translate(${6 - previousEndpointX} 8)`);
-      previousLetter.removeAttribute("data-cursive-letter-active");
-      previousLetter.classList.add("is-fading");
-      window.setTimeout(() => previousLetter.remove(), 800);
-    }
-    modelSvg.insertAdjacentHTML("beforeend", `<g data-cursive-letter-active transform="translate(12 8)">${strokes}</g>`);
-    const currentLetter = modelSvg.querySelector("[data-cursive-letter-active]");
-    if (currentLetter && connectsToNext) {
-      const drawnPaths = [...currentLetter.querySelectorAll("path:not(.platform-whiteboard-cursive-entry)")];
+    modelSvg.insertAdjacentHTML("beforeend", `<g data-cursive-letter-active transform="translate(12 8)">${letterStrokes}</g>`);
+    const currentLetter = [...modelSvg.querySelectorAll("[data-cursive-letter-active]")].at(-1);
+    if (currentLetter) {
+      const drawnPaths = [...currentLetter.querySelectorAll("path")];
+      const firstDrawnPath = drawnPaths[0];
       const lastDrawnPath = drawnPaths.at(-1);
       const capitalBounds = currentLetter.querySelector("text")?.getBBox();
+      const pathStart = firstDrawnPath?.getPointAtLength(0);
       const pathEndpoint = lastDrawnPath?.getPointAtLength(lastDrawnPath.getTotalLength());
-      const exitStartX = pathEndpoint?.x ?? (capitalBounds ? capitalBounds.x + capitalBounds.width : 0);
-      const exitStartY = pathEndpoint?.y ?? 9;
-      const baselineTouchX = exitStartX + 4;
-      const exitEndX = exitStartX + 10;
-      currentLetter.insertAdjacentHTML("beforeend", `<path class="platform-whiteboard-cursive-exit" pathLength="1" d="M ${exitStartX} ${exitStartY} C ${exitStartX + 2} ${exitStartY}, ${baselineTouchX - 1} 9, ${baselineTouchX} 9 L ${exitEndX} 9"/>`);
-      currentLetter.dataset.cursiveExitX = String(exitEndX);
+      const entryEndX = pathStart?.x ?? 0;
+      const entryEndY = pathStart?.y ?? 9;
+      const entryStartX = entryEndX - 6;
+      const previousEndpointY = Number(previousLetter?.dataset.cursiveExitY);
+      const entryStartY = connectsFromPrevious && Number.isFinite(previousEndpointY) ? previousEndpointY : 9;
+      if (!isUppercase) currentLetter.insertAdjacentHTML("afterbegin", `<path class="platform-whiteboard-cursive-entry${connectsFromPrevious ? " platform-whiteboard-cursive-incoming" : ""}" pathLength="1" d="M ${entryStartX} ${entryStartY} C ${entryStartX + 2} ${entryStartY}, ${entryEndX - 2} ${entryEndY}, ${entryEndX} ${entryEndY}"/>`);
+      currentLetter.dataset.cursiveEntryX = String(entryStartX);
+      currentLetter.dataset.cursiveExitX = String(pathEndpoint?.x ?? (capitalBounds ? capitalBounds.x + capitalBounds.width : 0));
+      currentLetter.dataset.cursiveExitY = String(pathEndpoint?.y ?? 9);
+      if (previousLetter) {
+        const previousBounds = previousLetter.getBBox();
+        const previousEndpointX = Number(previousLetter.dataset.cursiveExitX) || previousBounds.x + previousBounds.width;
+        previousLetter.setAttribute("transform", `translate(${12 + entryStartX - previousEndpointX} 8)`);
+        previousLetter.removeAttribute("data-cursive-letter-active");
+        previousLetter.classList.add("is-fading");
+        window.setTimeout(() => previousLetter.remove(), 800);
+      }
     }
     let elapsedDrawingTime = 0;
     currentLetter?.querySelectorAll("path, circle, text").forEach((stroke) => {
