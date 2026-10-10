@@ -3284,36 +3284,40 @@ function showWhiteboardCursiveModel(text, object, canvas) {
   const surface = canvas.parentElement;
   if (!surface || !text) return;
   surface.querySelector("[data-whiteboard-cursive-model]")?.remove();
-  let strokeOrder = 0, cursorX = 7;
-  const letters = [...text].map((character, characterIndex, allCharacters) => {
-    if (character === " ") { cursorX += 10; return ""; }
-    const isUppercase = /^[A-Z]$/.test(character);
-    const glyph = isUppercase ? null : CURSIVE_STROKE_LETTERS[character];
-    if (!glyph && !isUppercase) { cursorX += 15; return ""; }
-    const letterX = cursorX;
-    const strokes = isUppercase ? `<text class="platform-whiteboard-cursive-capital" x="0" y="9" style="--stroke-order:${strokeOrder++}">${escapeHtml(character)}</text>` : glyph.paths.map((path) => {
-      const order = strokeOrder++;
-      return path.dot ? `<circle class="platform-whiteboard-cursive-dot" cx="${path.dot.cx}" cy="${path.dot.cy}" r="${path.dot.r}" style="--stroke-order:${order}"/>` : `<path pathLength="1" d="${path.d}" style="--stroke-order:${order}"/>`;
-    }).join("");
-    const advance = isUppercase ? 20 : 15;
-    cursorX += advance;
-    const nextCharacter = allCharacters[characterIndex + 1];
-    const connector = nextCharacter && /^[A-Za-z]$/.test(nextCharacter) ? `<path class="platform-whiteboard-cursive-connector" pathLength="1" d="M ${letterX + advance - 4} 24 C ${letterX + advance - 2} 23, ${letterX + advance - 1} 21, ${letterX + advance} 20" style="--stroke-order:${strokeOrder++}"/>` : "";
-    return `<g transform="translate(${letterX} 16)">${strokes}</g>${connector}`;
-  }).join("");
+  const modeledLetters = [...text].filter((character) => /^[A-Za-z]$/.test(character));
+  if (!modeledLetters.length) return;
   const model = document.createElement("aside");
   model.className = "platform-whiteboard-cursive-model"; model.dataset.whiteboardCursiveModel = "true";
   const scaleX = canvas.clientWidth / canvas.width, scaleY = canvas.clientHeight / canvas.height;
   model.style.left = `${Math.max(4, object.x * scaleX)}px`; model.style.top = `${Math.max(4, object.y * scaleY)}px`;
-  model.innerHTML = `<strong>Watch the pencil strokes and connections</strong><svg viewBox="0 -2 ${Math.max(42, cursorX + 9)} 42" aria-label="Slow cursive stroke model for ${escapeHtml(text)}">${letters}</svg>`;
+  model.innerHTML = `<strong data-whiteboard-cursive-model-title>Watch each letter form</strong><svg data-whiteboard-cursive-model-svg viewBox="-6 -5 34 42" aria-live="polite"></svg>`;
   surface.append(model);
-  const totalDuration = Math.max(1, strokeOrder) * 850 + 600;
-  window.setTimeout(() => {
-    if (!model.isConnected) return;
-    const replay = window.confirm("The cursive model is complete. Would you like to replay it once more?");
-    model.remove();
-    if (replay) showWhiteboardCursiveModel(text, object, canvas);
-  }, totalDuration);
+  const modelTitle = model.querySelector("[data-whiteboard-cursive-model-title]");
+  const modelSvg = model.querySelector("[data-whiteboard-cursive-model-svg]");
+  const strokeDuration = 600;
+  const playLetter = (index) => {
+    if (!model.isConnected || !modelTitle || !modelSvg) return;
+    if (index >= modeledLetters.length) {
+      const replay = window.confirm("The cursive letter model is complete. Would you like to replay it once more?");
+      model.remove();
+      if (replay) showWhiteboardCursiveModel(text, object, canvas);
+      return;
+    }
+    const character = modeledLetters[index];
+    const isUppercase = /^[A-Z]$/.test(character);
+    const glyph = isUppercase ? null : CURSIVE_STROKE_LETTERS[character];
+    const strokes = isUppercase
+      ? `<text class="platform-whiteboard-cursive-capital" x="0" y="25" style="--stroke-order:0">${escapeHtml(character)}</text>`
+      : glyph?.paths.map((path, strokeOrder) => path.dot
+        ? `<circle class="platform-whiteboard-cursive-dot" cx="${path.dot.cx}" cy="${path.dot.cy}" r="${path.dot.r}" style="--stroke-order:${strokeOrder}"/>`
+        : `<path pathLength="1" d="${path.d}" style="--stroke-order:${strokeOrder}"/>`).join("") || "";
+    const strokeCount = isUppercase ? 1 : Math.max(1, glyph?.paths.length || 1);
+    modelTitle.textContent = `Letter ${index + 1} of ${modeledLetters.length}: ${character}`;
+    modelSvg.setAttribute("aria-label", `How to form the cursive letter ${character}`);
+    modelSvg.innerHTML = `<g transform="translate(3 8)">${strokes}</g>`;
+    window.setTimeout(() => playLetter(index + 1), strokeCount * strokeDuration);
+  };
+  playLetter(0);
 }
 
 function openWhiteboardTextEntry(point, canvas) {
