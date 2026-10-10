@@ -333,6 +333,13 @@ test("whiteboard includes editable three-dimensional workshop shapes", () => {
   assert.match(app, /closed 2D or 3D shape/);
 });
 
+test("push back to 2D is located in the Shapes dropdown", () => {
+  assert.match(app, /data-whiteboard-shapes-panel/);
+  assert.match(app, /const shapeControls = \[drawingToolbar\.querySelector\("\.platform-whiteboard-push-help-wrap"\)\]/);
+  assert.match(app, /querySelector\("\[data-whiteboard-shapes-panel\]"\)\?\.append\(\.\.\.shapeControls\)/);
+  assert.match(app, />Push Back to 2D<\/button>/);
+});
+
 test("CAD laser selects two points, asks concise questions, and creates dimensions", () => {
   for (const text of ["Laser measure — select 2 points", "Label this CAD measurement", "What are you measuring?", "Add my own answer", "Measurement unit", "Add CAD Dimension", "Laser point 1 selected.", "Two points selected."]) assert.match(app, new RegExp(text.replace(/[?]/g, "\\?")));
   assert.match(app, /createWhiteboardObject\("dimension"/);

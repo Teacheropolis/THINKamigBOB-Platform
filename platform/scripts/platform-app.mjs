@@ -1708,7 +1708,7 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="arrow">Arrow</button>
           <label>Line thickness<input type="range" data-whiteboard-line-size min="2" max="32" value="6"><output data-whiteboard-line-size-output>6</output></label>
         </div></details>
-        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">□○△</span><small>Shapes</small></summary><div>
+        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">□○△</span><small>Shapes</small></summary><div data-whiteboard-shapes-panel>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="rectangle">Rectangle</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="ellipse">Circle or oval</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="triangle">Triangle</button>
@@ -3722,12 +3722,14 @@ function mountWhiteboard() {
       drawingToolbar.querySelector("[data-whiteboard-zoom]")?.closest("label")
     ].filter(Boolean);
     const selectControls = [drawingToolbar.querySelector("[data-whiteboard-image]")?.closest("label"), drawingToolbar.querySelector(".platform-whiteboard-object-actions"), drawingToolbar.querySelector("[data-whiteboard-lasso-actions]")].filter(Boolean);
+    const shapeControls = [drawingToolbar.querySelector(".platform-whiteboard-push-help-wrap")].filter(Boolean);
     const colorControls = [drawingToolbar.querySelector("[data-whiteboard-color]")?.closest("label")].filter(Boolean);
     const penControls = [drawingToolbar.querySelector("[data-whiteboard-size]")?.closest("label")].filter(Boolean);
     const textControls = [drawingToolbar.querySelector("[data-whiteboard-text-background]")?.closest("label")].filter(Boolean);
     const emojiControls = [drawingToolbar.querySelector("[data-whiteboard-emoji-label]")].filter(Boolean);
     drawingToolbar.querySelectorAll('[data-action="whiteboard-undo"], [data-action="whiteboard-redo"]').forEach((button) => button.remove());
     selectPanel?.append(...selectControls);
+    document.querySelector("[data-whiteboard-shapes-panel]")?.append(...shapeControls);
     document.querySelector("[data-whiteboard-color-panel]")?.append(...colorControls);
     penPanel?.append(...penControls);
     textPanel?.append(...textControls);
