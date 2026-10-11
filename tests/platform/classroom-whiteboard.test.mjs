@@ -552,6 +552,17 @@ test("Pixel Studio imports GIF frames for editing and reordering", () => {
   assert.match(app, /item\.types\.includes\("image\/gif"\)/);
 });
 
+test("Pixel Studio pastes website GIF files, HTML images, and copied GIF addresses", () => {
+  for (const text of ["GIF from a website:", "copy the GIF or its image address", "Downloading the copied GIF", "website copied only a still picture", "website blocked direct GIF copying"]) assert.match(app, new RegExp(text));
+  assert.match(app, /function gifUrlFromClipboardText/);
+  assert.match(app, /new DOMParser\(\)\.parseFromString/);
+  assert.match(app, /async function importPixelGifUrl/);
+  assert.match(app, /signature\.startsWith\("GIF8"\)/);
+  assert.match(app, /item\.types\.includes\("text\/html"\)/);
+  assert.match(app, /item\.types\.includes\("text\/plain"\)/);
+  assert.match(app, /\[data-pixel-studio\]:not\(\[hidden\]\)/);
+});
+
 test("Pixel Studio exposes editable and random color-bit palettes", () => {
   for (const text of ["Random Color Palette", "Color-bit palette", "Select any color code to draw", "All ${2 ** pixelStudio.bits} colors available", "changed throughout the animation"]) assert.match(app, new RegExp(text.replace(/[${}*+?.()|[\]\\]/g, "\\$&")));
   assert.match(app, /function randomPixelPalette/);
