@@ -593,6 +593,16 @@ test("Pixel Studio projects can be started, saved, reopened, and imported with c
   assert.match(css, /\.platform-pixel-gif-address/);
 });
 
+test("Pixel Studio Full Color preserves photo colors and explains GIF reduction", () => {
+  for (const text of ["Full Color", "24-bit · 64×64", "millions of colors", "Full Color RGB:", "PNG keeps all project colors", "GIF supports no more than 256 colors per frame", "reduced each Full Color frame"]) assert.match(app, new RegExp(text));
+  assert.match(app, /"full-color": \{ size: 64, bits: 24 \}/);
+  assert.match(app, /pixelStudio\.bits === 24/);
+  assert.match(app, /validBits = \[1,2,4,8,24\]/);
+  assert.match(app, /function pixelColorLabel/);
+  assert.match(app, /paletteIndex = \(color\)/);
+  assert.match(css, /grid-template-columns: repeat\(4/);
+});
+
 test("color menu provides a screen eyedropper and updates the shared color", () => {
   for (const text of ["Eyedropper — match a screen color", "matched from the screen", "Use the color picker instead"]) assert.match(app, new RegExp(text));
   assert.match(app, /typeof window\.EyeDropper !== "function"/);

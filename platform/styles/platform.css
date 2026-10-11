@@ -1382,7 +1382,7 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-pixel-project-actions { display: flex; flex-wrap: wrap; gap: .55rem; padding: .65rem; border: 2px solid #5c8da3; border-radius: .7rem; background: #eef7fa; }
 .platform-pixel-project-actions label { display: inline-flex; align-items: center; padding: .55rem .8rem; border: 2px solid var(--platform-blue); border-radius: .45rem; background: #fff; font-weight: 800; cursor: pointer; }
 .platform-pixel-project-actions input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
-.platform-pixel-levels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; }
+.platform-pixel-levels { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; }
 .platform-pixel-levels button { display: grid; gap: .15rem; min-height: 4rem; border: 2px solid #88aebb; background: #f5fafb; }
 .platform-pixel-levels button strong { font-size: 1.05rem; }
 .platform-pixel-levels button[aria-pressed="true"] { color: #fff; border-color: var(--platform-blue); background: var(--platform-blue); box-shadow: 0 0 0 3px #f0a52b; }
@@ -1413,6 +1413,7 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-pixel-studio-workspace [data-pixel-frames] img { width: 3.5rem; height: 3.5rem; image-rendering: pixelated; background: #fff; }
 .platform-pixel-studio-workspace [data-pixel-preview] { width: 12rem; height: 12rem; border: 2px solid #9bb7c5; image-rendering: pixelated; background: #fff; }
 .platform-pixel-studio-panel > footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .55rem; }
+.platform-pixel-studio-panel > footer p { flex: 1 1 100%; margin: 0; color: #445e6c; font-weight: 750; text-align: right; }
 @media (max-width: 720px) { .platform-pixel-levels, .platform-pixel-studio-workspace { grid-template-columns: 1fr; } .platform-pixel-studio-workspace > canvas { width: 100%; } }
 .platform-whiteboard-question { position: fixed; z-index: 272; inset: 0; display: grid; place-items: center; padding: 1rem; background: rgba(7, 27, 39, 0.76); }
 .platform-whiteboard-question[hidden], .platform-whiteboard-question label[hidden] { display: none !important; }
