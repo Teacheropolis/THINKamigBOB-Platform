@@ -252,15 +252,12 @@ test("eraser removes only its stroke area with its own adjustable thickness", ()
 
 test("top toolbar starts with select erase color and paint can", () => {
   const selectIndex = app.indexOf("<small>Select</small>");
-  const removeBackgroundIndex = app.indexOf("<small>Remove<br>Background</small>");
   const historyIndex = app.indexOf("<small>History</small>");
   const clipboardIndex = app.indexOf("<small>Clipboard</small>");
   const eraseIndex = app.indexOf("<small>Erase</small>");
   const colorIndex = app.indexOf("<small>Color</small>");
   const paintIndex = app.indexOf("<small>Paint Can</small>");
-  assert.ok(selectIndex < removeBackgroundIndex && removeBackgroundIndex < historyIndex && historyIndex < clipboardIndex && clipboardIndex < eraseIndex && eraseIndex < colorIndex && colorIndex < paintIndex);
-  assert.match(app, /class="platform-whiteboard-remove-background-button" data-action="whiteboard-remove-selection-background"/);
-  assert.match(css, /\.platform-whiteboard-remove-background-button/);
+  assert.ok(selectIndex < historyIndex && historyIndex < clipboardIndex && clipboardIndex < eraseIndex && eraseIndex < colorIndex && colorIndex < paintIndex);
   assert.match(app, /data-whiteboard-color-panel/);
   assert.match(app, /querySelector\("\[data-whiteboard-color-panel\]"\)\?\.append\(\.\.\.colorControls\)/);
   assert.match(app, /data-whiteboard-quick-tool="fill" title="Fill a closed shape with the selected color"/);
@@ -482,7 +479,7 @@ test("whiteboard provides a categorized movable emoji stamp tool", () => {
 });
 
 test("whiteboard lasso isolates work, removes its background, and downloads PNG", () => {
-  for (const text of ["Lasso select for image", "Remove<br>Background", "Download Selection PNG", "Cutout ready.", "whiteboard-selection.png", "Use Undo if light details were removed."]) assert.match(app, new RegExp(text.replace(/[.]/g, "\\.")));
+  for (const text of ["Lasso parts to keep or remove", "Remove Background", "Download Selection PNG", "Cutout ready.", "whiteboard-selection.png", "Use Undo if light details were removed."]) assert.match(app, new RegExp(text.replace(/[.]/g, "\\.")));
   assert.match(app, /whiteboardPointInPolygon/);
   assert.match(app, /whiteboardSelectionCanvas/);
   assert.match(app, /pixels\.data\[index \+ 3\] = 0/);
@@ -491,6 +488,17 @@ test("whiteboard lasso isolates work, removes its background, and downloads PNG"
   assert.equal((app.match(/data-action="whiteboard-remove-selection-background"/g) || []).length, 1);
   assert.match(app, /lassoActions\.hidden = whiteboardTool\.value !== "lasso-select"/);
   assert.match(css, /\.platform-whiteboard-lasso-actions/);
+});
+
+test("remove background lives under More and the toolbar offers saved board backgrounds", () => {
+  const morePanel = app.match(/data-whiteboard-more-panel[^>]*>([\s\S]*?)<\/div><\/details>/)?.[1] ?? "";
+  assert.match(morePanel, /data-action="whiteboard-remove-selection-background"/);
+  for (const text of ["Background", "Plain white", "Solid color", "Gradient", "Background image", "Apply Background"]) assert.match(app, new RegExp(text));
+  assert.match(app, /data-whiteboard-background-type/);
+  assert.match(app, /createLinearGradient/);
+  assert.match(app, /whiteboardBackground\.type === "image" && whiteboardBackground\.element/);
+  assert.match(app, /background: \{ type: whiteboardBackground\.type/);
+  assert.match(app, /board\.background/);
 });
 
 test("lasso opens a cutout choice to use, delete, or cancel", () => {

@@ -197,6 +197,7 @@ let whiteboardPageDock = "left";
 let whiteboardSelectedObjectId = "";
 let whiteboardClipboard = null;
 let whiteboardGridUnit = "plain";
+let whiteboardBackground = { type: "white", color1: "#ffffff", color2: "#d8edf5", imageSrc: "", element: null };
 let whiteboardRulerUnit = "none";
 let whiteboardZoom = 100;
 let whiteboardRuler = { x: 40, y: 420, length: 600, angle: 0, sides: "both" };
@@ -1689,9 +1690,8 @@ function teacherDashboardView(state) {
       <nav class="platform-whiteboard-quick-actions" aria-label="Whiteboard quick actions">
         <details class="platform-whiteboard-quick-menu" data-whiteboard-primary-tool="select"><summary><span aria-hidden="true">➤</span><small>Select</small></summary><div data-whiteboard-select-panel>
           <button type="button" data-action="whiteboard-tool-select" data-whiteboard-quick-tool="select" aria-pressed="true">Select and move</button>
-          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="lasso-select">Lasso select for image</button>
+          <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="lasso-select">Lasso parts to keep or remove</button>
         </div></details>
-        <button type="button" class="platform-whiteboard-remove-background-button" data-action="whiteboard-remove-selection-background" title="Remove the background from the selected image"><span aria-hidden="true">▧</span><small>Remove<br>Background</small></button>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">↶</span><small>History</small></summary><div><button type="button" data-action="whiteboard-undo">Undo</button><button type="button" data-action="whiteboard-redo">Redo</button></div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">⧉</span><small>Clipboard</small></summary><div><button type="button" data-action="whiteboard-copy">Copy object</button><button type="button" data-action="whiteboard-cut">Cut object</button><button type="button" data-action="whiteboard-paste">Paste object</button><button type="button" data-action="whiteboard-paste-system-image">Paste copied image</button><button type="button" data-action="whiteboard-duplicate">Duplicate</button></div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">⌫</span><small>Erase</small></summary><div>
@@ -1700,6 +1700,7 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="erase-object">Erase object</button>
         </div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span class="platform-whiteboard-color-chip" data-whiteboard-color-chip style="--whiteboard-selected-color:#12384d" aria-hidden="true"></span><small>Color</small></summary><div data-whiteboard-color-panel><button type="button" data-action="whiteboard-eyedropper">◉ Eyedropper — match a screen color</button></div></details>
+        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">▤</span><small>Background</small></summary><div class="platform-whiteboard-background-panel"><label>Background type<select data-whiteboard-background-type><option value="white">Plain white</option><option value="solid">Solid color</option><option value="gradient">Gradient</option><option value="image">Image</option></select></label><label>First color<input type="color" data-whiteboard-background-color-1 value="#ffffff"></label><label>Second gradient color<input type="color" data-whiteboard-background-color-2 value="#d8edf5"></label><label>Background image<input type="file" data-whiteboard-background-image accept="image/*"></label><button type="button" data-action="whiteboard-apply-background">Apply Background</button></div></details>
         <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="fill" title="Fill a closed shape with the selected color"><span class="platform-whiteboard-paint-can-icon" data-whiteboard-paint-can-icon style="--whiteboard-selected-color:#12384d" aria-hidden="true"><svg viewBox="0 0 28 24"><path class="platform-whiteboard-paint-can-body" d="M5 8h15l-2 12H7L5 8Z"/><path d="M4 7h17M7 8c0-7 11-7 11 0M20 12l4 4 2-2-4-4"/></svg></span><small>Paint Can</small></button>
         <details class="platform-whiteboard-quick-menu" data-whiteboard-primary-tool="pen"><summary><span aria-hidden="true">✎</span><small>Pen</small></summary><div data-whiteboard-pen-panel>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pen">Pen</button>
@@ -1742,7 +1743,7 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="laser-dimension">Laser measure — select 2 points</button>
         </div></details>
         <button type="button" data-action="whiteboard-keyboard-help" title="Show keyboard and Chromebook shortcuts"><span aria-hidden="true">?</span><small>Help</small></button>
-        <details class="platform-whiteboard-quick-menu" data-whiteboard-more-menu><summary><span aria-hidden="true">•••</span><small>More</small></summary><div class="platform-whiteboard-more-panel" data-whiteboard-more-panel></div></details>
+        <details class="platform-whiteboard-quick-menu" data-whiteboard-more-menu><summary><span aria-hidden="true">•••</span><small>More</small></summary><div class="platform-whiteboard-more-panel" data-whiteboard-more-panel><button type="button" data-action="whiteboard-remove-selection-background" title="Remove the background from the selected image">Remove Background</button></div></details>
       </nav>
       <div class="platform-whiteboard-controls" data-whiteboard-controls>
       <div class="platform-whiteboard-library" aria-label="Saved whiteboards">
@@ -3202,7 +3203,7 @@ function saveWhiteboard(canvas = whiteboardCanvas()) {
     window.sessionStorage.setItem(WHITEBOARD_SESSION_KEY, whiteboardSnapshot(canvas));
     window.sessionStorage.setItem(WHITEBOARD_OBJECT_SESSION_KEY, JSON.stringify(serializableWhiteboardObjects()));
     window.sessionStorage.setItem(WHITEBOARD_PAGES_SESSION_KEY, JSON.stringify({ currentPageIndex: whiteboardCurrentPageIndex, pages: whiteboardPages }));
-    window.sessionStorage.setItem(WHITEBOARD_VIEW_SESSION_KEY, JSON.stringify({ gridUnit: whiteboardGridUnit, rulerUnit: whiteboardRulerUnit, zoom: whiteboardZoom, ruler: whiteboardRuler, title: whiteboardDrawingTitle, controlsDock: whiteboardControlsDock, controlsHidden: whiteboardControlsHidden, pageDock: whiteboardPageDock }));
+    window.sessionStorage.setItem(WHITEBOARD_VIEW_SESSION_KEY, JSON.stringify({ gridUnit: whiteboardGridUnit, rulerUnit: whiteboardRulerUnit, zoom: whiteboardZoom, ruler: whiteboardRuler, title: whiteboardDrawingTitle, controlsDock: whiteboardControlsDock, controlsHidden: whiteboardControlsHidden, pageDock: whiteboardPageDock, background: { type: whiteboardBackground.type, color1: whiteboardBackground.color1, color2: whiteboardBackground.color2, imageSrc: whiteboardBackground.imageSrc } }));
     renderWhiteboardPageStrip();
   } catch {
     const status = document.querySelector("[data-whiteboard-status]");
@@ -4294,7 +4295,11 @@ function drawWhiteboardSelectionMeasurements(context, object) {
 function renderWhiteboardObjects(canvas = whiteboardCanvas()) {
   if (!canvas) return;
   const context = canvas.getContext("2d");
-  context.clearRect(0, 0, canvas.width, canvas.height); context.fillStyle = "#fff"; context.fillRect(0, 0, canvas.width, canvas.height); drawWhiteboardGrid(context, canvas);
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  if (whiteboardBackground.type === "gradient") { const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height); gradient.addColorStop(0, whiteboardBackground.color1); gradient.addColorStop(1, whiteboardBackground.color2); context.fillStyle = gradient; context.fillRect(0, 0, canvas.width, canvas.height); }
+  else { context.fillStyle = whiteboardBackground.type === "solid" ? whiteboardBackground.color1 : "#ffffff"; context.fillRect(0, 0, canvas.width, canvas.height); }
+  if (whiteboardBackground.type === "image" && whiteboardBackground.element) context.drawImage(whiteboardBackground.element, 0, 0, canvas.width, canvas.height);
+  drawWhiteboardGrid(context, canvas);
   for (const object of whiteboardObjects) {
     drawWhiteboardExtrusion(context, object);
     context.save(); context.globalAlpha = object.opacity ?? 1; context.strokeStyle = object.faceColors?.front ?? object.color ?? "#12384d"; context.fillStyle = object.faceColors?.front ?? object.color ?? "#12384d"; context.lineWidth = object.size ?? 6; context.lineCap = "round"; context.lineJoin = "round";
@@ -4434,7 +4439,8 @@ function mountWhiteboard() {
       whiteboardCurrentPageIndex = 0;
     }
   } catch { whiteboardObjects = []; whiteboardPages = [newWhiteboardPage("Page 1")]; whiteboardCurrentPageIndex = 0; }
-  try { const view = JSON.parse(window.sessionStorage.getItem(WHITEBOARD_VIEW_SESSION_KEY) ?? "{}"); whiteboardGridUnit = ["plain", "inch", "cm", "mm"].includes(view.gridUnit) ? view.gridUnit : "plain"; whiteboardRulerUnit = ["none", "english", "metric"].includes(view.rulerUnit) ? view.rulerUnit : "none"; whiteboardZoom = Math.min(300, Math.max(50, Number(view.zoom) || 100)); whiteboardRuler = view.ruler && typeof view.ruler === "object" ? { ...whiteboardRuler, ...view.ruler } : { ...whiteboardRuler, y: canvas.height - 92 }; whiteboardDrawingTitle = String(view.title || "Workshop Drawing").slice(0, 60); whiteboardControlsDock = ["top", "left", "right", "bottom"].includes(view.controlsDock) ? view.controlsDock : "top"; whiteboardControlsHidden = Boolean(view.controlsHidden); whiteboardPageDock = ["left", "right", "hidden"].includes(view.pageDock) ? view.pageDock : "left"; } catch { whiteboardGridUnit = "plain"; whiteboardRulerUnit = "none"; whiteboardZoom = 100; whiteboardDrawingTitle = "Workshop Drawing"; whiteboardControlsDock = "top"; whiteboardControlsHidden = false; whiteboardPageDock = "left"; }
+  try { const view = JSON.parse(window.sessionStorage.getItem(WHITEBOARD_VIEW_SESSION_KEY) ?? "{}"); whiteboardGridUnit = ["plain", "inch", "cm", "mm"].includes(view.gridUnit) ? view.gridUnit : "plain"; whiteboardRulerUnit = ["none", "english", "metric"].includes(view.rulerUnit) ? view.rulerUnit : "none"; whiteboardZoom = Math.min(300, Math.max(50, Number(view.zoom) || 100)); whiteboardRuler = view.ruler && typeof view.ruler === "object" ? { ...whiteboardRuler, ...view.ruler } : { ...whiteboardRuler, y: canvas.height - 92 }; whiteboardDrawingTitle = String(view.title || "Workshop Drawing").slice(0, 60); whiteboardControlsDock = ["top", "left", "right", "bottom"].includes(view.controlsDock) ? view.controlsDock : "top"; whiteboardControlsHidden = Boolean(view.controlsHidden); whiteboardPageDock = ["left", "right", "hidden"].includes(view.pageDock) ? view.pageDock : "left"; if (view.background) whiteboardBackground = { ...whiteboardBackground, ...view.background, element: null }; } catch { whiteboardGridUnit = "plain"; whiteboardRulerUnit = "none"; whiteboardZoom = 100; whiteboardDrawingTitle = "Workshop Drawing"; whiteboardControlsDock = "top"; whiteboardControlsHidden = false; whiteboardPageDock = "left"; }
+  if (whiteboardBackground.imageSrc) { const backgroundImage = new Image(); backgroundImage.onload = () => { whiteboardBackground.element = backgroundImage; renderWhiteboardObjects(); }; backgroundImage.src = whiteboardBackground.imageSrc; }
   const gridControl = document.querySelector("[data-whiteboard-grid]"); const rulerControl = document.querySelector("[data-whiteboard-ruler]"); const rulerSides = document.querySelector("[data-whiteboard-ruler-sides]"); if (gridControl) gridControl.value = whiteboardGridUnit; if (rulerControl) rulerControl.value = whiteboardRulerUnit; if (rulerSides) rulerSides.value = whiteboardRuler.sides; applyWhiteboardControlsLayout({ resizeCanvas: true }); applyWhiteboardZoom(canvas);
   if (!whiteboardObjects.length) { let legacy = ""; try { legacy = window.sessionStorage.getItem(WHITEBOARD_SESSION_KEY) ?? ""; } catch {} if (legacy) whiteboardObjects = [createWhiteboardObject("image", { x: 0, y: 0, width: canvas.width, height: canvas.height, src: legacy })]; }
   whiteboardObjects = whiteboardObjects.filter((object) => !isAccidentalWhiteboardDot(object));
@@ -5216,6 +5222,14 @@ function handleClick(event) {
     new window.EyeDropper().open().then(({ sRGBHex }) => { const color = document.querySelector("[data-whiteboard-color]"); if (!color) return; color.value = sRGBHex; color.dispatchEvent(new Event("input", { bubbles: true })); color.dispatchEvent(new Event("change", { bubbles: true })); setWhiteboardStatus(`${sRGBHex} matched from the screen.`); }).catch(() => setWhiteboardStatus("Eyedropper canceled. The current color was kept."));
     return;
   }
+  if (action.dataset.action === "whiteboard-apply-background") {
+    const type = document.querySelector("[data-whiteboard-background-type]")?.value ?? "white";
+    if (type === "image" && !whiteboardBackground.imageSrc) { setWhiteboardStatus("Choose a background image first."); return; }
+    whiteboardBackground.type = ["white", "solid", "gradient", "image"].includes(type) ? type : "white";
+    whiteboardBackground.color1 = document.querySelector("[data-whiteboard-background-color-1]")?.value ?? "#ffffff";
+    whiteboardBackground.color2 = document.querySelector("[data-whiteboard-background-color-2]")?.value ?? "#d8edf5";
+    renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus(`${whiteboardBackground.type === "white" ? "Plain white" : whiteboardBackground.type === "solid" ? "Solid color" : whiteboardBackground.type === "gradient" ? "Gradient" : "Image"} background applied.`); return;
+  }
   if (action.dataset.action === "whiteboard-download-selection") {
     try {
       if (!whiteboardSelectionDownload) {
@@ -5394,7 +5408,7 @@ function handleClick(event) {
     renderWhiteboardObjects(canvas);
     syncCurrentWhiteboardPage();
     const boards = readWhiteboardLibrary();
-    const board = { id: globalThis.crypto?.randomUUID?.() ?? `board-${Date.now()}`, title, classId: document.querySelector("[data-whiteboard-class]")?.value ?? "all", scheduleType, day: scheduleType === "weekly" ? (document.querySelector("[data-whiteboard-day]")?.value ?? WEEKDAYS[0]) : "", date: scheduleType === "date" ? date : "", studentDisplay, gridUnit: whiteboardGridUnit, rulerUnit: whiteboardRulerUnit, ruler: structuredClone(whiteboardRuler), image: whiteboardSnapshot(canvas), displayImage: studentDisplay ? whiteboardStudentDisplayImage(canvas) : "", objects: serializableWhiteboardObjects(), pages: structuredClone(whiteboardPages), currentPageIndex: whiteboardCurrentPageIndex, savedAt: Date.now() };
+    const board = { id: globalThis.crypto?.randomUUID?.() ?? `board-${Date.now()}`, title, classId: document.querySelector("[data-whiteboard-class]")?.value ?? "all", scheduleType, day: scheduleType === "weekly" ? (document.querySelector("[data-whiteboard-day]")?.value ?? WEEKDAYS[0]) : "", date: scheduleType === "date" ? date : "", studentDisplay, gridUnit: whiteboardGridUnit, rulerUnit: whiteboardRulerUnit, ruler: structuredClone(whiteboardRuler), background: { type: whiteboardBackground.type, color1: whiteboardBackground.color1, color2: whiteboardBackground.color2, imageSrc: whiteboardBackground.imageSrc }, image: whiteboardSnapshot(canvas), displayImage: studentDisplay ? whiteboardStudentDisplayImage(canvas) : "", objects: serializableWhiteboardObjects(), pages: structuredClone(whiteboardPages), currentPageIndex: whiteboardCurrentPageIndex, savedAt: Date.now() };
     boards.unshift(board);
     if (!writeWhiteboardLibrary(boards)) { setWhiteboardStatus("This board is too large for browser storage. Export it as a PNG instead."); return; }
     refreshWhiteboardLibraryOptions(board.id);
@@ -5417,6 +5431,8 @@ function handleClick(event) {
       whiteboardCurrentPageIndex = 0;
     }
     whiteboardGridUnit = ["plain", "inch", "cm", "mm"].includes(board.gridUnit) ? board.gridUnit : "plain";
+    whiteboardBackground = { type: "white", color1: "#ffffff", color2: "#d8edf5", imageSrc: "", element: null, ...(board.background ?? {}) };
+    if (whiteboardBackground.imageSrc) { const backgroundImage = new Image(); backgroundImage.onload = () => { whiteboardBackground.element = backgroundImage; renderWhiteboardObjects(); }; backgroundImage.src = whiteboardBackground.imageSrc; }
     whiteboardRulerUnit = ["none", "english", "metric"].includes(board.rulerUnit) ? board.rulerUnit : "none";
     whiteboardRuler = board.ruler && typeof board.ruler === "object" ? { ...whiteboardRuler, ...board.ruler } : whiteboardRuler;
     whiteboardDrawingTitle = board.title || "Workshop Drawing";
@@ -6332,6 +6348,13 @@ root.addEventListener("drop", (event) => {
 });
 
 root.addEventListener("change", (event) => {
+  const whiteboardBackgroundImage = event.target.closest("[data-whiteboard-background-image]");
+  if (whiteboardBackgroundImage) {
+    const file = whiteboardBackgroundImage.files?.[0];
+    if (!file) return;
+    if (!String(file.type).startsWith("image/") || file.size > 6 * 1024 * 1024) { setWhiteboardStatus("Choose a background image no larger than 6 MB."); whiteboardBackgroundImage.value = ""; return; }
+    const reader = new FileReader(); reader.addEventListener("load", () => { const image = new Image(); image.addEventListener("load", () => { whiteboardBackground = { ...whiteboardBackground, type: "image", imageSrc: String(reader.result), element: image }; const type = document.querySelector("[data-whiteboard-background-type]"); if (type) type.value = "image"; renderWhiteboardObjects(); saveWhiteboard(); setWhiteboardStatus("Image background applied."); }, { once: true }); image.src = String(reader.result); }, { once: true }); reader.readAsDataURL(file); whiteboardBackgroundImage.value = ""; return;
+  }
   if (event.target.closest("[data-whiteboard-text-font]")) { if (whiteboardSelectedObjectId) formatSelectedWhiteboardText("font"); activateWhiteboardTextTool(`${event.target.value} selected. Click anywhere on the whiteboard to start typing.`); refreshPendingWhiteboardTextEntryStyle(); return; }
   if (event.target.closest("[data-whiteboard-text-color]")) { if (whiteboardSelectedObjectId) formatSelectedWhiteboardText("color"); activateWhiteboardTextTool("Font color selected. Click anywhere on the whiteboard to start typing."); refreshPendingWhiteboardTextEntryStyle(); return; }
   if (event.target.closest("[data-class-resource-teacher]")) window.setTimeout(refreshCurrentClassPlan, 0);
