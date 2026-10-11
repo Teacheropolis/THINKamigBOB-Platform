@@ -1693,7 +1693,6 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="lasso-select">Lasso parts to keep or remove</button>
         </div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">↶</span><small>History</small></summary><div><button type="button" data-action="whiteboard-undo">Undo</button><button type="button" data-action="whiteboard-redo">Redo</button></div></details>
-        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">⧉</span><small>Clipboard</small></summary><div><button type="button" data-action="whiteboard-copy">Copy object</button><button type="button" data-action="whiteboard-cut">Cut object</button><button type="button" data-action="whiteboard-paste">Paste object</button><button type="button" data-action="whiteboard-paste-system-image">Paste copied image</button><button type="button" data-action="whiteboard-duplicate">Duplicate</button></div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">⌫</span><small>Erase</small></summary><div>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="eraser">Eraser</button>
           <label>Eraser thickness<input type="range" data-whiteboard-eraser-size min="12" max="140" value="40"><output data-whiteboard-eraser-size-output>40</output></label>
@@ -1743,7 +1742,7 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="laser-dimension">Laser measure — select 2 points</button>
         </div></details>
         <button type="button" data-action="whiteboard-keyboard-help" title="Show keyboard and Chromebook shortcuts"><span aria-hidden="true">?</span><small>Help</small></button>
-        <details class="platform-whiteboard-quick-menu" data-whiteboard-more-menu><summary><span aria-hidden="true">•••</span><small>More</small></summary><div class="platform-whiteboard-more-panel" data-whiteboard-more-panel><button type="button" data-action="whiteboard-remove-selection-background" title="Remove the background from the selected image">Remove Background</button></div></details>
+        <details class="platform-whiteboard-quick-menu" data-whiteboard-more-menu><summary><span aria-hidden="true">•••</span><small>More</small></summary><div class="platform-whiteboard-more-panel" data-whiteboard-more-panel><button type="button" data-action="whiteboard-paste-system-image">Paste copied image</button><button type="button" data-action="whiteboard-remove-selection-background" title="Remove the background from the selected image">Remove Background</button></div></details>
       </nav>
       <div class="platform-whiteboard-controls" data-whiteboard-controls>
       <div class="platform-whiteboard-library" aria-label="Saved whiteboards">

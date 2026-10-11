@@ -120,7 +120,8 @@ test("hidden board menus retain a compact full drawing toolbox", () => {
   for (const tool of ["select", "lasso-select", "eraser", "fill", "pen", "calligraphy", "brush", "highlighter", "line", "arrow", "rectangle", "ellipse", "triangle", "cube", "rectangular-prism", "cylinder", "cone", "pyramid", "sphere", "pull-3d", "laser-dimension"]) {
     assert.match(app, new RegExp(`data-whiteboard-quick-tool="${tool}"`));
   }
-  for (const menu of ["Select", "Erase", "Color", "Paint Can", "Pen", "Line", "Shapes", "3D Shapes", "Text", "Emoji", "Measure", "History", "Clipboard", "More"]) assert.match(app, new RegExp(`<small>${menu}</small>`));
+  for (const menu of ["Select", "Erase", "Color", "Paint Can", "Pen", "Line", "Shapes", "3D Shapes", "Text", "Emoji", "Measure", "History", "More"]) assert.match(app, new RegExp(`<small>${menu}</small>`));
+  assert.doesNotMatch(app, /<small>Clipboard<\/small>/);
   assert.doesNotMatch(app, /<select data-whiteboard-tool>/);
   assert.match(app, /<select data-whiteboard-tool hidden/);
   assert.match(app, /data-whiteboard-quick-tool="ruler-adjust">Adjust Ruler/);
@@ -253,11 +254,10 @@ test("eraser removes only its stroke area with its own adjustable thickness", ()
 test("top toolbar starts with select erase color and paint can", () => {
   const selectIndex = app.indexOf("<small>Select</small>");
   const historyIndex = app.indexOf("<small>History</small>");
-  const clipboardIndex = app.indexOf("<small>Clipboard</small>");
   const eraseIndex = app.indexOf("<small>Erase</small>");
   const colorIndex = app.indexOf("<small>Color</small>");
   const paintIndex = app.indexOf("<small>Paint Can</small>");
-  assert.ok(selectIndex < historyIndex && historyIndex < clipboardIndex && clipboardIndex < eraseIndex && eraseIndex < colorIndex && colorIndex < paintIndex);
+  assert.ok(selectIndex < historyIndex && historyIndex < eraseIndex && eraseIndex < colorIndex && colorIndex < paintIndex);
   assert.match(app, /data-whiteboard-color-panel/);
   assert.match(app, /querySelector\("\[data-whiteboard-color-panel\]"\)\?\.append\(\.\.\.colorControls\)/);
   assert.match(app, /data-whiteboard-quick-tool="fill" title="Fill a closed shape with the selected color"/);
@@ -493,6 +493,7 @@ test("whiteboard lasso isolates work, removes its background, and downloads PNG"
 test("remove background lives under More and the toolbar offers saved board backgrounds", () => {
   const morePanel = app.match(/data-whiteboard-more-panel[^>]*>([\s\S]*?)<\/div><\/details>/)?.[1] ?? "";
   assert.match(morePanel, /data-action="whiteboard-remove-selection-background"/);
+  assert.match(morePanel, /data-action="whiteboard-paste-system-image"/);
   for (const text of ["Background", "Plain white", "Solid color", "Gradient", "Background image", "Apply Background"]) assert.match(app, new RegExp(text));
   assert.match(app, /data-whiteboard-background-type/);
   assert.match(app, /createLinearGradient/);
