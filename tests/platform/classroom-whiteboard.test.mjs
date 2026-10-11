@@ -552,6 +552,15 @@ test("Pixel Studio imports GIF frames for editing and reordering", () => {
   assert.match(app, /item\.types\.includes\("image\/gif"\)/);
 });
 
+test("Pixel Studio exposes editable and random color-bit palettes", () => {
+  for (const text of ["Random Color Palette", "Color-bit palette", "Select any color code to draw", "All ${2 ** pixelStudio.bits} colors available", "changed throughout the animation"]) assert.match(app, new RegExp(text.replace(/[${}*+?.()|[\]\\]/g, "\\$&")));
+  assert.match(app, /function randomPixelPalette/);
+  assert.match(app, /data-pixel-palette-index/);
+  assert.match(app, /data-pixel-palette-color/);
+  assert.match(app, /padStart\(pixelStudio\.bits, "0"\)/);
+  assert.match(css, /\.platform-pixel-palette-color/);
+});
+
 test("color menu provides a screen eyedropper and updates the shared color", () => {
   for (const text of ["Eyedropper — match a screen color", "matched from the screen", "Use the color picker instead"]) assert.match(app, new RegExp(text));
   assert.match(app, /typeof window\.EyeDropper !== "function"/);
