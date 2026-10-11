@@ -1397,6 +1397,7 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-pixel-gif-address { display: flex; flex: 1 1 25rem; gap: .4rem; align-items: end; }
 .platform-pixel-gif-address label { display: grid; flex: 1; gap: .2rem; }
 .platform-pixel-gif-address input { width: 100%; min-height: 2.6rem; }
+.platform-pixel-gif-upload[data-loading="true"] { opacity: .65; cursor: progress; }
 .platform-pixel-advanced-import { flex: 1 1 100%; grid-template-columns: auto 1fr !important; align-items: center; }
 .platform-pixel-photo-option { display: flex; flex-wrap: wrap; align-items: center; gap: .55rem; }
 .platform-pixel-photo-option small { color: #445e6c; font-weight: 700; }

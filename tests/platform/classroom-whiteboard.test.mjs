@@ -543,13 +543,16 @@ test("Pixel Studio draws sprites, pixelates selected images, teaches color bits,
 });
 
 test("Pixel Studio imports GIF frames for editing and reordering", () => {
-  for (const text of ["Upload a GIF file", "Read GIF from Clipboard", "Move Frame Earlier", "Move Frame Later", "separating its frames", "opened as a bit-based editable animation"]) assert.match(app, new RegExp(text));
+  for (const text of ["Upload a GIF file", "Read GIF from Clipboard", "Move Frame Earlier", "Move Frame Later", "Selected ${file.name}. Opening the GIF now", "separating its frames", "opened as a bit-based editable animation"]) assert.match(app, new RegExp(text.replace(/[${}*+?.()|[\]\\]/g, "\\$&")));
   assert.match(app, /async function importPixelGif/);
   assert.match(app, /new window\.ImageDecoder/);
   assert.match(app, /decoder\.decode\(\{ frameIndex \}\)/);
   assert.match(app, /imageDataToPixelFrame/);
   assert.match(app, /async function pastePixelGif/);
   assert.match(app, /item\.types\.includes\("image\/gif"\)/);
+  assert.match(app, /pixelUploadBound/);
+  assert.match(app, /gifInput\.addEventListener\("change"/);
+  assert.match(css, /platform-pixel-gif-upload\[data-loading="true"\]/);
 });
 
 test("Pixel Studio pastes website GIF files, HTML images, and copied GIF addresses", () => {
