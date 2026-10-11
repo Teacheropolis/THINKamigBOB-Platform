@@ -519,6 +519,16 @@ test("delete cutout removes only the lasso area from an image", () => {
   assert.match(app, /The area inside the lasso was deleted/);
 });
 
+test("lasso can replace a cutout with an eyedropper-matched surrounding color", () => {
+  for (const text of ["Replace Cutout with Matched Color", "surrounding color sampled by the eyedropper", "The cutout was replaced with the matched color", "Color matching canceled"]) assert.match(app, new RegExp(text));
+  assert.match(app, /function fillWhiteboardLassoCutout\(color\)/);
+  assert.match(app, /data-action="whiteboard-lasso-fill"/);
+  assert.match(app, /new window\.EyeDropper\(\)\.open\(\)/);
+  assert.match(app, /fillWhiteboardLassoCutout\(sRGBHex\)/);
+  assert.match(app, /context\.fillStyle = color/);
+  assert.match(app, /Eyedropper is unavailable, so the cutout was replaced with the current toolbar color/);
+});
+
 test("color menu provides a screen eyedropper and updates the shared color", () => {
   for (const text of ["Eyedropper — match a screen color", "matched from the screen", "Use the color picker instead"]) assert.match(app, new RegExp(text));
   assert.match(app, /typeof window\.EyeDropper !== "function"/);
