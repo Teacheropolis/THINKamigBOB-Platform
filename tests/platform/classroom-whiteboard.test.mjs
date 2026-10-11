@@ -572,6 +572,15 @@ test("Pixel Studio exposes editable and random color-bit palettes", () => {
   assert.match(css, /\.platform-pixel-palette-color/);
 });
 
+test("Pixel Studio provides grade 3-6 learning levels and detailed advanced images", () => {
+  for (const text of ["Starter", "1-bit · 8×8", "Creator", "4-bit · 16×16", "Advanced", "8-bit · 64×64", "Advanced GIF import—up to 48 frames"]) assert.match(app, new RegExp(text));
+  assert.match(app, /PIXEL_8_BIT_PALETTE = Array\.from\(\{ length: 256 \}/);
+  assert.match(app, /const importLimit = document\.querySelector\("\[data-pixel-import-more\]"\)\?\.checked \? 48 : 12/);
+  assert.match(app, /advanced: \{ size: 64, bits: 8 \}/);
+  assert.match(app, /gifLzw\(indices, 8\)/);
+  assert.match(css, /\.platform-pixel-levels/);
+});
+
 test("color menu provides a screen eyedropper and updates the shared color", () => {
   for (const text of ["Eyedropper — match a screen color", "matched from the screen", "Use the color picker instead"]) assert.match(app, new RegExp(text));
   assert.match(app, /typeof window\.EyeDropper !== "function"/);

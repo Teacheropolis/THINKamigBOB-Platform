@@ -1379,6 +1379,10 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-pixel-studio-panel > header { display: flex; justify-content: space-between; gap: 1rem; align-items: start; }
 .platform-pixel-studio-panel h3, .platform-pixel-studio-panel p { margin: 0; }
 .platform-pixel-studio-panel header > button { min-width: 3rem; min-height: 3rem; font-size: 1.5rem; }
+.platform-pixel-levels { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .6rem; }
+.platform-pixel-levels button { display: grid; gap: .15rem; min-height: 4rem; border: 2px solid #88aebb; background: #f5fafb; }
+.platform-pixel-levels button strong { font-size: 1.05rem; }
+.platform-pixel-levels button[aria-pressed="true"] { color: #fff; border-color: var(--platform-blue); background: var(--platform-blue); box-shadow: 0 0 0 3px #f0a52b; }
 .platform-pixel-studio-controls { display: flex; flex-wrap: wrap; align-items: end; gap: .55rem; padding: .7rem; border-radius: .7rem; background: #eaf4f7; }
 .platform-pixel-studio-controls label { display: grid; gap: .2rem; font-weight: 800; }
 .platform-pixel-studio-controls select, .platform-pixel-studio-controls input, .platform-pixel-studio-controls button { min-height: 2.6rem; }
@@ -1400,7 +1404,7 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-pixel-studio-workspace [data-pixel-frames] img { width: 3.5rem; height: 3.5rem; image-rendering: pixelated; background: #fff; }
 .platform-pixel-studio-workspace [data-pixel-preview] { width: 12rem; height: 12rem; border: 2px solid #9bb7c5; image-rendering: pixelated; background: #fff; }
 .platform-pixel-studio-panel > footer { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .55rem; }
-@media (max-width: 720px) { .platform-pixel-studio-workspace { grid-template-columns: 1fr; } .platform-pixel-studio-workspace > canvas { width: 100%; } }
+@media (max-width: 720px) { .platform-pixel-levels, .platform-pixel-studio-workspace { grid-template-columns: 1fr; } .platform-pixel-studio-workspace > canvas { width: 100%; } }
 .platform-whiteboard-question { position: fixed; z-index: 272; inset: 0; display: grid; place-items: center; padding: 1rem; background: rgba(7, 27, 39, 0.76); }
 .platform-whiteboard-question[hidden], .platform-whiteboard-question label[hidden] { display: none !important; }
 .platform-whiteboard-question > div { display: grid; width: min(34rem, 94vw); gap: 0.75rem; padding: 1.35rem; border: 3px solid var(--platform-blue); border-radius: 0.9rem; background: #fff; box-shadow: 0 1rem 3rem rgba(0,0,0,0.35); }
