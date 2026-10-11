@@ -1398,6 +1398,10 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-pixel-gif-address label { display: grid; flex: 1; gap: .2rem; }
 .platform-pixel-gif-address input { width: 100%; min-height: 2.6rem; }
 .platform-pixel-advanced-import { flex: 1 1 100%; grid-template-columns: auto 1fr !important; align-items: center; }
+.platform-pixel-photo-tools { display: flex; flex-wrap: wrap; align-items: end; gap: .6rem; padding: .75rem; border: 2px solid #9bb7c5; border-radius: .7rem; background: #f7fbfc; }
+.platform-pixel-photo-tools > div { flex: 1 1 20rem; }
+.platform-pixel-photo-tools h4, .platform-pixel-photo-tools p { margin: 0; }
+.platform-pixel-photo-tools label { display: grid; gap: .2rem; font-weight: 800; }
 .platform-pixel-palette { display: grid; gap: .55rem; padding: .7rem; border: 2px solid #b8d2dd; border-radius: .7rem; background: #f7fbfc; }
 .platform-pixel-palette h4, .platform-pixel-palette p { margin: 0; }
 .platform-pixel-palette [data-pixel-palette] { display: flex; flex-wrap: wrap; gap: .45rem; }

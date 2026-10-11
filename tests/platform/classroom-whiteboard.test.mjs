@@ -611,6 +611,15 @@ test("Pixel Studio visibly reports GIF address progress and offers a blocked-sit
   assert.match(css, /\.platform-pixel-status/);
 });
 
+test("Pixel Studio turns a chosen GIF frame into a smooth still image", () => {
+  for (const text of ["Create an image from a GIF frame", "Natural", "Smooth", "Vivid", "Add Image to Whiteboard", "Download Image PNG", "still-image creation"]) assert.match(app, new RegExp(text));
+  assert.match(app, /sourceFrames\.push/);
+  assert.match(app, /async function pixelGifFrameImage/);
+  assert.match(app, /imageSmoothingQuality = "high"/);
+  assert.match(app, /pixelArt: false/);
+  assert.match(css, /\.platform-pixel-photo-tools/);
+});
+
 test("color menu provides a screen eyedropper and updates the shared color", () => {
   for (const text of ["Eyedropper — match a screen color", "matched from the screen", "Use the color picker instead"]) assert.match(app, new RegExp(text));
   assert.match(app, /typeof window\.EyeDropper !== "function"/);
