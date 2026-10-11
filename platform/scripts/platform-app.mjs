@@ -1699,7 +1699,7 @@ function teacherDashboardView(state) {
           <label>Eraser thickness<input type="range" data-whiteboard-eraser-size min="12" max="140" value="40"><output data-whiteboard-eraser-size-output>40</output></label>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="erase-object">Erase object</button>
         </div></details>
-        <details class="platform-whiteboard-quick-menu"><summary><span class="platform-whiteboard-color-chip" data-whiteboard-color-chip style="--whiteboard-selected-color:#12384d" aria-hidden="true"></span><small>Color</small></summary><div data-whiteboard-color-panel></div></details>
+        <details class="platform-whiteboard-quick-menu"><summary><span class="platform-whiteboard-color-chip" data-whiteboard-color-chip style="--whiteboard-selected-color:#12384d" aria-hidden="true"></span><small>Color</small></summary><div data-whiteboard-color-panel><button type="button" data-action="whiteboard-eyedropper">◉ Eyedropper — match a screen color</button></div></details>
         <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="fill" title="Fill a closed shape with the selected color"><span class="platform-whiteboard-paint-can-icon" data-whiteboard-paint-can-icon style="--whiteboard-selected-color:#12384d" aria-hidden="true"><svg viewBox="0 0 28 24"><path class="platform-whiteboard-paint-can-body" d="M5 8h15l-2 12H7L5 8Z"/><path d="M4 7h17M7 8c0-7 11-7 11 0M20 12l4 4 2-2-4-4"/></svg></span><small>Paint Can</small></button>
         <details class="platform-whiteboard-quick-menu" data-whiteboard-primary-tool="pen"><summary><span aria-hidden="true">✎</span><small>Pen</small></summary><div data-whiteboard-pen-panel>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="pen">Pen</button>
@@ -1823,7 +1823,7 @@ function teacherDashboardView(state) {
         <div><h3 id="whiteboard-clear-title">Clear the entire whiteboard?</h3><p>This removes the current browser-session board.</p><button type="button" data-action="whiteboard-keep">Keep Board</button><button type="button" data-action="whiteboard-confirm-clear">Clear Board</button></div>
       </div>
       <div class="platform-whiteboard-lasso-confirmation" data-whiteboard-lasso-confirmation role="dialog" aria-modal="true" aria-labelledby="whiteboard-lasso-title" hidden>
-        <div><h3 id="whiteboard-lasso-title">What would you like to do with this cutout?</h3><p>Use it as a separate movable image, delete the selected image, or cancel without changing the board.</p><button type="button" data-action="whiteboard-lasso-cancel">Cancel</button><button type="button" data-action="whiteboard-lasso-delete">Delete Selected Image</button><button type="button" data-action="whiteboard-lasso-use">Use Cutout</button></div>
+        <div><h3 id="whiteboard-lasso-title">What would you like to do with this cutout?</h3><p>Use the cutout as a separate movable image, delete only the area inside the lasso, or cancel without changing the board.</p><button type="button" data-action="whiteboard-lasso-cancel">Cancel</button><button type="button" data-action="whiteboard-lasso-delete">Delete Cutout</button><button type="button" data-action="whiteboard-lasso-use">Use Cutout Image</button></div>
       </div>
       <div class="platform-whiteboard-question" data-whiteboard-dimension-question role="dialog" aria-modal="true" aria-labelledby="whiteboard-dimension-question-title" hidden>
         <div><h3 id="whiteboard-dimension-question-title">Label this CAD measurement</h3><p>The two points are ready. Add the information students need.</p><p class="platform-whiteboard-measurement-tip" data-whiteboard-measurement-tip role="status" hidden></p>
@@ -3881,6 +3881,21 @@ function useWhiteboardLassoCutout() {
   setWhiteboardStatus("Cutout created as a separate movable image."); return true;
 }
 
+function deleteWhiteboardLassoCutout() {
+  if (!whiteboardLassoBounds || whiteboardLassoPoints.length < 3) return false;
+  const object = whiteboardObjects.find((item) => item.type === "image" && item.element && whiteboardLassoIntersectingObjectIds().includes(item.id));
+  if (!object) { clearWhiteboardLassoChoice(); setWhiteboardStatus("Place the lasso over an image before choosing Delete Cutout."); return false; }
+  const width = object.element.naturalWidth || Math.max(1, Math.round(object.width)), height = object.element.naturalHeight || Math.max(1, Math.round(object.height));
+  const source = document.createElement("canvas"); source.width = width; source.height = height;
+  const context = source.getContext("2d"); context.drawImage(object.element, 0, 0, width, height); context.globalCompositeOperation = "destination-out"; context.beginPath();
+  whiteboardLassoPoints.forEach((point, index) => { const x = (point.x - object.x) / object.width * width, y = (point.y - object.y) / object.height * height; if (index) context.lineTo(x, y); else context.moveTo(x, y); });
+  context.closePath(); context.fill(); context.globalCompositeOperation = "source-over";
+  const result = source.toDataURL("image/png"), image = new Image(); pushWhiteboardHistory(); object.src = result; object.element = image; object.backgroundRemoved = true;
+  whiteboardLassoPoints = []; whiteboardLassoBounds = null; const dialog = document.querySelector("[data-whiteboard-lasso-confirmation]"); if (dialog) dialog.hidden = true;
+  image.addEventListener("load", () => { renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); }, { once: true }); image.src = result;
+  setWhiteboardStatus("The area inside the lasso was deleted. Use Undo to restore it."); return true;
+}
+
 function whiteboardSelectionCanvas({ removeBackground = false } = {}) {
   const canvas = whiteboardCanvas();
   if (!canvas || !whiteboardLassoBounds || whiteboardLassoPoints.length < 3) return null;
@@ -5194,8 +5209,13 @@ function handleClick(event) {
     return;
   }
   if (action.dataset.action === "whiteboard-lasso-use") { useWhiteboardLassoCutout(); return; }
-  if (action.dataset.action === "whiteboard-lasso-delete") { const selectedIds = new Set(whiteboardLassoIntersectingObjectIds()); if (selectedIds.size) { pushWhiteboardHistory(); whiteboardObjects = whiteboardObjects.filter((object) => !selectedIds.has(object.id)); whiteboardSelectedObjectId = ""; clearWhiteboardLassoChoice(); saveWhiteboard(); updateWhiteboardHistoryControls(); setWhiteboardStatus("Selected image deleted."); } else { clearWhiteboardLassoChoice(); setWhiteboardStatus("No image was inside the cutout."); } return; }
+  if (action.dataset.action === "whiteboard-lasso-delete") { deleteWhiteboardLassoCutout(); return; }
   if (action.dataset.action === "whiteboard-lasso-cancel") { clearWhiteboardLassoChoice(); setWhiteboardStatus("Cutout canceled. The board was not changed."); return; }
+  if (action.dataset.action === "whiteboard-eyedropper") {
+    if (typeof window.EyeDropper !== "function") { setWhiteboardStatus("The eyedropper is not supported in this browser. Use the color picker instead."); return; }
+    new window.EyeDropper().open().then(({ sRGBHex }) => { const color = document.querySelector("[data-whiteboard-color]"); if (!color) return; color.value = sRGBHex; color.dispatchEvent(new Event("input", { bubbles: true })); color.dispatchEvent(new Event("change", { bubbles: true })); setWhiteboardStatus(`${sRGBHex} matched from the screen.`); }).catch(() => setWhiteboardStatus("Eyedropper canceled. The current color was kept."));
+    return;
+  }
   if (action.dataset.action === "whiteboard-download-selection") {
     try {
       if (!whiteboardSelectionDownload) {

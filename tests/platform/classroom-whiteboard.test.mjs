@@ -494,13 +494,28 @@ test("whiteboard lasso isolates work, removes its background, and downloads PNG"
 });
 
 test("lasso opens a cutout choice to use, delete, or cancel", () => {
-  for (const text of ["What would you like to do with this cutout?", "Use Cutout", "Delete Selected Image", "Cutout canceled", "Cutout created as a separate movable image"]) assert.match(app, new RegExp(text));
+  for (const text of ["What would you like to do with this cutout?", "Use Cutout Image", "Delete Cutout", "Cutout canceled", "Cutout created as a separate movable image"]) assert.match(app, new RegExp(text));
   assert.match(app, /data-whiteboard-lasso-confirmation/);
   assert.match(app, /function useWhiteboardLassoCutout/);
   assert.match(app, /function whiteboardLassoIntersectingObjectIds/);
   assert.match(app, /lassoCutout: true/);
   assert.match(app, /whiteboardObjects = whiteboardObjects\.filter\(\(object\) => !selectedIds\.has\(object\.id\)\)/);
   assert.match(css, /\.platform-whiteboard-lasso-confirmation/);
+});
+
+test("delete cutout removes only the lasso area from an image", () => {
+  assert.match(app, /function deleteWhiteboardLassoCutout/);
+  assert.match(app, /globalCompositeOperation = "destination-out"/);
+  assert.match(app, /\(point\.x - object\.x\) \/ object\.width \* width/);
+  assert.match(app, /The area inside the lasso was deleted/);
+});
+
+test("color menu provides a screen eyedropper and updates the shared color", () => {
+  for (const text of ["Eyedropper — match a screen color", "matched from the screen", "Use the color picker instead"]) assert.match(app, new RegExp(text));
+  assert.match(app, /typeof window\.EyeDropper !== "function"/);
+  assert.match(app, /new window\.EyeDropper\(\)\.open\(\)/);
+  assert.match(app, /color\.value = sRGBHex/);
+  assert.match(app, /color\.dispatchEvent\(new Event\("input"/);
 });
 
 test("scheduled boards can become automatic Student Display visuals", () => {
