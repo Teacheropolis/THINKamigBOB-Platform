@@ -1691,7 +1691,7 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-tool-select" data-whiteboard-quick-tool="select" aria-pressed="true">Select and move</button>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="lasso-select">Lasso select for image</button>
         </div></details>
-        <button type="button" class="platform-whiteboard-remove-background-button" data-action="whiteboard-remove-selection-background" title="Remove the background from a lasso selection"><span aria-hidden="true">▧</span><small>Remove<br>Background</small></button>
+        <button type="button" class="platform-whiteboard-remove-background-button" data-action="whiteboard-remove-selection-background" title="Remove the background from the selected image"><span aria-hidden="true">▧</span><small>Remove<br>Background</small></button>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">↶</span><small>History</small></summary><div><button type="button" data-action="whiteboard-undo">Undo</button><button type="button" data-action="whiteboard-redo">Redo</button></div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">⧉</span><small>Clipboard</small></summary><div><button type="button" data-action="whiteboard-copy">Copy object</button><button type="button" data-action="whiteboard-cut">Cut object</button><button type="button" data-action="whiteboard-paste">Paste object</button><button type="button" data-action="whiteboard-paste-system-image">Paste copied image</button><button type="button" data-action="whiteboard-duplicate">Duplicate</button></div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">⌫</span><small>Erase</small></summary><div>
@@ -3878,11 +3878,15 @@ async function copySelectedWhiteboardObjectAsImage() {
   const canvas = whiteboardCanvas();
   const object = whiteboardObjects.find((item) => item.id === whiteboardSelectedObjectId);
   if (!canvas || !object) { setWhiteboardStatus("Right-click a whiteboard object before choosing Copy Image."); return; }
-  const bounds = objectBounds(object), padding = 12;
+  const bounds = objectBounds(object), padding = object.type === "image" ? 0 : 12;
   const crop = { x: Math.max(0, Math.floor(bounds.x - padding)), y: Math.max(0, Math.floor(bounds.y - padding)), width: Math.max(1, Math.ceil(bounds.width + padding * 2)), height: Math.max(1, Math.ceil(bounds.height + padding * 2)) };
-  const selectedId = whiteboardSelectedObjectId, savedLasso = whiteboardLassoPoints; whiteboardSelectedObjectId = ""; whiteboardLassoPoints = []; renderWhiteboardObjects(canvas);
-  const imageCanvas = document.createElement("canvas"); imageCanvas.width = crop.width; imageCanvas.height = crop.height; imageCanvas.getContext("2d").drawImage(canvas, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height);
-  whiteboardSelectedObjectId = selectedId; whiteboardLassoPoints = savedLasso; renderWhiteboardObjects(canvas);
+  const imageCanvas = document.createElement("canvas"); imageCanvas.width = crop.width; imageCanvas.height = crop.height;
+  if (object.type === "image" && object.element) imageCanvas.getContext("2d").drawImage(object.element, 0, 0, crop.width, crop.height);
+  else {
+    const selectedId = whiteboardSelectedObjectId, savedLasso = whiteboardLassoPoints; whiteboardSelectedObjectId = ""; whiteboardLassoPoints = []; renderWhiteboardObjects(canvas);
+    imageCanvas.getContext("2d").drawImage(canvas, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height);
+    whiteboardSelectedObjectId = selectedId; whiteboardLassoPoints = savedLasso; renderWhiteboardObjects(canvas);
+  }
   whiteboardClipboard = structuredClone(serializableWhiteboardObjects().find((item) => item.id === object.id));
   try {
     const blob = await new Promise((resolve) => imageCanvas.toBlob(resolve, "image/png"));
@@ -3892,6 +3896,30 @@ async function copySelectedWhiteboardObjectAsImage() {
   } catch {
     setWhiteboardStatus("The browser blocked image clipboard access. The object was copied for Ctrl+V inside this whiteboard.");
   }
+}
+
+function downloadWhiteboardImage(source, name = "whiteboard-image.png") {
+  const link = document.createElement("a"); link.download = name; link.href = source; link.click();
+}
+
+function removeSelectedWhiteboardImageBackground(object) {
+  if (object?.type !== "image" || !object.element) return false;
+  const source = document.createElement("canvas"), width = object.element.naturalWidth || Math.max(1, Math.round(object.width)), height = object.element.naturalHeight || Math.max(1, Math.round(object.height));
+  source.width = width; source.height = height;
+  const context = source.getContext("2d"); context.drawImage(object.element, 0, 0, width, height);
+  const pixels = context.getImageData(0, 0, width, height);
+  for (let index = 0; index < pixels.data.length; index += 4) {
+    const red = pixels.data[index], green = pixels.data[index + 1], blue = pixels.data[index + 2];
+    const light = (red + green + blue) / 3 > 218, neutral = Math.max(red, green, blue) - Math.min(red, green, blue) < 38;
+    if (light && neutral) pixels.data[index + 3] = 0;
+  }
+  context.putImageData(pixels, 0, 0);
+  const result = source.toDataURL("image/png"), image = new Image();
+  pushWhiteboardHistory(); object.src = result; object.backgroundRemoved = true; object.element = image;
+  image.addEventListener("load", () => { renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); }, { once: true }); image.src = result;
+  setWhiteboardStatus("Image background removed. The transparent PNG can now be copied or downloaded.");
+  if (window.confirm("The image background was removed. Would you like to download the transparent PNG?")) downloadWhiteboardImage(result, "whiteboard-image-no-background.png");
+  return true;
 }
 
 function pasteWhiteboardClipboard(point = null) {
@@ -5122,6 +5150,8 @@ function handleClick(event) {
     setWhiteboardStatus(whiteboardControlsHidden ? "Board menus hidden. The canvas now uses the extra space." : "Board menus expanded."); return;
   }
   if (action.dataset.action === "whiteboard-remove-selection-background") {
+    const selectedImage = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId && object.type === "image");
+    if (selectedImage) { try { removeSelectedWhiteboardImageBackground(selectedImage); } catch { setWhiteboardStatus("This image could not remove its background. Try pasting or uploading it again."); } return; }
     if (!whiteboardLassoBounds) { setWhiteboardStatus("Choose Lasso select for image and drag around the work first."); return; }
     try {
       const selectedIds = new Set(whiteboardLassoObjectIds());
@@ -5403,7 +5433,7 @@ function handleClick(event) {
   }
   if (["whiteboard-copy", "whiteboard-paste", "whiteboard-duplicate", "whiteboard-push-2d", "whiteboard-rotate-left", "whiteboard-rotate-right", "whiteboard-delete-object"].includes(action.dataset.action)) {
     const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
-    if (action.dataset.action === "whiteboard-copy") { if (selected) { whiteboardClipboard = structuredClone(serializableWhiteboardObjects().find((object) => object.id === selected.id)); setWhiteboardStatus("Selected object copied."); } else setWhiteboardStatus("Select an object first."); return; }
+    if (action.dataset.action === "whiteboard-copy") { if (selected) { whiteboardClipboard = structuredClone(serializableWhiteboardObjects().find((object) => object.id === selected.id)); if (selected.type === "image") void copySelectedWhiteboardObjectAsImage(); else setWhiteboardStatus("Selected object copied."); } else setWhiteboardStatus("Select an object first."); return; }
     if (action.dataset.action === "whiteboard-paste") { if (!whiteboardClipboard) { setWhiteboardStatus("Copy an object before pasting."); return; } pushWhiteboardHistory(); const copy = duplicateWhiteboardObject(whiteboardClipboard); whiteboardObjects.push(copy); whiteboardSelectedObjectId = copy.id; hydrateWhiteboardImages(() => renderWhiteboardObjects()); saveWhiteboard(); return; }
     if (!selected && action.dataset.action === "whiteboard-delete-object") { whiteboardDeleteNextObject = true; whiteboardCanvas()?.focus({ preventScroll: true }); setWhiteboardStatus("Delete is ready. Click the next object you want to remove."); return; }
     if (!selected) { setWhiteboardStatus("Select an object first."); return; }
@@ -6828,7 +6858,7 @@ document.addEventListener("keydown", (event) => {
       const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
       if (!selected) { setWhiteboardStatus("Select a whiteboard object before copying it."); return; }
       whiteboardClipboard = structuredClone(serializableWhiteboardObjects().find((object) => object.id === selected.id));
-      setWhiteboardStatus("Selected object copied. Press Ctrl+V or Command+V to paste it."); return;
+      if (selected.type === "image") void copySelectedWhiteboardObjectAsImage(); else setWhiteboardStatus("Selected object copied. Press Ctrl+V or Command+V to paste it."); return;
     }
     if (shortcutKey === "x") { cutSelectedWhiteboardObject(); return; }
     if (shortcutKey === "d") { duplicateSelectedWhiteboardObject(); return; }

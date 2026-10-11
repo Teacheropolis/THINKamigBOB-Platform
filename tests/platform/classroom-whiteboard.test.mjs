@@ -68,6 +68,16 @@ test("whiteboard accepts copied images from the system clipboard", () => {
   assert.match(app, /readAsDataURL\(blob\)/);
 });
 
+test("selected images remove their background, offer download, and copy as transparent PNG", () => {
+  for (const text of ["The image background was removed", "download the transparent PNG", "whiteboard-image-no-background.png", "transparent PNG can now be copied or downloaded"]) assert.match(app, new RegExp(text));
+  assert.match(app, /object\.type === "image" && object\.element/);
+  assert.match(app, /removeSelectedWhiteboardImageBackground\(selectedImage\)/);
+  assert.match(app, /object\.backgroundRemoved = true/);
+  assert.match(app, /window\.confirm\("The image background was removed/);
+  assert.match(app, /selected\.type === "image"\) void copySelectedWhiteboardObjectAsImage/);
+  assert.match(app, /new ClipboardItem\(\{ "image\/png": blob \}\)/);
+});
+
 test("whiteboard supports named, saved, and presentable pages", () => {
   for (const text of ["+ Add Page", "Duplicate", "Rename", "Delete Page", "Previous page", "Next page"]) assert.match(app, new RegExp(text.replace(/[+]/g, "\\+")));
   assert.match(app, /WHITEBOARD_PAGES_SESSION_KEY/);
