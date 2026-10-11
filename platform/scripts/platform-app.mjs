@@ -1693,7 +1693,7 @@ function teacherDashboardView(state) {
         </div></details>
         <button type="button" class="platform-whiteboard-remove-background-button" data-action="whiteboard-remove-selection-background" title="Remove the background from a lasso selection"><span aria-hidden="true">▧</span><small>Remove<br>Background</small></button>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">↶</span><small>History</small></summary><div><button type="button" data-action="whiteboard-undo">Undo</button><button type="button" data-action="whiteboard-redo">Redo</button></div></details>
-        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">⧉</span><small>Clipboard</small></summary><div><button type="button" data-action="whiteboard-copy">Copy</button><button type="button" data-action="whiteboard-cut">Cut</button><button type="button" data-action="whiteboard-paste">Paste</button><button type="button" data-action="whiteboard-duplicate">Duplicate</button></div></details>
+        <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">⧉</span><small>Clipboard</small></summary><div><button type="button" data-action="whiteboard-copy">Copy object</button><button type="button" data-action="whiteboard-cut">Cut object</button><button type="button" data-action="whiteboard-paste">Paste object</button><button type="button" data-action="whiteboard-paste-system-image">Paste copied image</button><button type="button" data-action="whiteboard-duplicate">Duplicate</button></div></details>
         <details class="platform-whiteboard-quick-menu"><summary><span aria-hidden="true">⌫</span><small>Erase</small></summary><div>
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="eraser">Eraser</button>
           <label>Eraser thickness<input type="range" data-whiteboard-eraser-size min="12" max="140" value="40"><output data-whiteboard-eraser-size-output>40</output></label>
@@ -3907,6 +3907,38 @@ function pasteWhiteboardClipboard(point = null) {
   setWhiteboardStatus("Copied image pasted onto the board."); return true;
 }
 
+function addClipboardImageToWhiteboard(blob, point = null) {
+  if (!blob || !String(blob.type).startsWith("image/")) { setWhiteboardStatus("The clipboard does not contain an image."); return false; }
+  if (blob.size > 6 * 1024 * 1024) { setWhiteboardStatus("The copied image is too large. Use an image smaller than 6 MB."); return false; }
+  const reader = new FileReader();
+  reader.addEventListener("load", () => {
+    const canvas = whiteboardCanvas(), image = new Image();
+    if (!canvas) return;
+    image.addEventListener("load", () => {
+      pushWhiteboardHistory();
+      const scale = Math.min((canvas.width * 0.7) / image.width, (canvas.height * 0.7) / image.height, 1), width = image.width * scale, height = image.height * scale;
+      const x = point ? Math.max(0, point.x - width / 2) : (canvas.width - width) / 2, y = point ? Math.max(0, point.y - height / 2) : (canvas.height - height) / 2;
+      const object = createWhiteboardObject("image", { x, y, width, height, src: String(reader.result), element: image });
+      whiteboardObjects.push(object); whiteboardSelectedObjectId = object.id; renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls();
+      setWhiteboardStatus("Copied image pasted onto the board. Drag it to move or resize it.");
+    }, { once: true });
+    image.src = String(reader.result);
+  }, { once: true });
+  reader.readAsDataURL(blob);
+  return true;
+}
+
+async function pasteSystemClipboardImage() {
+  if (!navigator.clipboard?.read) { setWhiteboardStatus("Use Ctrl+V or Command+V to paste the copied image into the whiteboard."); return false; }
+  try {
+    const items = await navigator.clipboard.read();
+    const item = items.find((entry) => entry.types.some((type) => type.startsWith("image/")));
+    const type = item?.types.find((value) => value.startsWith("image/"));
+    if (!item || !type) { setWhiteboardStatus("Copy an image first, then choose Paste copied image."); return false; }
+    return addClipboardImageToWhiteboard(await item.getType(type));
+  } catch { setWhiteboardStatus("The browser blocked the Paste button. Press Ctrl+V or Command+V while the whiteboard is open."); return false; }
+}
+
 function cutSelectedWhiteboardObject() {
   const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
   if (!selected) { setWhiteboardStatus("Select a whiteboard object before cutting it."); return false; }
@@ -5083,6 +5115,7 @@ function handleClick(event) {
   if (action.dataset.action === "whiteboard-copy-image") { const menu = document.querySelector("[data-whiteboard-context-menu]"); if (menu) menu.hidden = true; void copySelectedWhiteboardObjectAsImage(); return; }
   if (action.dataset.action === "whiteboard-cut-image") { const menu = document.querySelector("[data-whiteboard-context-menu]"); if (menu) menu.hidden = true; cutSelectedWhiteboardObject(); return; }
   if (action.dataset.action === "whiteboard-paste-image") { const menu = document.querySelector("[data-whiteboard-context-menu]"); if (menu) menu.hidden = true; pasteWhiteboardClipboard(whiteboardContextPoint); return; }
+  if (action.dataset.action === "whiteboard-paste-system-image") { void pasteSystemClipboardImage(); return; }
   if (action.dataset.action === "whiteboard-close-context-menu") { const menu = document.querySelector("[data-whiteboard-context-menu]"); if (menu) menu.hidden = true; return; }
   if (action.dataset.action === "whiteboard-toggle-controls") {
     whiteboardControlsHidden = !whiteboardControlsHidden; applyWhiteboardControlsLayout({ resizeCanvas: true }); saveWhiteboard();
@@ -6789,7 +6822,7 @@ document.addEventListener("keydown", (event) => {
   if (openWhiteboard && !typingTarget && ["b", "i", "u"].includes(shortcutKey)) {
     event.preventDefault(); formatSelectedWhiteboardText({ b: "bold", i: "italic", u: "underline" }[shortcutKey]); return;
   }
-  if (openWhiteboard && !typingTarget && ["c", "v", "x", "d"].includes(shortcutKey)) {
+  if (openWhiteboard && !typingTarget && ["c", "x", "d"].includes(shortcutKey)) {
     event.preventDefault();
     if (shortcutKey === "c") {
       const selected = whiteboardObjects.find((object) => object.id === whiteboardSelectedObjectId);
@@ -6799,7 +6832,6 @@ document.addEventListener("keydown", (event) => {
     }
     if (shortcutKey === "x") { cutSelectedWhiteboardObject(); return; }
     if (shortcutKey === "d") { duplicateSelectedWhiteboardObject(); return; }
-    pasteWhiteboardClipboard(); return;
   }
   if (openWhiteboard && !typingTarget && (event.key === "Backspace" || event.key === "Delete")) {
     if (!whiteboardSelectedObjectId) return;
@@ -6853,6 +6885,15 @@ document.addEventListener("keydown", (event) => {
     : document.querySelector('[data-action="open-timer-display"]');
   lessonTimerDisplayTrigger = null;
   focusTarget?.focus();
+});
+document.addEventListener("paste", (event) => {
+  const openWhiteboard = document.querySelector("#platform-classroom-whiteboard:not([hidden])");
+  const typingTarget = event.target instanceof Element && event.target.closest("textarea, [contenteditable='true'], input");
+  if (!openWhiteboard || typingTarget) return;
+  const imageItem = [...(event.clipboardData?.items || [])].find((item) => item.type.startsWith("image/"));
+  const blob = imageItem?.getAsFile();
+  if (blob) { event.preventDefault(); addClipboardImageToWhiteboard(blob); return; }
+  if (whiteboardClipboard) { event.preventDefault(); pasteWhiteboardClipboard(); }
 });
 async function startPlatform() {
   if (productionIdentityConfig.enabled) {

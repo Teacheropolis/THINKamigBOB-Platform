@@ -58,6 +58,16 @@ test("whiteboard supports reusable boards, images, export, and presentation", ()
   assert.match(css, /\.platform-whiteboard-library \.platform-whiteboard-display-option \{[^}]*grid-column: span 4;/);
 });
 
+test("whiteboard accepts copied images from the system clipboard", () => {
+  for (const text of ["Paste copied image", "Copied image pasted onto the board", "Ctrl+V", "Command+V"]) assert.match(app, new RegExp(text.replace(/[+]/g, "\\+")));
+  assert.match(app, /navigator\.clipboard\?\.read/);
+  assert.match(app, /document\.addEventListener\("paste"/);
+  assert.match(app, /event\.clipboardData\?\.items/);
+  assert.match(app, /item\.type\.startsWith\("image\/"\)/);
+  assert.match(app, /addClipboardImageToWhiteboard\(blob\)/);
+  assert.match(app, /readAsDataURL\(blob\)/);
+});
+
 test("whiteboard supports named, saved, and presentable pages", () => {
   for (const text of ["+ Add Page", "Duplicate", "Rename", "Delete Page", "Previous page", "Next page"]) assert.match(app, new RegExp(text.replace(/[+]/g, "\\+")));
   assert.match(app, /WHITEBOARD_PAGES_SESSION_KEY/);
@@ -171,7 +181,7 @@ test("every whiteboard element remains an editable object", () => {
   assert.match(app, /cloneEditableWhiteboardObject\(selected\)/);
   assert.match(app, /if \(tool === "select"\) \{ whiteboardSelectedObjectId = selected\?\.id/);
   assert.match(app, /event\.ctrlKey \|\| event\.metaKey/);
-  assert.match(app, /\["c", "v", "x", "d"\]\.includes\(shortcutKey\)/);
+  assert.match(app, /\["c", "x", "d"\]\.includes\(shortcutKey\)/);
   assert.match(app, /Press Ctrl\+V or Command\+V/);
   assert.match(app, /textarea, \[contenteditable='true'\], input:not/);
   assert.match(app, /data-whiteboard-context-menu/);
