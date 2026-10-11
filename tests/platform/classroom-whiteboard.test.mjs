@@ -553,7 +553,7 @@ test("Pixel Studio imports GIF frames for editing and reordering", () => {
 });
 
 test("Pixel Studio pastes website GIF files, HTML images, and copied GIF addresses", () => {
-  for (const text of ["GIF from a website:", "copy the GIF or its image address", "Downloading the copied GIF", "website copied only a still picture", "website blocked direct GIF copying"]) assert.match(app, new RegExp(text));
+  for (const text of ["GIF from a website:", "copy the GIF or its image address", "Checking the GIF address", "website copied only a still picture", "prevents Pixel Studio from downloading"]) assert.match(app, new RegExp(text));
   assert.match(app, /function gifUrlFromClipboardText/);
   assert.match(app, /new DOMParser\(\)\.parseFromString/);
   assert.match(app, /async function importPixelGifUrl/);
@@ -601,6 +601,14 @@ test("Pixel Studio Full Color preserves photo colors and explains GIF reduction"
   assert.match(app, /function pixelColorLabel/);
   assert.match(app, /paletteIndex = \(color\)/);
   assert.match(css, /grid-template-columns: repeat\(4/);
+});
+
+test("Pixel Studio visibly reports GIF address progress and offers a blocked-site fallback", () => {
+  for (const text of ["Pixel Studio is ready.", "Checking the GIF address", "Open the GIF address to download it", "prevents Pixel Studio from downloading"]) assert.match(app, new RegExp(text));
+  assert.match(app, /data-pixel-status/);
+  assert.match(app, /data-pixel-gif-fallback/);
+  assert.match(app, /button\.disabled = true/);
+  assert.match(css, /\.platform-pixel-status/);
 });
 
 test("color menu provides a screen eyedropper and updates the shared color", () => {

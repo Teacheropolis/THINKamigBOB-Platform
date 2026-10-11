@@ -1830,6 +1830,7 @@ function teacherDashboardView(state) {
       <div class="platform-pixel-studio" data-pixel-studio role="dialog" aria-modal="true" aria-labelledby="pixel-studio-title" hidden>
         <div class="platform-pixel-studio-panel"><header><div><p class="platform-command-label">Whiteboard creative tool</p><h3 id="pixel-studio-title">Pixel Studio</h3><p>Draw a sprite, turn a selected image into pixels, practice color-bit coding, or animate frames.</p><p><strong>GIF from a website:</strong> copy the GIF or its image address, then press Ctrl+V or Command+V here. If the website blocks copying, download it and use Upload GIF.</p></div><button type="button" data-action="pixel-close" aria-label="Close Pixel Studio">×</button></header>
           <nav class="platform-pixel-project-actions" aria-label="Pixel project file actions"><button type="button" data-action="pixel-new-project">New Pixel Project</button><button type="button" data-action="pixel-save-project">Save Project</button><label>Open Project<input type="file" data-pixel-project-file accept="application/json,.json"></label></nav>
+          <div class="platform-pixel-status" role="status" aria-live="polite"><span data-pixel-status>Pixel Studio is ready.</span><a data-pixel-gif-fallback href="#" target="_blank" rel="noopener" hidden>Open the GIF address to download it</a></div>
           <div class="platform-pixel-levels" role="group" aria-label="Pixel Studio learning level"><button type="button" data-action="pixel-level" data-pixel-level="starter"><strong>Starter</strong><span>1-bit · 8×8</span></button><button type="button" data-action="pixel-level" data-pixel-level="creator" aria-pressed="true"><strong>Creator</strong><span>4-bit · 16×16</span></button><button type="button" data-action="pixel-level" data-pixel-level="advanced"><strong>Advanced</strong><span>8-bit · 64×64</span></button><button type="button" data-action="pixel-level" data-pixel-level="full-color"><strong>Full Color</strong><span>24-bit · 64×64</span></button></div>
           <div class="platform-pixel-studio-controls"><label>Exact grid size<select data-pixel-size><option value="8">8 × 8</option><option value="16" selected>16 × 16</option><option value="24">24 × 24</option><option value="32">32 × 32</option><option value="64">64 × 64</option></select></label><label>Exact color mode<select data-pixel-bits><option value="1">1-bit · 2 colors</option><option value="2">2-bit · 4 colors</option><option value="4" selected>4-bit · 16 colors</option><option value="8">8-bit · 256 colors</option><option value="24">Full Color · millions of colors</option></select></label><label>Pixel color<input type="color" data-pixel-color value="#12384d"></label><output data-pixel-code>Color code: 0000</output><button type="button" data-action="pixel-eyedropper">Eyedropper</button><button type="button" data-action="pixel-random-palette">Random Color Palette</button><div class="platform-pixel-image-convert"><button type="button" data-action="pixel-from-image">Pixelate Selected Whiteboard Image</button><small>First close Pixel Studio, click a pasted or uploaded image on the whiteboard, then reopen Pixel Studio and choose this button.</small></div><label class="platform-pixel-gif-upload">Upload a GIF file<input type="file" data-pixel-gif accept="image/gif"></label><div class="platform-pixel-gif-address"><label>GIF web address<input type="url" data-pixel-gif-url placeholder="Paste the GIF image address here"></label><button type="button" data-action="pixel-load-gif-url">Open GIF Address</button></div><button type="button" data-action="pixel-paste-gif">Read GIF from Clipboard</button><label class="platform-pixel-advanced-import"><input type="checkbox" data-pixel-import-more> Import up to 48 GIF frames instead of the recommended 12 (may run more slowly)</label><button type="button" data-action="pixel-clear">Clear Current Frame</button></div><section class="platform-pixel-palette" aria-labelledby="pixel-palette-title"><div><h4 id="pixel-palette-title">Color-bit palette</h4><p data-pixel-palette-help>Select any color code to draw. Use its color box to change that color everywhere in the animation.</p></div><div data-pixel-palette></div></section>
           <div class="platform-pixel-studio-workspace"><canvas data-pixel-canvas width="512" height="512" aria-label="Pixel drawing grid"></canvas><aside><h4>Animation frames</h4><div data-pixel-frames></div><button type="button" data-action="pixel-add-frame">+ Add Frame</button><button type="button" data-action="pixel-duplicate-frame">Duplicate Frame</button><button type="button" data-action="pixel-move-frame-left">Move Frame Earlier</button><button type="button" data-action="pixel-move-frame-right">Move Frame Later</button><button type="button" data-action="pixel-delete-frame">Delete Frame</button><label>Frame speed<input type="range" data-pixel-speed min="100" max="1200" step="100" value="400"><output data-pixel-speed-output>0.4 sec</output></label><canvas data-pixel-preview width="192" height="192" aria-label="Animated pixel preview"></canvas></aside></div>
@@ -3104,6 +3105,8 @@ function refreshWhiteboardLibraryOptions(selectedId = "") {
 function setWhiteboardStatus(message) {
   const status = document.querySelector("[data-whiteboard-status]");
   if (status) status.textContent = message;
+  const pixelStatus = document.querySelector("[data-pixel-status]");
+  if (pixelStatus) pixelStatus.textContent = message;
 }
 
 function showWhiteboardBobMeasurementCoach() {
@@ -4007,7 +4010,28 @@ async function importPixelGif(file) {
   } catch { setWhiteboardStatus("This GIF could not be separated into frames. Try saving it again or use a smaller GIF."); }
 }
 function gifUrlFromClipboardText(value, isHtml = false) { const text = String(value ?? "").trim(); if (!text) return ""; if (isHtml) { const documentCopy = new DOMParser().parseFromString(text, "text/html"); const sources = [...documentCopy.querySelectorAll("img")].flatMap((image) => [image.currentSrc, image.src, image.getAttribute("data-src")]).filter(Boolean); return sources.find((source) => /^https?:\/\//i.test(source) && /\.gif(?:$|[?#])/i.test(source)) ?? sources.find((source) => /^https?:\/\//i.test(source)) ?? ""; } const match = text.match(/https?:\/\/[^\s<>"']+/i); return match?.[0] ?? ""; }
-async function importPixelGifUrl(url) { try { const parsed = new URL(url); if (!/^https?:$/.test(parsed.protocol)) throw new Error(); setWhiteboardStatus("Downloading the copied GIF so its frames can be edited…"); const response = await fetch(parsed.href, { mode: "cors" }); if (!response.ok) throw new Error(); const blob = await response.blob(), bytes = new Uint8Array(await blob.slice(0, 6).arrayBuffer()), signature = String.fromCharCode(...bytes); if (!signature.startsWith("GIF8")) { setWhiteboardStatus("That copied website image is not an editable GIF. It may be a video preview or still image."); return; } await importPixelGif(new File([blob], "copied-website.gif", { type: "image/gif" })); } catch { setWhiteboardStatus("That website blocked direct GIF copying. Download the GIF, then choose Upload GIF in Pixel Studio."); } }
+async function importPixelGifUrl(url) {
+  const fallback = document.querySelector("[data-pixel-gif-fallback]"), button = document.querySelector('[data-action="pixel-load-gif-url"]');
+  if (fallback) fallback.hidden = true;
+  if (button) button.disabled = true;
+  try {
+    const parsed = new URL(String(url ?? "").trim());
+    if (!/^https?:$/.test(parsed.protocol)) throw new Error("invalid-address");
+    if (fallback) fallback.href = parsed.href;
+    setWhiteboardStatus("Checking the GIF address and downloading its frames…");
+    const response = await fetch(parsed.href, { mode: "cors" });
+    if (!response.ok) throw new Error("download-blocked");
+    const blob = await response.blob(), bytes = new Uint8Array(await blob.slice(0, 6).arrayBuffer()), signature = String.fromCharCode(...bytes);
+    if (!signature.startsWith("GIF8")) { setWhiteboardStatus("This address is not a direct GIF file. Open it below, then download the GIF and use Upload GIF file."); if (fallback) fallback.hidden = false; return false; }
+    await importPixelGif(new File([blob], "copied-website.gif", { type: "image/gif" }));
+    return true;
+  } catch (error) {
+    const invalid = error?.message === "invalid-address";
+    setWhiteboardStatus(invalid ? "Enter a complete GIF address beginning with http:// or https://." : "This website prevents Pixel Studio from downloading the GIF directly. Open it below, save the GIF, then use Upload GIF file.");
+    if (fallback && !invalid && fallback.href && fallback.getAttribute("href") !== "#") fallback.hidden = false;
+    return false;
+  } finally { if (button) button.disabled = false; }
+}
 async function pastePixelGif() {
   try {
     if (!navigator.clipboard?.read) throw new Error(); const items = await navigator.clipboard.read();

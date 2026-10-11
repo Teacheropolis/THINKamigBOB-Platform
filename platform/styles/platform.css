@@ -1382,6 +1382,8 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-pixel-project-actions { display: flex; flex-wrap: wrap; gap: .55rem; padding: .65rem; border: 2px solid #5c8da3; border-radius: .7rem; background: #eef7fa; }
 .platform-pixel-project-actions label { display: inline-flex; align-items: center; padding: .55rem .8rem; border: 2px solid var(--platform-blue); border-radius: .45rem; background: #fff; font-weight: 800; cursor: pointer; }
 .platform-pixel-project-actions input { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+.platform-pixel-status { display: flex; flex-wrap: wrap; align-items: center; gap: .65rem; min-height: 3rem; padding: .65rem .8rem; border: 2px solid #5c8da3; border-radius: .7rem; color: var(--platform-navy); background: #fff8dc; font-weight: 800; }
+.platform-pixel-status a { padding: .45rem .65rem; border: 2px solid var(--platform-blue); border-radius: .4rem; background: #fff; }
 .platform-pixel-levels { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .6rem; }
 .platform-pixel-levels button { display: grid; gap: .15rem; min-height: 4rem; border: 2px solid #88aebb; background: #f5fafb; }
 .platform-pixel-levels button strong { font-size: 1.05rem; }
