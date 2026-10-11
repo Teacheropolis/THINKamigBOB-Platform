@@ -543,7 +543,7 @@ test("Pixel Studio draws sprites, pixelates selected images, teaches color bits,
 });
 
 test("Pixel Studio imports GIF frames for editing and reordering", () => {
-  for (const text of ["Upload a GIF file", "Read GIF from Clipboard", "Move Frame Earlier", "Move Frame Later", "separating its frames", "opened for pixel editing"]) assert.match(app, new RegExp(text));
+  for (const text of ["Upload a GIF file", "Read GIF from Clipboard", "Move Frame Earlier", "Move Frame Later", "separating its frames", "opened as a bit-based editable animation"]) assert.match(app, new RegExp(text));
   assert.match(app, /async function importPixelGif/);
   assert.match(app, /new window\.ImageDecoder/);
   assert.match(app, /decoder\.decode\(\{ frameIndex \}\)/);
@@ -612,11 +612,13 @@ test("Pixel Studio visibly reports GIF address progress and offers a blocked-sit
 });
 
 test("Pixel Studio turns a chosen GIF frame into a smooth still image", () => {
-  for (const text of ["Create an image from a GIF frame", "Natural", "Smooth", "Vivid", "Add Image to Whiteboard", "Download Image PNG", "still-image creation"]) assert.match(app, new RegExp(text));
+  for (const text of ["Create a Still Image from One GIF Frame", "Optional—the imported GIF remains a bit-based editable animation unless you choose this", "Natural", "Smooth", "Vivid", "Add This Frame as an Image", "Download This Frame as PNG", "opened as a bit-based editable animation"]) assert.match(app, new RegExp(text));
   assert.match(app, /sourceFrames\.push/);
   assert.match(app, /async function pixelGifFrameImage/);
   assert.match(app, /imageSmoothingQuality = "high"/);
   assert.match(app, /pixelArt: false/);
+  assert.match(app, /data-pixel-photo-tools hidden/);
+  assert.match(app, /pixel-photo-open/);
   assert.match(css, /\.platform-pixel-photo-tools/);
 });
 
