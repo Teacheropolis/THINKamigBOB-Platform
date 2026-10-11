@@ -1369,6 +1369,10 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-whiteboard-clear-confirmation[hidden] { display: none !important; }
 .platform-whiteboard-clear-confirmation > div { width: min(30rem, 92vw); padding: 1.25rem; border-radius: 0.8rem; background: #fff; text-align: center; }
 .platform-whiteboard-clear-confirmation button { margin: 0.35rem; }
+.platform-whiteboard-lasso-confirmation { position: fixed; z-index: 275; inset: 0; display: grid; place-items: center; padding: 1rem; background: rgba(7, 27, 39, 0.72); }
+.platform-whiteboard-lasso-confirmation[hidden] { display: none !important; }
+.platform-whiteboard-lasso-confirmation > div { width: min(34rem, 92vw); padding: 1.25rem; border: 3px solid var(--platform-blue); border-radius: 0.8rem; background: #fff; text-align: center; box-shadow: 0 1rem 3rem rgba(0,0,0,0.35); }
+.platform-whiteboard-lasso-confirmation button { margin: 0.35rem; }
 .platform-whiteboard-question { position: fixed; z-index: 272; inset: 0; display: grid; place-items: center; padding: 1rem; background: rgba(7, 27, 39, 0.76); }
 .platform-whiteboard-question[hidden], .platform-whiteboard-question label[hidden] { display: none !important; }
 .platform-whiteboard-question > div { display: grid; width: min(34rem, 94vw); gap: 0.75rem; padding: 1.35rem; border: 3px solid var(--platform-blue); border-radius: 0.9rem; background: #fff; box-shadow: 0 1rem 3rem rgba(0,0,0,0.35); }

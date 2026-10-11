@@ -482,7 +482,7 @@ test("whiteboard provides a categorized movable emoji stamp tool", () => {
 });
 
 test("whiteboard lasso isolates work, removes its background, and downloads PNG", () => {
-  for (const text of ["Lasso select for image", "Remove<br>Background", "Download Selection PNG", "Selection ready.", "whiteboard-selection.png", "Use Undo if light details were removed."]) assert.match(app, new RegExp(text.replace(/[.]/g, "\\.")));
+  for (const text of ["Lasso select for image", "Remove<br>Background", "Download Selection PNG", "Cutout ready.", "whiteboard-selection.png", "Use Undo if light details were removed."]) assert.match(app, new RegExp(text.replace(/[.]/g, "\\.")));
   assert.match(app, /whiteboardPointInPolygon/);
   assert.match(app, /whiteboardSelectionCanvas/);
   assert.match(app, /pixels\.data\[index \+ 3\] = 0/);
@@ -491,6 +491,16 @@ test("whiteboard lasso isolates work, removes its background, and downloads PNG"
   assert.equal((app.match(/data-action="whiteboard-remove-selection-background"/g) || []).length, 1);
   assert.match(app, /lassoActions\.hidden = whiteboardTool\.value !== "lasso-select"/);
   assert.match(css, /\.platform-whiteboard-lasso-actions/);
+});
+
+test("lasso opens a cutout choice to use, delete, or cancel", () => {
+  for (const text of ["What would you like to do with this cutout?", "Use Cutout", "Delete Selected Image", "Cutout canceled", "Cutout created as a separate movable image"]) assert.match(app, new RegExp(text));
+  assert.match(app, /data-whiteboard-lasso-confirmation/);
+  assert.match(app, /function useWhiteboardLassoCutout/);
+  assert.match(app, /function whiteboardLassoIntersectingObjectIds/);
+  assert.match(app, /lassoCutout: true/);
+  assert.match(app, /whiteboardObjects = whiteboardObjects\.filter\(\(object\) => !selectedIds\.has\(object\.id\)\)/);
+  assert.match(css, /\.platform-whiteboard-lasso-confirmation/);
 });
 
 test("scheduled boards can become automatic Student Display visuals", () => {

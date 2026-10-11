@@ -1822,6 +1822,9 @@ function teacherDashboardView(state) {
       <div class="platform-whiteboard-clear-confirmation" data-whiteboard-clear-confirmation role="alertdialog" aria-modal="true" aria-labelledby="whiteboard-clear-title" hidden>
         <div><h3 id="whiteboard-clear-title">Clear the entire whiteboard?</h3><p>This removes the current browser-session board.</p><button type="button" data-action="whiteboard-keep">Keep Board</button><button type="button" data-action="whiteboard-confirm-clear">Clear Board</button></div>
       </div>
+      <div class="platform-whiteboard-lasso-confirmation" data-whiteboard-lasso-confirmation role="dialog" aria-modal="true" aria-labelledby="whiteboard-lasso-title" hidden>
+        <div><h3 id="whiteboard-lasso-title">What would you like to do with this cutout?</h3><p>Use it as a separate movable image, delete the selected image, or cancel without changing the board.</p><button type="button" data-action="whiteboard-lasso-cancel">Cancel</button><button type="button" data-action="whiteboard-lasso-delete">Delete Selected Image</button><button type="button" data-action="whiteboard-lasso-use">Use Cutout</button></div>
+      </div>
       <div class="platform-whiteboard-question" data-whiteboard-dimension-question role="dialog" aria-modal="true" aria-labelledby="whiteboard-dimension-question-title" hidden>
         <div><h3 id="whiteboard-dimension-question-title">Label this CAD measurement</h3><p>The two points are ready. Add the information students need.</p><p class="platform-whiteboard-measurement-tip" data-whiteboard-measurement-tip role="status" hidden></p>
           <label>What are you measuring?<select data-whiteboard-dimension-label><option value="Length">Length</option><option value="Width">Width</option><option value="Height">Height</option><option value="Diameter">Diameter</option><option value="Radius">Radius</option><option value="Spacing">Spacing</option><option value="custom">Add my own answer</option></select></label>
@@ -3854,6 +3857,30 @@ function whiteboardLassoObjectIds() {
   return whiteboardObjects.filter((object) => { const bounds = objectBounds(object); return bounds && whiteboardPointInPolygon({ x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 }, whiteboardLassoPoints); }).map((object) => object.id);
 }
 
+function whiteboardLassoIntersectingObjectIds() {
+  if (!whiteboardLassoBounds) return [];
+  const area = whiteboardLassoBounds;
+  return whiteboardObjects.filter((object) => { const bounds = objectBounds(object); return bounds && bounds.x < area.x + area.width && bounds.x + bounds.width > area.x && bounds.y < area.y + area.height && bounds.y + bounds.height > area.y; }).map((object) => object.id);
+}
+
+function clearWhiteboardLassoChoice() {
+  whiteboardLassoPoints = []; whiteboardLassoBounds = null; whiteboardSelectionDownload = "";
+  const dialog = document.querySelector("[data-whiteboard-lasso-confirmation]"); if (dialog) dialog.hidden = true;
+  renderWhiteboardObjects();
+}
+
+function useWhiteboardLassoCutout() {
+  const result = whiteboardSelectionCanvas();
+  if (!result) return false;
+  const selectedIds = new Set(whiteboardLassoIntersectingObjectIds()), source = result.canvas.toDataURL("image/png"), image = new Image();
+  pushWhiteboardHistory(); whiteboardObjects = whiteboardObjects.filter((object) => !selectedIds.has(object.id));
+  const cutout = createWhiteboardObject("image", { x: result.bounds.x, y: result.bounds.y, width: result.bounds.width, height: result.bounds.height, src: source, element: image, lassoCutout: true, rotation: 0 });
+  whiteboardObjects.push(cutout); whiteboardSelectedObjectId = cutout.id; whiteboardSelectionDownload = source; whiteboardLassoPoints = []; whiteboardLassoBounds = null;
+  image.addEventListener("load", () => { renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); }, { once: true }); image.src = source;
+  const dialog = document.querySelector("[data-whiteboard-lasso-confirmation]"); if (dialog) dialog.hidden = true;
+  setWhiteboardStatus("Cutout created as a separate movable image."); return true;
+}
+
 function whiteboardSelectionCanvas({ removeBackground = false } = {}) {
   const canvas = whiteboardCanvas();
   if (!canvas || !whiteboardLassoBounds || whiteboardLassoPoints.length < 3) return null;
@@ -4531,7 +4558,7 @@ function mountWhiteboard() {
     else { object.width = point.x - whiteboardDrawing.start.x; object.height = point.y - whiteboardDrawing.start.y; }
     renderWhiteboardObjects(canvas);
   };
-  const end = () => { if (!whiteboardDrawing) return; const completedTool = whiteboardDrawing.tool, completedObjectId = whiteboardDrawing.objectId; whiteboardDrawing = null; if (completedTool === "lasso-select") { updateWhiteboardLassoBounds(); renderWhiteboardObjects(canvas); setWhiteboardStatus(whiteboardLassoBounds ? "Selection ready. Remove its background or download it as a PNG." : "Draw a larger loop around the work you want to select."); return; } const completedObject = whiteboardObjects.find((object) => object.id === completedObjectId); if (completedTool === "line" && bisectWhiteboardShapeWithLine(completedObject)) { renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls(); setWhiteboardStatus("Shape divided into two independently editable objects along the line."); return; } if (isAccidentalWhiteboardDot(completedObject)) { whiteboardObjects = whiteboardObjects.filter((object) => object.id !== completedObjectId); whiteboardSelectedObjectId = ""; renderWhiteboardObjects(canvas); saveWhiteboard(canvas); setWhiteboardStatus("No mark added. Drag on the board to draw a line or shape."); return; } saveWhiteboard(canvas); setWhiteboardStatus(completedTool === "eraser" ? "Eraser stroke saved. Use Undo to restore the erased area." : "Board saved. Select any object to move, resize, copy, or delete it."); };
+  const end = () => { if (!whiteboardDrawing) return; const completedTool = whiteboardDrawing.tool, completedObjectId = whiteboardDrawing.objectId; whiteboardDrawing = null; if (completedTool === "lasso-select") { updateWhiteboardLassoBounds(); renderWhiteboardObjects(canvas); const dialog = document.querySelector("[data-whiteboard-lasso-confirmation]"); if (whiteboardLassoBounds && dialog) { dialog.hidden = false; dialog.querySelector('[data-action="whiteboard-lasso-use"]')?.focus(); } setWhiteboardStatus(whiteboardLassoBounds ? "Cutout ready. Choose whether to use it or delete the selected image." : "Draw a larger loop around the work you want to select."); return; } const completedObject = whiteboardObjects.find((object) => object.id === completedObjectId); if (completedTool === "line" && bisectWhiteboardShapeWithLine(completedObject)) { renderWhiteboardObjects(canvas); saveWhiteboard(canvas); updateWhiteboardHistoryControls(); setWhiteboardStatus("Shape divided into two independently editable objects along the line."); return; } if (isAccidentalWhiteboardDot(completedObject)) { whiteboardObjects = whiteboardObjects.filter((object) => object.id !== completedObjectId); whiteboardSelectedObjectId = ""; renderWhiteboardObjects(canvas); saveWhiteboard(canvas); setWhiteboardStatus("No mark added. Drag on the board to draw a line or shape."); return; } saveWhiteboard(canvas); setWhiteboardStatus(completedTool === "eraser" ? "Eraser stroke saved. Use Undo to restore the erased area." : "Board saved. Select any object to move, resize, copy, or delete it."); };
   canvas.addEventListener("pointerdown", start); canvas.addEventListener("pointermove", move); canvas.addEventListener("pointerup", end); canvas.addEventListener("pointercancel", end);
   canvas.addEventListener("dblclick", (event) => { const selected = hitTestObjects(whiteboardObjects.filter((object) => object.strokeStyle !== "eraser"), whiteboardPoint(event, canvas)); if (selected?.type === "text" && !selected.emojiStamp) { event.preventDefault(); whiteboardSelectedObjectId = selected.id; openWhiteboardRichTextEditor(selected, canvas); } });
   canvas.addEventListener("contextmenu", (event) => {
@@ -5166,6 +5193,9 @@ function handleClick(event) {
     } catch { setWhiteboardStatus("This selection could not remove its background. Try a smaller selection or an uploaded image from this device."); }
     return;
   }
+  if (action.dataset.action === "whiteboard-lasso-use") { useWhiteboardLassoCutout(); return; }
+  if (action.dataset.action === "whiteboard-lasso-delete") { const selectedIds = new Set(whiteboardLassoIntersectingObjectIds()); if (selectedIds.size) { pushWhiteboardHistory(); whiteboardObjects = whiteboardObjects.filter((object) => !selectedIds.has(object.id)); whiteboardSelectedObjectId = ""; clearWhiteboardLassoChoice(); saveWhiteboard(); updateWhiteboardHistoryControls(); setWhiteboardStatus("Selected image deleted."); } else { clearWhiteboardLassoChoice(); setWhiteboardStatus("No image was inside the cutout."); } return; }
+  if (action.dataset.action === "whiteboard-lasso-cancel") { clearWhiteboardLassoChoice(); setWhiteboardStatus("Cutout canceled. The board was not changed."); return; }
   if (action.dataset.action === "whiteboard-download-selection") {
     try {
       if (!whiteboardSelectionDownload) {
@@ -6874,9 +6904,11 @@ document.addEventListener("keydown", (event) => {
     const keyboardHelp = whiteboard.querySelector("[data-whiteboard-keyboard-help]:not([hidden])");
     const contextMenu = whiteboard.querySelector("[data-whiteboard-context-menu]:not([hidden])");
     const confirmation = whiteboard.querySelector("[data-whiteboard-clear-confirmation]:not([hidden])");
+    const lassoConfirmation = whiteboard.querySelector("[data-whiteboard-lasso-confirmation]:not([hidden])");
     const dimensionQuestion = whiteboard.querySelector("[data-whiteboard-dimension-question]:not([hidden])");
     if (keyboardHelp) keyboardHelp.hidden = true;
     else if (contextMenu) contextMenu.hidden = true;
+    else if (lassoConfirmation) { clearWhiteboardLassoChoice(); setWhiteboardStatus("Cutout canceled. The board was not changed."); }
     else if (dimensionQuestion) { dimensionQuestion.hidden = true; whiteboardPendingDimension = null; renderWhiteboardObjects(); setWhiteboardStatus("CAD measurement canceled."); }
     else if (confirmation) confirmation.hidden = true;
     else if (whiteboard.dataset.presentation === "true") {
