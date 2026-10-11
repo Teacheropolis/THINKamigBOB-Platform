@@ -542,6 +542,16 @@ test("Pixel Studio draws sprites, pixelates selected images, teaches color bits,
   assert.match(css, /image-rendering: pixelated/);
 });
 
+test("Pixel Studio imports GIF frames for editing and reordering", () => {
+  for (const text of ["Upload GIF", "Paste Copied GIF", "Move Frame Earlier", "Move Frame Later", "separating its frames", "opened for pixel editing"]) assert.match(app, new RegExp(text));
+  assert.match(app, /async function importPixelGif/);
+  assert.match(app, /new window\.ImageDecoder/);
+  assert.match(app, /decoder\.decode\(\{ frameIndex \}\)/);
+  assert.match(app, /imageDataToPixelFrame/);
+  assert.match(app, /async function pastePixelGif/);
+  assert.match(app, /item\.types\.includes\("image\/gif"\)/);
+});
+
 test("color menu provides a screen eyedropper and updates the shared color", () => {
   for (const text of ["Eyedropper — match a screen color", "matched from the screen", "Use the color picker instead"]) assert.match(app, new RegExp(text));
   assert.match(app, /typeof window\.EyeDropper !== "function"/);
