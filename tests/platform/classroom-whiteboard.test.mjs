@@ -529,6 +529,19 @@ test("lasso can replace a cutout with an eyedropper-matched surrounding color", 
   assert.match(app, /Eyedropper is unavailable, so the cutout was replaced with the current toolbar color/);
 });
 
+test("Pixel Studio draws sprites, pixelates selected images, teaches color bits, and exports animation", () => {
+  for (const text of ["Pixel Studio", "Turn Selected Image into Pixels", "Color code:", "Animation frames", "Add Sprite to Whiteboard", "Download Animated GIF"]) assert.match(app, new RegExp(text));
+  assert.match(app, /function selectedImageToPixels/);
+  assert.match(app, /function addPixelSpriteToWhiteboard/);
+  assert.match(app, /function animatedPixelGif/);
+  assert.match(app, /GIF89a/);
+  assert.match(app, /NETSCAPE2\.0/);
+  assert.match(app, /data-pixel-size/);
+  assert.match(app, /data-pixel-bits/);
+  assert.match(css, /\.platform-pixel-studio/);
+  assert.match(css, /image-rendering: pixelated/);
+});
+
 test("color menu provides a screen eyedropper and updates the shared color", () => {
   for (const text of ["Eyedropper — match a screen color", "matched from the screen", "Use the color picker instead"]) assert.match(app, new RegExp(text));
   assert.match(app, /typeof window\.EyeDropper !== "function"/);

@@ -210,6 +210,8 @@ let whiteboardLassoBounds = null;
 let whiteboardSelectionDownload = "";
 let whiteboardContextPoint = null;
 let whiteboardDeleteNextObject = false;
+let pixelStudio = { size: 16, bits: 4, frames: [], frameIndex: 0, pixels: [], drawing: false };
+let pixelStudioPreviewTimer = null;
 
 function lessonTimerDisplayIsStoredOpen() {
   try {
@@ -1742,7 +1744,7 @@ function teacherDashboardView(state) {
           <button type="button" data-action="whiteboard-quick-tool" data-whiteboard-quick-tool="laser-dimension">Laser measure — select 2 points</button>
         </div></details>
         <button type="button" data-action="whiteboard-keyboard-help" title="Show keyboard and Chromebook shortcuts"><span aria-hidden="true">?</span><small>Help</small></button>
-        <details class="platform-whiteboard-quick-menu" data-whiteboard-more-menu><summary><span aria-hidden="true">•••</span><small>More</small></summary><div class="platform-whiteboard-more-panel" data-whiteboard-more-panel><button type="button" data-action="whiteboard-paste-system-image">Paste copied image</button><button type="button" data-action="whiteboard-remove-selection-background" title="Remove the background from the selected image">Remove Background</button></div></details>
+        <details class="platform-whiteboard-quick-menu" data-whiteboard-more-menu><summary><span aria-hidden="true">•••</span><small>More</small></summary><div class="platform-whiteboard-more-panel" data-whiteboard-more-panel><button type="button" data-action="whiteboard-open-pixel-studio">▦ Pixel Studio</button><button type="button" data-action="whiteboard-paste-system-image">Paste copied image</button><button type="button" data-action="whiteboard-remove-selection-background" title="Remove the background from the selected image">Remove Background</button></div></details>
       </nav>
       <div class="platform-whiteboard-controls" data-whiteboard-controls>
       <div class="platform-whiteboard-library" aria-label="Saved whiteboards">
@@ -1824,6 +1826,13 @@ function teacherDashboardView(state) {
       </div>
       <div class="platform-whiteboard-lasso-confirmation" data-whiteboard-lasso-confirmation role="dialog" aria-modal="true" aria-labelledby="whiteboard-lasso-title" hidden>
         <div><h3 id="whiteboard-lasso-title">What would you like to do with this cutout?</h3><p>Use the cutout as a separate image, delete it, or replace it with a surrounding color sampled by the eyedropper.</p><button type="button" data-action="whiteboard-lasso-cancel">Cancel</button><button type="button" data-action="whiteboard-lasso-delete">Delete Cutout</button><button type="button" data-action="whiteboard-lasso-fill">Replace Cutout with Matched Color</button><button type="button" data-action="whiteboard-lasso-use">Use Cutout Image</button></div>
+      </div>
+      <div class="platform-pixel-studio" data-pixel-studio role="dialog" aria-modal="true" aria-labelledby="pixel-studio-title" hidden>
+        <div class="platform-pixel-studio-panel"><header><div><p class="platform-command-label">Whiteboard creative tool</p><h3 id="pixel-studio-title">Pixel Studio</h3><p>Draw a sprite, turn a selected image into pixels, practice color-bit coding, or animate frames.</p></div><button type="button" data-action="pixel-close" aria-label="Close Pixel Studio">×</button></header>
+          <div class="platform-pixel-studio-controls"><label>Grid size<select data-pixel-size><option value="8">8 × 8</option><option value="16" selected>16 × 16</option><option value="24">24 × 24</option><option value="32">32 × 32</option></select></label><label>Color bits<select data-pixel-bits><option value="1">1-bit · 2 colors</option><option value="2">2-bit · 4 colors</option><option value="4" selected>4-bit · 16 colors</option><option value="8">8-bit · 256 colors</option></select></label><label>Pixel color<input type="color" data-pixel-color value="#12384d"></label><output data-pixel-code>Color code: 0000</output><button type="button" data-action="pixel-eyedropper">Eyedropper</button><button type="button" data-action="pixel-from-image">Turn Selected Image into Pixels</button><button type="button" data-action="pixel-clear">Clear Frame</button></div>
+          <div class="platform-pixel-studio-workspace"><canvas data-pixel-canvas width="512" height="512" aria-label="Pixel drawing grid"></canvas><aside><h4>Animation frames</h4><div data-pixel-frames></div><button type="button" data-action="pixel-add-frame">+ Add Frame</button><button type="button" data-action="pixel-duplicate-frame">Duplicate Frame</button><button type="button" data-action="pixel-delete-frame">Delete Frame</button><label>Frame speed<input type="range" data-pixel-speed min="100" max="1200" step="100" value="400"><output data-pixel-speed-output>0.4 sec</output></label><canvas data-pixel-preview width="192" height="192" aria-label="Animated pixel preview"></canvas></aside></div>
+          <footer><button type="button" data-action="pixel-add-board">Add Sprite to Whiteboard</button><button type="button" data-action="pixel-download-png">Download PNG</button><button type="button" data-action="pixel-download-gif">Download Animated GIF</button><button type="button" data-action="pixel-close">Done</button></footer>
+        </div>
       </div>
       <div class="platform-whiteboard-question" data-whiteboard-dimension-question role="dialog" aria-modal="true" aria-labelledby="whiteboard-dimension-question-title" hidden>
         <div><h3 id="whiteboard-dimension-question-title">Label this CAD measurement</h3><p>The two points are ready. Add the information students need.</p><p class="platform-whiteboard-measurement-tip" data-whiteboard-measurement-tip role="status" hidden></p>
@@ -3960,6 +3969,30 @@ function downloadWhiteboardImage(source, name = "whiteboard-image.png") {
   const link = document.createElement("a"); link.download = name; link.href = source; link.click();
 }
 
+const PIXEL_PALETTE = ["#000000", "#ffffff", "#12384d", "#287da0", "#55a875", "#f0a52b", "#c83b32", "#7449a8", "#f4d35e", "#ee8fb3", "#7bdff2", "#b2f7a5", "#8d6e63", "#9aa7ad", "#243b75", "#f7f3e8"];
+function freshPixelFrame(size = pixelStudio.size) { return Array(size * size).fill("#ffffff00"); }
+function pixelColorDistance(a, b) { const rgb = (value) => value.match(/[\da-f]{2}/gi)?.map((part) => parseInt(part, 16)) ?? [0, 0, 0]; const aa = rgb(a), bb = rgb(b); return aa.reduce((sum, value, index) => sum + (value - bb[index]) ** 2, 0); }
+function pixelPalette() { const count = Math.min(16, 2 ** pixelStudio.bits); return PIXEL_PALETTE.slice(0, count); }
+function nearestPixelColor(color) { return pixelPalette().reduce((best, candidate) => pixelColorDistance(color, candidate) < pixelColorDistance(color, best) ? candidate : best, pixelPalette()[0]); }
+function pixelFrameCanvas(frame = pixelStudio.pixels, scale = 16) { const canvas = document.createElement("canvas"); canvas.width = pixelStudio.size * scale; canvas.height = pixelStudio.size * scale; const context = canvas.getContext("2d"); context.imageSmoothingEnabled = false; frame.forEach((color, index) => { if (color.endsWith("00")) return; context.fillStyle = color; context.fillRect(index % pixelStudio.size * scale, Math.floor(index / pixelStudio.size) * scale, scale, scale); }); return canvas; }
+function saveCurrentPixelFrame() { pixelStudio.frames[pixelStudio.frameIndex] = [...pixelStudio.pixels]; }
+function renderPixelStudio() {
+  const canvas = document.querySelector("[data-pixel-canvas]"); if (!canvas) return;
+  const context = canvas.getContext("2d"), cell = canvas.width / pixelStudio.size; context.clearRect(0, 0, canvas.width, canvas.height); context.fillStyle = "#fff"; context.fillRect(0, 0, canvas.width, canvas.height);
+  pixelStudio.pixels.forEach((color, index) => { if (!color.endsWith("00")) { context.fillStyle = color; context.fillRect(index % pixelStudio.size * cell, Math.floor(index / pixelStudio.size) * cell, cell, cell); } });
+  context.strokeStyle = "rgba(18,56,77,.22)"; context.lineWidth = 1; for (let line = 0; line <= pixelStudio.size; line += 1) { const point = Math.round(line * cell) + .5; context.beginPath(); context.moveTo(point, 0); context.lineTo(point, canvas.height); context.stroke(); context.beginPath(); context.moveTo(0, point); context.lineTo(canvas.width, point); context.stroke(); }
+  const frames = document.querySelector("[data-pixel-frames]"); if (frames) frames.innerHTML = pixelStudio.frames.map((frame, index) => `<button type="button" data-action="pixel-select-frame" data-pixel-frame="${index}" aria-pressed="${index === pixelStudio.frameIndex}"><img src="${pixelFrameCanvas(frame, 4).toDataURL()}" alt="Frame ${index + 1}"><span>${index + 1}</span></button>`).join("");
+  const preview = document.querySelector("[data-pixel-preview]"); if (preview) { const previewContext = preview.getContext("2d"); previewContext.imageSmoothingEnabled = false; previewContext.clearRect(0, 0, preview.width, preview.height); previewContext.drawImage(pixelFrameCanvas(pixelStudio.frames[pixelStudio.frameIndex] ?? pixelStudio.pixels, 4), 0, 0, preview.width, preview.height); }
+}
+function startPixelStudioPreview() { window.clearInterval(pixelStudioPreviewTimer); let index = 0; pixelStudioPreviewTimer = window.setInterval(() => { const preview = document.querySelector("[data-pixel-preview]"); if (!preview || document.querySelector("[data-pixel-studio]")?.hidden) return; const context = preview.getContext("2d"); context.imageSmoothingEnabled = false; context.clearRect(0, 0, preview.width, preview.height); context.drawImage(pixelFrameCanvas(pixelStudio.frames[index % pixelStudio.frames.length], 4), 0, 0, preview.width, preview.height); index += 1; }, Number(document.querySelector("[data-pixel-speed]")?.value ?? 400)); }
+function openPixelStudio() { if (!pixelStudio.frames.length) { pixelStudio.pixels = freshPixelFrame(); pixelStudio.frames = [[...pixelStudio.pixels]]; pixelStudio.frameIndex = 0; } const dialog = document.querySelector("[data-pixel-studio]"); if (dialog) { dialog.hidden = false; const canvas = dialog.querySelector("[data-pixel-canvas]"); if (canvas && !canvas.dataset.pixelBound) { canvas.dataset.pixelBound = "true"; canvas.addEventListener("pointerdown", (event) => { event.preventDefault(); pixelStudio.drawing = true; canvas.setPointerCapture(event.pointerId); setPixelAtEvent(event); }); canvas.addEventListener("pointermove", (event) => { if (pixelStudio.drawing) setPixelAtEvent(event); }); const stop = () => { pixelStudio.drawing = false; }; canvas.addEventListener("pointerup", stop); canvas.addEventListener("pointercancel", stop); } renderPixelStudio(); startPixelStudioPreview(); canvas?.focus(); } }
+function setPixelAtEvent(event) { const canvas = event.currentTarget, rect = canvas.getBoundingClientRect(), x = Math.floor((event.clientX - rect.left) / rect.width * pixelStudio.size), y = Math.floor((event.clientY - rect.top) / rect.height * pixelStudio.size); if (x < 0 || y < 0 || x >= pixelStudio.size || y >= pixelStudio.size) return; const color = nearestPixelColor(document.querySelector("[data-pixel-color]")?.value ?? "#12384d"); pixelStudio.pixels[y * pixelStudio.size + x] = color; saveCurrentPixelFrame(); renderPixelStudio(); }
+function selectedImageToPixels() { const object = whiteboardObjects.find((item) => item.id === whiteboardSelectedObjectId && item.type === "image"); if (!object) { setWhiteboardStatus("Select a pasted or uploaded image first, then reopen Pixel Studio."); return; } const image = object.element; if (!image?.complete) return; const sample = document.createElement("canvas"); sample.width = pixelStudio.size; sample.height = pixelStudio.size; const context = sample.getContext("2d", { willReadFrequently: true }); context.drawImage(image, 0, 0, pixelStudio.size, pixelStudio.size); const data = context.getImageData(0, 0, sample.width, sample.height).data; pixelStudio.pixels = Array.from({ length: pixelStudio.size ** 2 }, (_, index) => data[index * 4 + 3] < 24 ? "#ffffff00" : nearestPixelColor(`#${[0,1,2].map((offset) => data[index * 4 + offset].toString(16).padStart(2, "0")).join("")}`)); saveCurrentPixelFrame(); renderPixelStudio(); setWhiteboardStatus("The selected image was turned into editable pixels."); }
+function addPixelSpriteToWhiteboard() { const board = whiteboardCanvas(); if (!board) return; const source = pixelFrameCanvas(pixelStudio.pixels, 16).toDataURL("image/png"), image = new Image(); image.onload = () => { pushWhiteboardHistory(); const size = Math.min(320, board.width * .4, board.height * .5); const object = createWhiteboardObject("image", { x: (board.width - size) / 2, y: (board.height - size) / 2, width: size, height: size, src: source, element: image, pixelArt: true }); whiteboardObjects.push(object); whiteboardSelectedObjectId = object.id; renderWhiteboardObjects(); saveWhiteboard(); updateWhiteboardHistoryControls(); setWhiteboardStatus("Pixel sprite added to the whiteboard. It can be moved and resized."); }; image.src = source; }
+function downloadPixelStudio(source, name) { const link = document.createElement("a"); link.href = source; link.download = name; link.click(); }
+function gifLzw(indices, minimumCodeSize) { const clear = 1 << minimumCodeSize, end = clear + 1; let codeSize = minimumCodeSize + 1, next = end + 1, dictionary = new Map(), bytes = [], currentByte = 0, bit = 0; const write = (code) => { for (let i = 0; i < codeSize; i += 1) { currentByte |= ((code >> i) & 1) << bit; bit += 1; if (bit === 8) { bytes.push(currentByte); currentByte = 0; bit = 0; } } }; const reset = () => { dictionary = new Map(); codeSize = minimumCodeSize + 1; next = end + 1; }; reset(); write(clear); let prefix = String(indices[0] ?? 0); for (let i = 1; i < indices.length; i += 1) { const symbol = indices[i], key = `${prefix},${symbol}`; if (dictionary.has(key)) prefix = String(dictionary.get(key)); else { write(Number(prefix)); if (next < 4096) { dictionary.set(key, next++); if (next === (1 << codeSize) && codeSize < 12) codeSize += 1; } else { write(clear); reset(); } prefix = String(symbol); } } write(Number(prefix)); write(end); if (bit) bytes.push(currentByte); return bytes; }
+function animatedPixelGif() { const palette = PIXEL_PALETTE, bytes = [], word = (value) => [value & 255, value >> 8 & 255], text = (value) => [...value].map((character) => character.charCodeAt(0)); bytes.push(...text("GIF89a"), ...word(pixelStudio.size), ...word(pixelStudio.size), 0xf3, 0, 0); palette.forEach((color) => bytes.push(...(color.match(/[\da-f]{2}/gi) ?? ["00","00","00"]).map((part) => parseInt(part, 16)))); bytes.push(0x21,0xff,0x0b,...text("NETSCAPE2.0"),3,1,0,0,0); const delay = Math.max(2, Math.round(Number(document.querySelector("[data-pixel-speed]")?.value ?? 400) / 10)); pixelStudio.frames.forEach((frame) => { const indices = frame.map((color) => color.endsWith("00") ? 1 : palette.indexOf(nearestPixelColor(color))).map((index) => Math.max(0, index)); const compressed = gifLzw(indices, 4); bytes.push(0x21,0xf9,4,4,...word(delay),0,0,0x2c,0,0,0,0,...word(pixelStudio.size),...word(pixelStudio.size),0,4); for (let i = 0; i < compressed.length; i += 255) { const block = compressed.slice(i, i + 255); bytes.push(block.length, ...block); } bytes.push(0); }); bytes.push(0x3b); return URL.createObjectURL(new Blob([new Uint8Array(bytes)], { type: "image/gif" })); }
+
 function removeSelectedWhiteboardImageBackground(object) {
   if (object?.type !== "image" || !object.element) return false;
   const source = document.createElement("canvas"), width = object.element.naturalWidth || Math.max(1, Math.round(object.width)), height = object.element.naturalHeight || Math.max(1, Math.round(object.height));
@@ -5184,6 +5217,18 @@ function handleClick(event) {
     whiteboardCanvas()?.focus({ preventScroll: true });
     return;
   }
+  if (action.dataset.action === "whiteboard-open-pixel-studio") { openPixelStudio(); return; }
+  if (action.dataset.action === "pixel-close") { const dialog = document.querySelector("[data-pixel-studio]"); if (dialog) dialog.hidden = true; window.clearInterval(pixelStudioPreviewTimer); setWhiteboardStatus("Pixel Studio closed. Your frames are kept while this whiteboard is open."); return; }
+  if (action.dataset.action === "pixel-clear") { pixelStudio.pixels = freshPixelFrame(); saveCurrentPixelFrame(); renderPixelStudio(); return; }
+  if (action.dataset.action === "pixel-from-image") { selectedImageToPixels(); return; }
+  if (action.dataset.action === "pixel-add-frame") { saveCurrentPixelFrame(); pixelStudio.frames.push(freshPixelFrame()); pixelStudio.frameIndex = pixelStudio.frames.length - 1; pixelStudio.pixels = [...pixelStudio.frames[pixelStudio.frameIndex]]; renderPixelStudio(); startPixelStudioPreview(); return; }
+  if (action.dataset.action === "pixel-duplicate-frame") { saveCurrentPixelFrame(); pixelStudio.frames.splice(pixelStudio.frameIndex + 1, 0, [...pixelStudio.pixels]); pixelStudio.frameIndex += 1; pixelStudio.pixels = [...pixelStudio.frames[pixelStudio.frameIndex]]; renderPixelStudio(); startPixelStudioPreview(); return; }
+  if (action.dataset.action === "pixel-delete-frame") { if (pixelStudio.frames.length === 1) { pixelStudio.pixels = freshPixelFrame(); pixelStudio.frames[0] = [...pixelStudio.pixels]; } else { pixelStudio.frames.splice(pixelStudio.frameIndex, 1); pixelStudio.frameIndex = Math.min(pixelStudio.frameIndex, pixelStudio.frames.length - 1); pixelStudio.pixels = [...pixelStudio.frames[pixelStudio.frameIndex]]; } renderPixelStudio(); startPixelStudioPreview(); return; }
+  if (action.dataset.action === "pixel-select-frame") { saveCurrentPixelFrame(); pixelStudio.frameIndex = Number(action.dataset.pixelFrame); pixelStudio.pixels = [...pixelStudio.frames[pixelStudio.frameIndex]]; renderPixelStudio(); return; }
+  if (action.dataset.action === "pixel-add-board") { saveCurrentPixelFrame(); addPixelSpriteToWhiteboard(); return; }
+  if (action.dataset.action === "pixel-download-png") { saveCurrentPixelFrame(); downloadPixelStudio(pixelFrameCanvas(pixelStudio.pixels, 24).toDataURL("image/png"), "pixel-sprite.png"); return; }
+  if (action.dataset.action === "pixel-download-gif") { saveCurrentPixelFrame(); const source = animatedPixelGif(); downloadPixelStudio(source, "pixel-animation.gif"); window.setTimeout(() => URL.revokeObjectURL(source), 1000); setWhiteboardStatus("Animated pixel GIF downloaded."); return; }
+  if (action.dataset.action === "pixel-eyedropper") { if (typeof window.EyeDropper !== "function") { setWhiteboardStatus("The eyedropper is unavailable here. Choose a pixel color instead."); return; } new window.EyeDropper().open().then(({ sRGBHex }) => { const input = document.querySelector("[data-pixel-color]"); if (input) { input.value = sRGBHex; input.dispatchEvent(new Event("change", { bubbles: true })); } }).catch(() => {}); return; }
   if (action.dataset.action === "whiteboard-tool-select") { cancelPendingWhiteboardTextEntry(); whiteboardDeleteNextObject = false; const tool = document.querySelector("[data-whiteboard-tool]"); if (tool) { tool.value = "select"; tool.dispatchEvent(new Event("change", { bubbles: true })); } document.querySelectorAll("[data-whiteboard-quick-tool]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.whiteboardQuickTool === "select"))); whiteboardCanvas()?.focus({ preventScroll: true }); setWhiteboardStatus("Select and move is active."); return; }
   if (action.dataset.action === "whiteboard-paste-youtube") {
     const field = document.querySelector("[data-whiteboard-youtube-url]");
@@ -6367,6 +6412,12 @@ root.addEventListener("drop", (event) => {
 });
 
 root.addEventListener("change", (event) => {
+  const pixelSize = event.target.closest("[data-pixel-size]");
+  if (pixelSize) { const nextSize = Number(pixelSize.value); if (nextSize !== pixelStudio.size && window.confirm("Changing the grid size starts a new pixel drawing. Continue?")) { pixelStudio.size = nextSize; pixelStudio.pixels = freshPixelFrame(); pixelStudio.frames = [[...pixelStudio.pixels]]; pixelStudio.frameIndex = 0; renderPixelStudio(); startPixelStudioPreview(); } else pixelSize.value = String(pixelStudio.size); return; }
+  const pixelBits = event.target.closest("[data-pixel-bits]");
+  if (pixelBits) { pixelStudio.bits = Number(pixelBits.value); pixelStudio.frames = pixelStudio.frames.map((frame) => frame.map((color) => color.endsWith("00") ? color : nearestPixelColor(color))); pixelStudio.pixels = [...pixelStudio.frames[pixelStudio.frameIndex]]; renderPixelStudio(); return; }
+  const pixelColor = event.target.closest("[data-pixel-color]");
+  if (pixelColor) { const code = document.querySelector("[data-pixel-code]"), paletteIndex = pixelPalette().indexOf(nearestPixelColor(pixelColor.value)); if (code) code.textContent = `Color code: ${Math.max(0, paletteIndex).toString(2).padStart(pixelStudio.bits, "0")}`; return; }
   const whiteboardBackgroundImage = event.target.closest("[data-whiteboard-background-image]");
   if (whiteboardBackgroundImage) {
     const file = whiteboardBackgroundImage.files?.[0];
@@ -6798,6 +6849,10 @@ root.addEventListener("beforeinput", (event) => {
 });
 
 root.addEventListener("input", (event) => {
+  const pixelSpeed = event.target.closest("[data-pixel-speed]");
+  if (pixelSpeed) { const output = document.querySelector("[data-pixel-speed-output]"); if (output) output.textContent = `${(Number(pixelSpeed.value) / 1000).toFixed(1)} sec`; startPixelStudioPreview(); return; }
+  const pixelColor = event.target.closest("[data-pixel-color]");
+  if (pixelColor) { pixelColor.dispatchEvent(new Event("change", { bubbles: true })); return; }
   const voiceSensitivity = event.target.closest("[data-voice-sensitivity]");
   if (voiceSensitivity) {
     const sensitivity = voiceMeter.setSensitivity(voiceSensitivity.value);
@@ -6967,8 +7022,10 @@ document.addEventListener("keydown", (event) => {
     const contextMenu = whiteboard.querySelector("[data-whiteboard-context-menu]:not([hidden])");
     const confirmation = whiteboard.querySelector("[data-whiteboard-clear-confirmation]:not([hidden])");
     const lassoConfirmation = whiteboard.querySelector("[data-whiteboard-lasso-confirmation]:not([hidden])");
+    const pixelDialog = whiteboard.querySelector("[data-pixel-studio]:not([hidden])");
     const dimensionQuestion = whiteboard.querySelector("[data-whiteboard-dimension-question]:not([hidden])");
-    if (keyboardHelp) keyboardHelp.hidden = true;
+    if (pixelDialog) { pixelDialog.hidden = true; window.clearInterval(pixelStudioPreviewTimer); setWhiteboardStatus("Pixel Studio closed. Your frames are kept while this whiteboard is open."); }
+    else if (keyboardHelp) keyboardHelp.hidden = true;
     else if (contextMenu) contextMenu.hidden = true;
     else if (lassoConfirmation) { clearWhiteboardLassoChoice(); setWhiteboardStatus("Cutout canceled. The board was not changed."); }
     else if (dimensionQuestion) { dimensionQuestion.hidden = true; whiteboardPendingDimension = null; renderWhiteboardObjects(); setWhiteboardStatus("CAD measurement canceled."); }
