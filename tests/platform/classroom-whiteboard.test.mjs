@@ -530,7 +530,7 @@ test("lasso can replace a cutout with an eyedropper-matched surrounding color", 
 });
 
 test("Pixel Studio draws sprites, pixelates selected images, teaches color bits, and exports animation", () => {
-  for (const text of ["Pixel Studio", "Turn Selected Image into Pixels", "Color code:", "Animation frames", "Add Sprite to Whiteboard", "Download Animated GIF"]) assert.match(app, new RegExp(text));
+  for (const text of ["Pixel Studio", "Pixelate Selected Whiteboard Image", "Color code:", "Animation frames", "Add Sprite to Whiteboard", "Download Animated GIF"]) assert.match(app, new RegExp(text));
   assert.match(app, /function selectedImageToPixels/);
   assert.match(app, /function addPixelSpriteToWhiteboard/);
   assert.match(app, /function animatedPixelGif/);
@@ -543,7 +543,7 @@ test("Pixel Studio draws sprites, pixelates selected images, teaches color bits,
 });
 
 test("Pixel Studio imports GIF frames for editing and reordering", () => {
-  for (const text of ["Upload GIF", "Paste Copied GIF", "Move Frame Earlier", "Move Frame Later", "separating its frames", "opened for pixel editing"]) assert.match(app, new RegExp(text));
+  for (const text of ["Upload a GIF file", "Read GIF from Clipboard", "Move Frame Earlier", "Move Frame Later", "separating its frames", "opened for pixel editing"]) assert.match(app, new RegExp(text));
   assert.match(app, /async function importPixelGif/);
   assert.match(app, /new window\.ImageDecoder/);
   assert.match(app, /decoder\.decode\(\{ frameIndex \}\)/);
@@ -573,12 +573,24 @@ test("Pixel Studio exposes editable and random color-bit palettes", () => {
 });
 
 test("Pixel Studio provides grade 3-6 learning levels and detailed advanced images", () => {
-  for (const text of ["Starter", "1-bit · 8×8", "Creator", "4-bit · 16×16", "Advanced", "8-bit · 64×64", "Advanced GIF import—up to 48 frames"]) assert.match(app, new RegExp(text));
+  for (const text of ["Starter", "1-bit · 8×8", "Creator", "4-bit · 16×16", "Advanced", "8-bit · 64×64", "Import up to 48 GIF frames instead of the recommended 12"]) assert.match(app, new RegExp(text));
   assert.match(app, /PIXEL_8_BIT_PALETTE = Array\.from\(\{ length: 256 \}/);
   assert.match(app, /const importLimit = document\.querySelector\("\[data-pixel-import-more\]"\)\?\.checked \? 48 : 12/);
   assert.match(app, /advanced: \{ size: 64, bits: 8 \}/);
   assert.match(app, /gifLzw\(indices, 8\)/);
   assert.match(css, /\.platform-pixel-levels/);
+});
+
+test("Pixel Studio projects can be started, saved, reopened, and imported with clear guidance", () => {
+  for (const text of ["New Pixel Project", "Save Project", "Open Project", "Pixelate Selected Whiteboard Image", "First close Pixel Studio", "GIF web address", "Open GIF Address", "Import up to 48 GIF frames instead of the recommended 12"]) assert.match(app, new RegExp(text));
+  assert.match(app, /function newPixelProject/);
+  assert.match(app, /function savePixelProjectFile/);
+  assert.match(app, /async function openPixelProjectFile/);
+  assert.match(app, /thinkamigbob-pixel-project/);
+  assert.match(app, /data-pixel-project-file/);
+  assert.match(app, /data-pixel-gif-url/);
+  assert.match(css, /\.platform-pixel-project-actions/);
+  assert.match(css, /\.platform-pixel-gif-address/);
 });
 
 test("color menu provides a screen eyedropper and updates the shared color", () => {
