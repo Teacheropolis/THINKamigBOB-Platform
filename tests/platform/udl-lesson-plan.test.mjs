@@ -47,4 +47,5 @@ test("teacher UI connects standards, UDL, lesson arc, and assessments", () => {
   for (const text of ["Teacher entered", "Automatically generated", "Math example · Ratios and rates", "My own exit-ticket activity", "Exit Ticket — Captain’s Log", "STEM example · Paper bridge", "Automatic non-AI lesson planner", "Teacher input — only these essentials are needed", "Generated lesson-plan language", "Evidence Bank", "UDL Lesson Plan and Ohio Standards", "Starter catalog", "Beginning · Do Now", "Middle · Activities", "Formative — guides next instruction", "Summative — evaluates learning", "I understand this is a"]) assert.match(app, new RegExp(text));
   assert.match(app, /editor\.scrollIntoView/);
   assert.match(app, /data-resource-editor-heading/);
+  for (const text of ["Selected from menus", "Typed by the teacher", "Generated automatically", "Menu choices", "teacher-created entry"]) assert.match(app, new RegExp(text));
 });

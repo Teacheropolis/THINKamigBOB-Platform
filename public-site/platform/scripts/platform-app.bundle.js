@@ -12710,6 +12710,17 @@ function render() {
   root.querySelectorAll("#reflection-check-title").forEach((heading) => {
     heading.textContent = "Exit Ticket \u2014 Captain\u2019s Log";
   });
+  root.querySelectorAll(".platform-example-key").forEach((key) => {
+    key.innerHTML = '<span class="is-menu-key">Selected from menus</span><span class="is-typed-key">Typed by the teacher</span><span class="is-auto-key">Generated automatically</span>';
+  });
+  root.querySelectorAll(".platform-udl-example .is-teacher-entered dl div").forEach((row) => {
+    const label = row.querySelector("dt")?.textContent || "";
+    const value = row.querySelector("dd")?.textContent || "";
+    const typed = /Activity description/i.test(label);
+    const mixed = /Exit-ticket modes/i.test(label) && /teacher-created/i.test(value);
+    row.classList.add(mixed ? "is-entry-mixed" : typed ? "is-entry-typed" : "is-entry-menu");
+    row.querySelector("dt")?.insertAdjacentHTML("beforeend", `<small>${mixed ? "Menu choices + teacher-created entry" : typed ? "Typed by teacher" : "Selected from menu"}</small>`);
+  });
   root.querySelector("#captains-log-planner-title")?.insertAdjacentHTML("afterend", `
     <details class="platform-captains-log-evaluation-evidence">
       <summary>What the Principal Wants to See</summary>
