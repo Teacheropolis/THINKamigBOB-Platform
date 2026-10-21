@@ -5294,6 +5294,10 @@ function teacherDashboardView(state) {
         <div class="platform-voice-meter-track"><span class="platform-voice-meter-fill"></span></div>
         <output data-voice-meter-output>0</output>
       </aside>
+      <aside class="platform-classroom-display-voice-bob" data-voice-bob data-meter-state="green" aria-live="polite">
+        <div class="platform-classroom-display-voice-bob-mascot" role="img" aria-label="Bob is calm and happy."></div>
+        <strong data-voice-bob-message>Bob is calm and happy.</strong>
+      </aside>
       <div class="platform-student-display-image-slot" data-student-image-slot hidden></div>
       <div class="platform-student-memo" data-student-memo data-memo-color="${memoState.color}" data-memo-size="${memoState.size}" data-memo-style="${memoState.style}"${showStudentMemo ? "" : " hidden"}>
         <h3 id="student-message-title">Class Message</h3>
@@ -5329,7 +5333,7 @@ function teacherDashboardView(state) {
       <aside class="platform-smartboard-tool platform-activity-side-timer" data-smartboard-tool="activity-timer" hidden style="right: 4%; top: 14%;"><header data-smartboard-drag-handle><strong>Activity Side Timer</strong><button type="button" data-action="close-smartboard-tool" aria-label="Close Activity Side Timer">\xD7</button></header><p class="platform-activity-side-timer-note">Independent timer \u2014 the class timer keeps running.</p><output data-activity-side-timer-output>${formatLessonTime(currentActivitySideTimer().remainingSeconds)}</output><p data-activity-side-timer-status>Ready for a class activity</p><div class="platform-activity-side-timer-presets"><button type="button" data-action="activity-side-timer-set" data-activity-minutes="1">1 min</button><button type="button" data-action="activity-side-timer-set" data-activity-minutes="3">3 min</button><button type="button" data-action="activity-side-timer-set" data-activity-minutes="5">5 min</button><button type="button" data-action="activity-side-timer-set" data-activity-minutes="10">10 min</button></div><label>Custom minutes<input type="number" min="1" max="60" value="5" data-activity-side-timer-minutes></label><button type="button" data-action="activity-side-timer-set">Set Custom Time</button><div class="platform-activity-side-timer-controls"><button type="button" data-action="activity-side-timer-start">Start</button><button type="button" data-action="activity-side-timer-pause" disabled>Pause</button><button type="button" data-action="activity-side-timer-reset">Reset</button></div>${smartboardToolSwitcherMarkup()}<span class="platform-smartboard-resize-handle" data-smartboard-resize-handle aria-label="Resize Activity Side Timer"></span></aside>
       <aside class="platform-smartboard-tool" data-smartboard-tool="message" hidden style="right: 3%; top: 12%;"><header data-smartboard-drag-handle><strong>Quick Message</strong><button type="button" data-action="close-smartboard-tool" aria-label="Close Message tool">\xD7</button></header><div class="platform-smartboard-message" data-student-memo-text>${memoState.text ? memoSegmentsMarkup(memoState) : "No message is ready yet."}</div>${smartboardToolSwitcherMarkup()}<span class="platform-smartboard-resize-handle" data-smartboard-resize-handle aria-label="Resize Message window"></span></aside>
       <aside class="platform-smartboard-tool" data-smartboard-tool="stopwatch" hidden style="left: 35%; top: 18%;"><header data-smartboard-drag-handle><strong>Stopwatch</strong><button type="button" data-action="close-smartboard-tool" aria-label="Close Stopwatch tool">\xD7</button></header><output class="platform-smartboard-timer" data-stopwatch-output>${formatLessonTime(stopwatchSeconds)}</output><div><button type="button" data-action="stopwatch-start">Start</button><button type="button" data-action="stopwatch-pause">Pause</button><button type="button" data-action="stopwatch-reset">Reset</button></div>${smartboardToolSwitcherMarkup()}<span class="platform-smartboard-resize-handle" data-smartboard-resize-handle aria-label="Resize Stopwatch window"></span></aside>
-      <aside class="platform-smartboard-tool platform-smartboard-voice-tool" data-smartboard-tool="voice" hidden style="right: 16%; top: 18%;"><header data-smartboard-drag-handle><strong>Voice Meter</strong><button type="button" data-action="close-smartboard-tool" aria-label="Close Voice Meter tool">\xD7</button></header><label class="platform-smartboard-voice-choice">Choose the voice level<select data-voice-meter-target aria-label="Expected voice level on the classroom Voice Meter">${VOICE_METER_LEVELS.map((level) => `<option value="${level.key}"${selectedVoiceLevel.key === level.key ? " selected" : ""}>${level.icon} ${level.label}</option>`).join("")}</select></label><p data-large-voice-level-label>${selectedVoiceLevel.icon} ${escapeHtml2(selectedVoiceLevel.label)}</p><div class="platform-voice-meter" data-voice-meter data-meter-state="green" style="--voice-meter-level: 0%"><div class="platform-voice-meter-track"><span class="platform-voice-meter-fill"></span></div><output data-voice-meter-output>0</output></div><div><button type="button" data-action="voice-meter-start">Start</button><button type="button" data-action="voice-meter-stop" disabled>Pause</button><button type="button" data-action="open-voice-meter-display">Full Screen</button></div>${smartboardToolSwitcherMarkup()}<span class="platform-smartboard-resize-handle" data-smartboard-resize-handle aria-label="Resize Voice Meter window"></span></aside>
+      <aside class="platform-smartboard-tool platform-smartboard-voice-tool" data-smartboard-tool="voice" hidden style="right: 16%; top: 18%;"><header data-smartboard-drag-handle><strong>Voice Meter</strong><button type="button" data-action="close-smartboard-tool" aria-label="Close Voice Meter tool">\xD7</button></header><div class="platform-smartboard-voice-bob" data-voice-bob data-meter-state="green"><span role="img" aria-label="Bob is calm and happy."></span><strong data-voice-bob-message>Bob is calm and happy.</strong></div><label class="platform-smartboard-voice-choice">Choose the voice level<select data-voice-meter-target aria-label="Expected voice level on the classroom Voice Meter">${VOICE_METER_LEVELS.map((level) => `<option value="${level.key}"${selectedVoiceLevel.key === level.key ? " selected" : ""}>${level.icon} ${level.label}</option>`).join("")}</select></label><p data-large-voice-level-label>${selectedVoiceLevel.icon} ${escapeHtml2(selectedVoiceLevel.label)}</p><div class="platform-voice-meter" data-voice-meter data-meter-state="green" style="--voice-meter-level: 0%"><div class="platform-voice-meter-track"><span class="platform-voice-meter-fill"></span></div><output data-voice-meter-output>0</output></div><div><button type="button" data-action="voice-meter-start">Start</button><button type="button" data-action="voice-meter-stop" disabled>Pause</button><button type="button" data-action="open-voice-meter-display">Full Screen</button></div>${smartboardToolSwitcherMarkup()}<span class="platform-smartboard-resize-handle" data-smartboard-resize-handle aria-label="Resize Voice Meter window"></span></aside>
       ${namePickerMarkup(classRoster)}
       <aside class="platform-smartboard-tool platform-floating-whiteboard" data-smartboard-tool="whiteboard" hidden style="left: 8%; top: 8%; width: min(46rem, 82vw); height: min(34rem, 72vh);"><header data-smartboard-drag-handle><strong>Whiteboard</strong><button type="button" data-action="close-smartboard-tool" aria-label="Close Whiteboard window">\xD7</button></header><div class="platform-floating-whiteboard-board">${floatingWhiteboard ? `<img src="${escapeHtml2(floatingWhiteboard.displayImage || floatingWhiteboard.image)}" alt="Latest whiteboard: ${escapeHtml2(floatingWhiteboard.title)}">` : `<p>Your whiteboard will appear here. Open the full board to draw.</p>`}</div><div class="platform-floating-whiteboard-functions"><button type="button" data-action="open-whiteboard">Open Full Whiteboard and Tools</button></div>${smartboardToolSwitcherMarkup()}<span class="platform-smartboard-resize-handle" data-smartboard-resize-handle aria-label="Resize Whiteboard window"></span></aside>
       <details class="platform-smartboard-tool-tray" aria-label="Smartboard presentation tools"><summary>Tools</summary><div class="platform-smartboard-tool-options"><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="amig">AMIG Chart</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="timer">Class Timer</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="activity-timer">Activity Side Timer</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="stopwatch">Stopwatch</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="message">Message</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="voice">Voice Meter</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="names">Name Picker</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="whiteboard">Whiteboard</button><button type="button" class="platform-smartboard-reset-tools" data-action="reset-smartboard-tools">Reset Positions</button></div></details>
@@ -5963,11 +5967,19 @@ function syncClassroomPresentationWindow() {
   const liveVoice = Number(document.querySelector("[data-voice-meter-output]")?.textContent ?? 0);
   const activity = readVoiceMeterActivity();
   const prediction = predictedLearningType(liveVoice);
+  const liveVoiceState = voiceMeterState(liveVoice, activity.target);
+  const bobMessages = { green: "Bob is calm and happy.", yellow: "Bob is asking the class to quiet down.", red: "Bob is uncomfortable because the room is too loud." };
   documentRef.querySelectorAll("[data-voice-meter]").forEach((meter) => {
     meter.style.setProperty("--voice-meter-level", `${liveVoice}%`);
     meter.style.setProperty("--voice-threshold", `${activity.target}%`);
-    meter.dataset.meterState = voiceMeterState(liveVoice, activity.target);
+    meter.dataset.meterState = liveVoiceState;
     meter.querySelector("[data-voice-meter-output]")?.replaceChildren(String(liveVoice));
+  });
+  documentRef.querySelectorAll("[data-voice-bob]").forEach((bob) => {
+    bob.dataset.meterState = liveVoiceState;
+    bob.setAttribute("aria-label", bobMessages[liveVoiceState]);
+    bob.querySelector("[role='img']")?.setAttribute("aria-label", bobMessages[liveVoiceState]);
+    bob.querySelector("[data-voice-bob-message]")?.replaceChildren(bobMessages[liveVoiceState]);
   });
   documentRef.querySelectorAll("[data-voice-prediction]").forEach((label) => {
     label.textContent = `${prediction.icon} ${prediction.label}`;
@@ -6171,7 +6183,19 @@ function enterStandaloneClassroomDisplayMode() {
     });
     root.append(exit);
   }
+  document.addEventListener("fullscreenchange", () => {
+    const isFullscreen = Boolean(document.fullscreenElement);
+    const presentationMode = document.body.classList.contains("platform-classroom-presentation-mode");
+    if (!isFullscreen && presentationMode) document.body.classList.remove("platform-classroom-presentation-mode");
+    const button = document.querySelector('[data-action="fullscreen-classroom-display"]');
+    if (button) button.textContent = isFullscreen ? "Exit Full Screen" : "Full Screen";
+    const exit = document.querySelector('[data-action="exit-classroom-fullscreen"]');
+    if (exit) exit.hidden = !isFullscreen;
+    const status = document.querySelector("[data-classroom-display-layout-status]");
+    if (!isFullscreen && presentationMode && status) status.textContent = "Full-screen presentation mode closed.";
+  });
   installSmartboardToolPopoutButtons(document);
+  updateVoiceMeterPresentation(Number(document.querySelector("[data-voice-meter-output]")?.textContent ?? 0));
   syncLessonTimerPresentation();
 }
 function syncLessonTimerPresentation() {
