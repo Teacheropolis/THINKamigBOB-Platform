@@ -27,6 +27,10 @@ test("standards, activity details, and evidence automatically complete the lesso
   assert.match(plan.successCriteria, /test data or measurements/);
   assert.match(plan.engagement, /choose/);
   assert.match(plan.expression, /test data or measurements/);
+  assert.match(plan.materialsAndAlternatives, /low-tech/);
+  assert.match(plan.anticipatedChallenges, /prerequisite knowledge/);
+  assert.match(plan.responsiveSupports, /Reteach/);
+  assert.match(plan.masteryEvidenceNextSteps, /test data or measurements/);
 });
 
 test("teachers can add a reusable evidence type to the bank", () => {
@@ -44,7 +48,7 @@ test("lesson plans preserve exit-ticket modes and a teacher-created activity", (
 
 test("teacher UI connects standards, UDL, lesson arc, and assessments", () => {
   const app = readFileSync(new URL("../../platform/scripts/platform-app.mjs", import.meta.url), "utf8");
-  for (const text of ["Teacher entered", "Automatically generated", "Math example · Ratios and rates", "My own exit-ticket activity", "Exit Ticket — Captain’s Log", "STEM example · Paper bridge", "Automatic non-AI lesson planner", "Teacher input — only these essentials are needed", "Generated lesson-plan language", "Evidence Bank", "UDL Lesson Plan and Ohio Standards", "Starter catalog", "Beginning · Do Now", "Middle · Activities", "Formative — guides next instruction", "Summative — evaluates learning", "I understand this is a"]) assert.match(app, new RegExp(text));
+  for (const text of ["Teacher entered", "Automatically generated", "Math example · Ratios and rates", "My own exit-ticket activity", "Exit Ticket — Captain’s Log", "STEM example · Paper bridge", "Automatic non-AI lesson planner", "Teacher input — only these essentials are needed", "Generated lesson-plan language", "Evidence Bank", "UDL Lesson Plan and Ohio Standards", "Starter catalog", "Beginning · Do Now", "Middle · Activities", "Formative — guides next instruction", "Summative — evaluates learning", "I understand this is a", "Materials and alternatives", "Anticipated challenges", "Responsive supports and extensions", "Mastery evidence and next steps", "rubric-ready additions"] ) assert.match(app, new RegExp(text));
   assert.match(app, /editor\.scrollIntoView/);
   assert.match(app, /data-resource-editor-heading/);
   for (const text of ["Selected from menus", "Typed by the teacher", "Generated automatically", "Menu choices", "teacher-created entry"]) assert.match(app, new RegExp(text));
