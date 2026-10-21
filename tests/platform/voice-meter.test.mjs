@@ -41,7 +41,8 @@ test("teacher and student display expose a private browser-only voice meter", ()
   assert.match(app, /data-voice-sensitivity/);
   assert.match(app, /class="platform-floating-voice-bob"/);
   assert.match(app, /class="platform-smartboard-voice-bob"/);
-  assert.match(app, /forceVisible = document\.body\.classList\.contains\("platform-standalone-classroom-display"\)/);
+  assert.match(app, /forceVisible = standaloneClassroomDisplayRequested\(\)/);
+  assert.match(app, /readClassroomBobDisplay\(\)\.enabled \|\| standaloneClassroomDisplayRequested\(\)/);
   assert.match(app, /platform-standalone-classroom-display"\) \? 9000/);
   assert.match(app, /Bob is calm and happy/);
   assert.match(app, /Bob is asking the class to quiet down/);
