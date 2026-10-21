@@ -3282,16 +3282,14 @@ function enterStandaloneClassroomDisplayMode() {
   document.querySelectorAll(".platform-floating-voice-bob").forEach((bob) => { bob.hidden = false; });
   if (!document.querySelector(".platform-classroom-window-controls")) {
     const controls = document.createElement("div");
+    const teacherViewUrl = new URL(window.location.href);
+    teacherViewUrl.searchParams.delete("classroomDisplay");
     controls.className = "platform-classroom-window-controls";
     controls.setAttribute("aria-label", "Classroom Display screen options");
-    controls.innerHTML = '<strong>Screen Options</strong><button type="button" data-action="fullscreen-classroom-display">Full Screen</button><button type="button" data-action="return-to-teacher-view">Return to Teacher View</button><span data-classroom-display-layout-status role="status"></span>';
+    controls.innerHTML = `<strong>Screen Options</strong><button type="button" data-action="fullscreen-classroom-display">Full Screen</button><a class="platform-return-to-teacher-view" href="${escapeHtml(teacherViewUrl.href)}">Return to Teacher View</a><span data-classroom-display-layout-status role="status"></span>`;
     controls.querySelector('[data-action="fullscreen-classroom-display"]').addEventListener("click", (event) => {
       event.stopPropagation();
       void toggleClassroomDisplayFullscreen(event.currentTarget);
-    });
-    controls.querySelector('[data-action="return-to-teacher-view"]').addEventListener("click", (event) => {
-      event.stopPropagation();
-      void returnToTeacherViewFromClassroomDisplay();
     });
     root.append(controls);
   }
@@ -6387,10 +6385,6 @@ async function handleClick(event) {
   }
   if (action.dataset.action === "exit-classroom-fullscreen") {
     void exitClassroomDisplayFullscreen(action.ownerDocument);
-    return;
-  }
-  if (action.dataset.action === "return-to-teacher-view") {
-    void returnToTeacherViewFromClassroomDisplay();
     return;
   }
   if (action.dataset.action === "popout-smartboard-tool") {

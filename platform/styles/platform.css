@@ -1343,6 +1343,7 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-classroom-window-options { display: flex; align-items: center; gap: 0.45rem; max-width: calc(100vw - 1.2rem); margin-top: 0.35rem; padding: 0.4rem; border: 2px solid var(--platform-gold); border-radius: 0.75rem; background: rgba(16, 47, 69, 0.96); box-shadow: 0 0.45rem 1rem rgba(0,0,0,0.28); }
 .platform-classroom-window-controls button { min-height: 2.6rem; padding: 0.4rem 0.8rem; border: 2px solid #fff; color: var(--platform-navy); background: #fff8e7; font-weight: 900; white-space: nowrap; }
 .platform-classroom-window-controls button:first-of-type { color: #fff; background: var(--platform-blue); }
+.platform-classroom-window-controls .platform-return-to-teacher-view { display: inline-flex; min-height: 2.6rem; align-items: center; padding: 0.4rem 0.8rem; border: 2px solid #fff; color: var(--platform-navy); background: #fff8e7; font-weight: 900; text-decoration: none; white-space: nowrap; }
 .platform-classroom-window-controls span { max-width: 17rem; font-size: 0.72rem; font-weight: 800; }
 .platform-classroom-split-control { position: relative; }
 .platform-classroom-split-control > summary { min-height: 2.6rem; padding: 0.55rem 0.8rem; border: 2px solid #fff; border-radius: 0.35rem; color: var(--platform-navy); background: #fff8e7; font-weight: 900; list-style: none; cursor: pointer; }
