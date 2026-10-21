@@ -2055,12 +2055,12 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-student-voice-meter p { margin: 0 0 0.45rem; font-weight: 900; }
 .platform-student-voice-meter output { display: block; margin-top: 0.35rem; font-size: 1.2rem; font-weight: 900; text-align: center; }
 .platform-classroom-display-voice-bob { position: absolute; z-index: 35; left: clamp(0.75rem, 2vw, 2rem); bottom: clamp(0.75rem, 2vh, 1.5rem); display: grid; width: clamp(7.5rem, 13vw, 12rem); justify-items: center; gap: 0.25rem; pointer-events: none; }
-.platform-classroom-display-voice-bob-mascot { width: 100%; aspect-ratio: 1; background: url("../../assets/images/characters/bob-voice-meter-states.png") left center / 300% 100% no-repeat; filter: drop-shadow(0 0.55rem 0.55rem rgba(0,0,0,0.3)); }
+.platform-classroom-display-voice-bob-mascot { width: 100%; aspect-ratio: 1; background: url("../assets/images/characters/bob-voice-meter-states.png") left center / 300% 100% no-repeat; filter: drop-shadow(0 0.55rem 0.55rem rgba(0,0,0,0.3)); }
 .platform-classroom-display-voice-bob[data-meter-state="yellow"] .platform-classroom-display-voice-bob-mascot { background-position: center center; }
 .platform-classroom-display-voice-bob[data-meter-state="red"] .platform-classroom-display-voice-bob-mascot { background-position: right center; }
 .platform-classroom-display-voice-bob strong { max-width: 13rem; padding: 0.3rem 0.45rem; border-radius: 0.45rem; color: var(--platform-navy); background: rgba(255,255,255,0.92); font-size: clamp(0.62rem, 1.2vw, 0.9rem); line-height: 1.2; text-align: center; box-shadow: 0 0.25rem 0.6rem rgba(0,0,0,0.2); }
 .platform-smartboard-voice-bob { display: grid; grid-template-columns: minmax(4.5rem, 7rem) minmax(0, 1fr); align-items: center; gap: 0.5rem; }
-.platform-smartboard-voice-bob > span { width: 100%; aspect-ratio: 1; background: url("../../assets/images/characters/bob-voice-meter-states.png") left center / 300% 100% no-repeat; }
+.platform-smartboard-voice-bob > span { width: 100%; aspect-ratio: 1; background: url("../assets/images/characters/bob-voice-meter-states.png") left center / 300% 100% no-repeat; }
 .platform-smartboard-voice-bob[data-meter-state="yellow"] > span { background-position: center center; }
 .platform-smartboard-voice-bob[data-meter-state="red"] > span { background-position: right center; }
 .platform-smartboard-voice-bob strong { font-size: clamp(0.75rem, 3.4cqw, 1rem); line-height: 1.25; }
@@ -2075,7 +2075,7 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-large-voice-meter[data-meter-state="red"] { border-color: #c33f38; background: #f69a94; }
 .platform-large-voice-meter .platform-voice-meter-track { height: clamp(4rem, 10vh, 8rem); border-width: 0.35rem; }
 .platform-large-voice-bob-panel, .platform-large-voice-reading { display: grid; justify-items: center; gap: clamp(0.6rem, 1.5vh, 1rem); }
-.platform-large-voice-bob { width: min(24rem, 32vw); aspect-ratio: 1; background: url("../../assets/images/characters/bob-voice-meter-states.png") left center / 300% 100% no-repeat; filter: drop-shadow(0 0.8rem 0.8rem rgba(0, 0, 0, 0.24)); transition: background-position 180ms ease; }
+.platform-large-voice-bob { width: min(24rem, 32vw); aspect-ratio: 1; background: url("../assets/images/characters/bob-voice-meter-states.png") left center / 300% 100% no-repeat; filter: drop-shadow(0 0.8rem 0.8rem rgba(0, 0, 0, 0.24)); transition: background-position 180ms ease; }
 .platform-large-voice-bob[data-meter-state="yellow"] { background-position: center center; }
 .platform-large-voice-bob[data-meter-state="red"] { background-position: right center; }
 .platform-large-voice-bob-panel strong { max-width: 26rem; font-size: clamp(1rem, 2vw, 1.5rem); }
@@ -2102,7 +2102,7 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-floating-voice-bob[data-corner$="left"].is-walking-out { animation-name: platform-bob-walk-frames, platform-bob-walk-out-left; }
 .platform-floating-voice-bob.is-walking-in { animation: platform-bob-walk-frames 0.8s step-end infinite, platform-bob-walk-in-right 2.8s linear forwards; }
 .platform-floating-voice-bob[data-corner$="left"].is-walking-in { animation-name: platform-bob-walk-frames, platform-bob-walk-in-left; }
-.platform-floating-voice-bob[data-meter-state="yellow"], .platform-floating-voice-bob[data-meter-state="red"] { background-image: url("../../assets/images/characters/bob-voice-meter-states.png"); background-size: 300% 100%; animation: none; }
+.platform-floating-voice-bob[data-meter-state="yellow"], .platform-floating-voice-bob[data-meter-state="red"] { background-image: url("../assets/images/characters/bob-voice-meter-states.png"); background-size: 300% 100%; animation: none; }
 .platform-floating-voice-bob[data-meter-state="yellow"] { background-position: center center; transform: translateY(2%); }
 .platform-floating-voice-bob[data-meter-state="red"] { background-position: right center; transform: translateY(0) scale(1.08); animation: platform-bob-too-loud 900ms ease-in-out 1; }
 .platform-floating-voice-bob[data-meter-state="green"].is-unlocked-pose { background-image: var(--bob-pose-sheet); background-size: 500% 500%; background-position: var(--bob-pose-x) var(--bob-pose-y); animation: none; }

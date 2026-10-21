@@ -6,7 +6,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const source = path.join(root, "platform");
 const destination = path.join(root, "public-site", "platform");
 const sharedCharacterSource = path.join(root, "assets", "images", "characters");
-const sharedCharacterDestination = path.join(root, "public-site", "assets", "images", "characters");
+const sharedCharacterDestination = path.join(destination, "assets", "images", "characters");
 const publicClientId = "42889983876-krlc3beis1nc9f5sblrab11t2n4nmo19.apps.googleusercontent.com";
 
 await rm(destination, { recursive: true, force: true });
