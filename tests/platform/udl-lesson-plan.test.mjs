@@ -37,5 +37,7 @@ test("teachers can add a reusable evidence type to the bank", () => {
 
 test("teacher UI connects standards, UDL, lesson arc, and assessments", () => {
   const app = readFileSync(new URL("../../platform/scripts/platform-app.mjs", import.meta.url), "utf8");
-  for (const text of ["Automatic non-AI lesson planner", "Teacher input — only these essentials are needed", "Generated lesson-plan language", "Evidence Bank", "UDL Lesson Plan and Ohio Standards", "Starter catalog", "Beginning · Do Now", "Middle · Activities", "End · Captain’s Log", "Formative — guides next instruction", "Summative — evaluates learning", "I understand this is a"]) assert.match(app, new RegExp(text));
+  for (const text of ["See a filled-in example and finished plan", "Students design, build, and test a paper bridge", "Finished automatic UDL lesson plan", "Automatic non-AI lesson planner", "Teacher input — only these essentials are needed", "Generated lesson-plan language", "Evidence Bank", "UDL Lesson Plan and Ohio Standards", "Starter catalog", "Beginning · Do Now", "Middle · Activities", "End · Captain’s Log", "Formative — guides next instruction", "Summative — evaluates learning", "I understand this is a"]) assert.match(app, new RegExp(text));
+  assert.match(app, /editor\.scrollIntoView/);
+  assert.match(app, /data-resource-editor-heading/);
 });
