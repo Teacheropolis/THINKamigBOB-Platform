@@ -3333,12 +3333,12 @@ function cleanupStandaloneClassroomDisplayMode() {
   document.querySelectorAll(".platform-floating-voice-bob").forEach((bob) => { bob.hidden = true; bob.classList.remove("is-walking-out", "is-walking-in", "is-unlocked-pose"); });
 }
 
-async function returnToTeacherViewFromClassroomDisplay() {
-  await exitClassroomDisplayFullscreen(document);
+function returnToTeacherViewFromClassroomDisplay() {
   const url = new URL(window.location.href);
   url.searchParams.delete("classroomDisplay");
   window.history.replaceState({}, "", url);
   cleanupStandaloneClassroomDisplayMode();
+  void exitClassroomDisplayFullscreen(document);
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
