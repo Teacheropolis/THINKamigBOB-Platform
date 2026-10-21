@@ -53,6 +53,12 @@ test("activity choices can be differentiated for selected students", () => {
   assert.deepEqual(store.read("a").cards[0].resources[1].audienceIds, ["student-2"]);
 });
 
+test("lesson steps preserve formative or summative assessment purpose", () => {
+  const store = createActivityDirections({ storage: memoryStorage() });
+  store.saveCard("a", { title: "Explain", directions: "Show what you know.", assessmentType: "formative" });
+  assert.equal(store.read("a").cards[0].assessmentType, "formative");
+});
+
 test("secure classroom steps can replace the browser projection", () => {
   const store = createActivityDirections({ storage: memoryStorage() });
   store.setTitle("class-a", "Bridge Challenge");

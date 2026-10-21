@@ -19,6 +19,7 @@ function normalizeCard(value = {}) {
     id: cleanText(value.id, 100),
     title: cleanText(value.title, 100),
     directions: cleanText(value.directions, 2000),
+    assessmentType: ["formative", "summative"].includes(value.assessmentType) ? value.assessmentType : "",
     mediaType,
     url: cleanText(value.url, 1500),
     resources,

@@ -55,6 +55,7 @@ import { createBrowserMessageLibrary } from "./message-library.mjs";
 import { createBrowserClassSetupProfiles } from "./class-setup-profiles.mjs";
 import { CLASS_RESOURCE_STORAGE_KEY, createClassResourceSharing, RESOURCE_RELEASES, RESOURCE_TYPES } from "./class-resource-sharing.mjs?v=preview-20261004-7";
 import { ACTIVITY_DIRECTIONS_STORAGE_KEY, createActivityDirections } from "./activity-directions.mjs?v=preview-20261016-2";
+import { createUdlLessonPlanStore, lessonPlanSuggestions, OHIO_STANDARDS_3_6, UDL_LESSON_PLAN_STORAGE_KEY } from "./udl-lesson-plan.mjs";
 import {
   CAPTAINS_LOG_PRESET_PROMPTS,
   CAPTAINS_LOG_ASSIGNMENT_OPTIONS,
@@ -126,6 +127,7 @@ const pilotTeacherClasses = getClassesForTeacher("teacher-preview-1");
 let classSetupProfiles = createBrowserClassSetupProfiles(window, pilotTeacherClasses.map((item) => item.id));
 const classResourceSharing = createClassResourceSharing({ storage: window.localStorage });
 const activityDirections = createActivityDirections({ storage: window.localStorage });
+const udlLessonPlans = createUdlLessonPlanStore(window.localStorage);
 const weeklyReflections = createWeeklyReflections({ storage: window.localStorage });
 const voiceMeter = createVoiceMeterStore({ storage: window.sessionStorage });
 const todaysMission = createTodaysMissionStore({ storage: window.sessionStorage });
@@ -1186,7 +1188,7 @@ function activityDirectionsTeacherMarkup(classId) {
   const state = activityDirections.read(classId);
   const cards = state.cards.map((card, index) => `<article class="platform-direction-card" data-direction-card-id="${escapeHtml(card.id)}" data-status="${card.status}">
     <div><span class="platform-direction-number">${index + 1}</span><span class="platform-direction-status">${card.status === "released" ? "Visible to students" : "Draft — teacher only"}</span></div>
-    <h4>${escapeHtml(card.title)}</h4><p>${escapeHtml(card.directions)}</p>${card.resources?.length ? `<p class="platform-direction-choice-summary">${card.resources.length} activity choice${card.resources.length === 1 ? "" : "s"}${card.resources.some((resource) => resource.audienceIds?.length) ? " · includes selected-student alternatives" : ""}</p>` : ""}${directionMediaMarkup(card)}
+    <h4>${escapeHtml(card.title)}</h4>${card.assessmentType ? `<p class="platform-assessment-badge">${escapeHtml(card.assessmentType)} assessment</p>` : ""}<p>${escapeHtml(card.directions)}</p>${card.resources?.length ? `<p class="platform-direction-choice-summary">${card.resources.length} activity choice${card.resources.length === 1 ? "" : "s"}${card.resources.some((resource) => resource.audienceIds?.length) ? " · includes selected-student alternatives" : ""}</p>` : ""}${directionMediaMarkup(card)}
     <div class="platform-direction-actions"><button type="button" data-action="edit-direction-card" data-direction-id="${escapeHtml(card.id)}">Edit</button>${card.status === "released" ? `<button type="button" data-action="withdraw-direction-card" data-direction-id="${escapeHtml(card.id)}">Withdraw</button>` : `<button type="button" data-action="release-direction-card" data-direction-id="${escapeHtml(card.id)}">Release</button>`}<details class="platform-direction-more"><summary>More</summary><div><button type="button" data-action="duplicate-direction-card" data-direction-id="${escapeHtml(card.id)}">Duplicate</button><button type="button" data-action="move-direction-card" data-direction-id="${escapeHtml(card.id)}" data-direction-offset="-1"${index === 0 ? " disabled" : ""}>Move Up</button><button type="button" data-action="move-direction-card" data-direction-id="${escapeHtml(card.id)}" data-direction-offset="1"${index === state.cards.length - 1 ? " disabled" : ""}>Move Down</button><button type="button" data-action="remove-direction-card" data-direction-id="${escapeHtml(card.id)}">Delete</button></div></details></div>
   </article>`).join("");
   return `<section class="platform-command-card platform-activity-directions platform-visual-zone platform-zone-create" data-activity-directions-teacher aria-labelledby="activity-directions-title">
@@ -1198,6 +1200,7 @@ function activityDirectionsTeacherMarkup(classId) {
       <form data-form="activity-direction" novalidate><input type="hidden" name="id">
         <label>Card title<input name="title" maxlength="100" placeholder="Example: Step 1 — Investigate" required></label>
         <label>Directions<textarea name="directions" maxlength="2000" rows="4" placeholder="Tell students exactly what to do next." required></textarea></label>
+        <label>Assessment purpose<select name="assessmentType"><option value="">Choose formative or summative</option><option value="formative">Formative — guides next instruction</option><option value="summative">Summative — evaluates learning</option></select></label>
         <fieldset class="platform-direction-resource-editor"><legend>Activity choices for this step</legend><p>Add one required activity or give students two or more choices. To differentiate, select student names on an alternate choice; those students will see the alternate instead of the whole-class choices.</p><div data-direction-resource-list></div><button type="button" data-action="add-direction-resource">+ Add Another Activity Choice</button></fieldset>
         <label>Student visibility<select name="visibility"><option value="draft">Keep private draft</option><option value="released">Show to students</option></select></label>
         <div class="platform-direction-actions"><button type="button" data-action="save-direction-card">Save Lesson Step</button><button type="reset" data-action="cancel-direction-edit">Clear</button></div>
@@ -1211,7 +1214,7 @@ function activityDirectionsStudentMarkup(classId, studentId) {
   const state = activityDirections.read(classId), cards = activityDirections.releasedForStudents(classId);
   return `<section class="platform-activity-directions platform-activity-directions-student platform-student-zone platform-student-zone-now" aria-labelledby="student-directions-title">
     <p class="platform-student-section-label">Teacher directions</p><h2 id="student-directions-title">${escapeHtml(state.title)}</h2>
-    ${cards.length ? `<ol class="platform-student-direction-list">${cards.map((card) => `<li><h3>${escapeHtml(card.title)}</h3><p>${escapeHtml(card.directions)}</p>${directionMediaMarkup(card, studentId)}</li>`).join("")}</ol>` : `<p class="platform-student-empty-state">Your teacher has not released any directions yet.</p>`}
+    ${cards.length ? `<ol class="platform-student-direction-list">${cards.map((card) => `<li><h3>${escapeHtml(card.title)}</h3>${card.assessmentType ? `<label class="platform-student-assessment-check"><input type="checkbox"> I understand this is a <strong>${escapeHtml(card.assessmentType)}</strong> assessment.</label>` : ""}<p>${escapeHtml(card.directions)}</p>${directionMediaMarkup(card, studentId)}</li>`).join("")}</ol>` : `<p class="platform-student-empty-state">Your teacher has not released any directions yet.</p>`}
   </section>`;
 }
 
@@ -1229,9 +1232,28 @@ function assignedResearchTeacherMarkup(assignedResearch, researchLinkBank, class
   </section>`;
 }
 
+function udlLessonPlanMarkup(classId) {
+  const plan = udlLessonPlans.read(classId), steps = activityDirections.read(classId).cards;
+  const doNow = readDoNowPosts().find((post) => (post.classIds || [post.classId]).includes(classId));
+  const exitPlan = weeklyReflections.captainLogWeekPlan(classId);
+  const exitPrompts = Object.values(exitPlan.days || {}).filter((entry) => entry.enabled);
+  const suggestions = lessonPlanSuggestions(plan, { hasDoNow: Boolean(doNow), hasSteps: steps.length > 0, hasExitTicket: exitPrompts.length > 0 });
+  const standards = OHIO_STANDARDS_3_6.map((standard) => `<label data-ohio-standard-grade="${standard.grade}"${String(standard.grade) === plan.grade ? "" : " hidden"}><input type="checkbox" name="standardId" value="${escapeHtml(standard.id)}"${plan.standardIds.includes(standard.id) ? " checked" : ""}> <span><strong>${escapeHtml(standard.subject)} · ${escapeHtml(standard.code)}</strong>${escapeHtml(standard.text)}</span></label>`).join("");
+  return `<section class="platform-udl-planner" data-udl-lesson-planner><header><p class="platform-command-label">Non-AI planning assistant</p><h3>UDL Lesson Plan and Ohio Standards</h3><p>Build a complete lesson with rule-based suggestions. Your Do Now opens the lesson, released activities form the middle, and Captain’s Log becomes the exit ticket.</p></header>
+    <form data-form="udl-lesson-plan">
+      <div class="platform-udl-planner-grid"><label>Grade<select name="grade"><option value="">Choose grade 3–6</option>${[3,4,5,6].map((grade) => `<option value="${grade}"${plan.grade === String(grade) ? " selected" : ""}>Grade ${grade}</option>`).join("")}</select></label><label>Lesson description<textarea name="description" rows="3" placeholder="What will students investigate, make, or explain?">${escapeHtml(plan.description)}</textarea></label></div>
+      <fieldset class="platform-ohio-standards"><legend>Ohio standards</legend><p><strong>Starter catalog:</strong> select a grade to see curated summaries, then confirm the exact standard in Ohio’s official standards documents.</p><div data-ohio-standard-options>${standards}</div><a href="https://education.ohio.gov/Topics/Learning-in-Ohio/OLS-Graphic-Sections/Learning-Standards" target="_blank" rel="noopener noreferrer">Open official Ohio Learning Standards</a></fieldset>
+      <div class="platform-udl-planner-grid"><label>Measurable learning objective<textarea name="objective" rows="2" placeholder="Students will be able to…">${escapeHtml(plan.objective)}</textarea></label><label>Success criteria<textarea name="successCriteria" rows="2" placeholder="Successful work will show…">${escapeHtml(plan.successCriteria)}</textarea></label><label>Lesson assessment<select name="assessmentType"><option value="">Choose formative or summative</option><option value="formative"${plan.assessmentType === "formative" ? " selected" : ""}>Formative</option><option value="summative"${plan.assessmentType === "summative" ? " selected" : ""}>Summative</option></select></label><label>Evidence to review<textarea name="assessmentEvidence" rows="2" placeholder="What student work will show understanding?">${escapeHtml(plan.assessmentEvidence)}</textarea></label></div>
+      <fieldset class="platform-udl-options"><legend>UDL access and choice</legend><label>Representation — how students receive information<textarea name="representation" rows="2" placeholder="Visual, model, demonstration, vocabulary support, read-aloud…">${escapeHtml(plan.representation)}</textarea></label><label>Engagement — how students connect and persist<textarea name="engagement" rows="2" placeholder="Meaningful choice, relevance, collaboration, clear goal…">${escapeHtml(plan.engagement)}</textarea></label><label>Action and expression — how students show learning<textarea name="expression" rows="2" placeholder="Write, speak, draw, build, model, or demonstrate…">${escapeHtml(plan.expression)}</textarea></label></fieldset>
+      <section class="platform-lesson-arc"><h4>Lesson arc</h4><article><strong>Beginning · Do Now</strong><span>${doNow ? escapeHtml(doNow.title) : "Not set"}</span><button type="button" data-action="open-do-now-editor">${doNow ? "Edit" : "Create Do Now"}</button></article><article><strong>Middle · Activities</strong><span>${steps.length ? `${steps.length} sequential lesson step${steps.length === 1 ? "" : "s"}` : "No activities added"}</span><button type="button" data-action="add-lesson-step">${steps.length ? "Add or reorganize" : "Add activity"}</button></article><article><strong>End · Captain’s Log</strong><span>${exitPrompts.length ? `${exitPrompts.length} exit-ticket prompt${exitPrompts.length === 1 ? "" : "s"} available` : "Not set"}</span><button type="button" data-action="open-captains-log-planner">${exitPrompts.length ? "Edit" : "Plan exit ticket"}</button></article></section>
+      <aside class="platform-lesson-plan-check"><h4>${suggestions.length ? "Suggestions before teaching" : "Plan check complete"}</h4>${suggestions.length ? `<ul>${suggestions.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "<p>The lesson includes standards, assessment evidence, all three UDL areas, a beginning, middle, and end.</p>"}</aside>
+      <div class="platform-actions"><button type="submit">Save UDL Lesson Plan</button><p data-udl-plan-status role="status">${plan.savedAt ? "Saved for this class." : "Not saved yet."}</p></div>
+    </form></section>`;
+}
+
 function todaysLessonTeacherMarkup(classId, assignedResearch, researchLinkBank, className) {
   const state = activityDirections.read(classId), resources = state.cards.flatMap((card) => card.resources || []).length;
-  return `<section id="teacher-todays-lesson" class="platform-todays-lesson platform-visual-zone platform-zone-create" aria-labelledby="todays-lesson-title"><header class="platform-todays-lesson-heading"><p class="platform-command-label">Build and release as students learn</p><h2 id="todays-lesson-title">Today’s Lesson</h2><p>${state.cards.length} lesson step${state.cards.length === 1 ? "" : "s"} · ${resources} attached activit${resources === 1 ? "y or resource" : "ies and resources"} · ${assignedResearch.links.length} approved research link${assignedResearch.links.length === 1 ? "" : "s"}</p><div class="platform-todays-lesson-actions"><button type="button" data-action="add-lesson-step">+ Add Lesson Step</button><a class="platform-button platform-button-secondary" href="#${ROUTES.PREVIEW_STUDENT}" target="_blank" rel="noopener">Preview as Student</a></div></header><div class="platform-todays-lesson-sections"><details data-lesson-builder="steps" open><summary>Lesson Steps, Activities, and Resources</summary>${activityDirectionsTeacherMarkup(classId)}</details><details data-lesson-builder="research"><summary>Approved Research</summary>${assignedResearchTeacherMarkup(assignedResearch, researchLinkBank, className)}</details></div></section>`;
+  return `<section id="teacher-todays-lesson" class="platform-todays-lesson platform-visual-zone platform-zone-create" aria-labelledby="todays-lesson-title"><header class="platform-todays-lesson-heading"><p class="platform-command-label">Build and release as students learn</p><h2 id="todays-lesson-title">Today’s Lesson</h2><p>${state.cards.length} lesson step${state.cards.length === 1 ? "" : "s"} · ${resources} attached activit${resources === 1 ? "y or resource" : "ies and resources"} · ${assignedResearch.links.length} approved research link${assignedResearch.links.length === 1 ? "" : "s"}</p><div class="platform-todays-lesson-actions"><button type="button" data-action="add-lesson-step">+ Add Lesson Step</button><a class="platform-button platform-button-secondary" href="#${ROUTES.PREVIEW_STUDENT}" target="_blank" rel="noopener">Preview as Student</a></div></header><div class="platform-todays-lesson-sections"><details data-lesson-builder="plan"><summary>UDL Lesson Plan and Ohio Standards</summary>${udlLessonPlanMarkup(classId)}</details><details data-lesson-builder="steps" open><summary>Lesson Steps, Activities, and Resources</summary>${activityDirectionsTeacherMarkup(classId)}</details><details data-lesson-builder="research"><summary>Approved Research</summary>${assignedResearchTeacherMarkup(assignedResearch, researchLinkBank, className)}</details></div></section>`;
 }
 
 function readStudentNameplate(studentId) {
@@ -3622,6 +3644,14 @@ async function handleSubmit(event) {
   if (!form) return;
   event.preventDefault();
   const data = new FormData(form);
+  if (form.dataset.form === "udl-lesson-plan") {
+    const classId = currentTeacherClass(session.read().teacherId)?.id;
+    if (!classId) return;
+    udlLessonPlans.save(classId, { grade: data.get("grade"), description: data.get("description"), standardIds: data.getAll("standardId"), objective: data.get("objective"), successCriteria: data.get("successCriteria"), assessmentType: data.get("assessmentType"), assessmentEvidence: data.get("assessmentEvidence"), representation: data.get("representation"), engagement: data.get("engagement"), expression: data.get("expression") });
+    const region = form.closest("[data-udl-lesson-planner]");
+    if (region) region.outerHTML = udlLessonPlanMarkup(classId);
+    return;
+  }
   if (form.dataset.form === "teacher-research-link-bank") {
     const title = String(data.get("title") || "").trim(), topic = String(data.get("topic") || "").trim(), parsed = parseTeacherAssignedResearchLinks(data.get("links")), status = form.querySelector("[data-research-bank-status]");
     if (!title) { if (status) status.textContent = "Enter a title for this link group."; return; }
@@ -7106,7 +7136,7 @@ async function handleClick(event) {
     const id = action.dataset.directionId;
     if (["save-direction-card", "save-release-direction-card"].includes(action.dataset.action)) {
       const resources = [...form.querySelectorAll("[data-direction-resource-list] .platform-direction-resource-row")].map((row) => ({ mediaType: row.querySelector('[name="resourceType"]').value, title: row.querySelector('[name="resourceTitle"]').value.trim(), url: row.querySelector('[name="resourceUrl"]').value.trim(), audienceIds: [...row.querySelectorAll('[name="resourceAudience"]:checked')].map((input) => input.value) })).filter((item) => item.url);
-      const result = activityDirections.saveCard(classId, { id: form.elements.id.value, title: form.elements.title.value, directions: form.elements.directions.value, resources });
+      const result = activityDirections.saveCard(classId, { id: form.elements.id.value, title: form.elements.title.value, directions: form.elements.directions.value, assessmentType: form.elements.assessmentType?.value, resources });
       if (!result.ok) { const output = form.querySelector("[data-activity-direction-status]"); if (output) output.textContent = result.reason === "missing-media" ? "Add a secure https link for the selected media." : "Add both a card title and student directions."; return; }
       const visibility = form.elements.visibility?.value || (action.dataset.action === "save-release-direction-card" ? "released" : "draft");
       if (visibility === "released") activityDirections.release(classId, result.card.id); else activityDirections.withdraw(classId, result.card.id);
@@ -7118,6 +7148,7 @@ async function handleClick(event) {
       const card = activityDirections.read(classId).cards.find((item) => item.id === id);
       if (!card) return;
       form.elements.id.value = card.id; form.elements.title.value = card.title; form.elements.directions.value = card.directions;
+      if (form.elements.assessmentType) form.elements.assessmentType.value = card.assessmentType;
       if (form.elements.visibility) form.elements.visibility.value = card.status;
       const resourceList = form.querySelector("[data-direction-resource-list]"); if (resourceList) resourceList.innerHTML = (card.resources || []).map((resource) => directionResourceEditorRow(resource, getRosterForClass(classId))).join("");
       form.closest("details").open = true; form.elements.title.focus(); return;
@@ -8136,6 +8167,11 @@ root.addEventListener("drop", (event) => {
 });
 
 root.addEventListener("change", (event) => {
+  if (event.target.matches?.('[data-form="udl-lesson-plan"] [name="grade"]')) {
+    const form = event.target.closest('form[data-form="udl-lesson-plan"]'), grade = event.target.value;
+    form?.querySelectorAll("[data-ohio-standard-grade]").forEach((label) => { label.hidden = label.dataset.ohioStandardGrade !== grade; });
+    return;
+  }
   const studentNameplateControl = event.target.closest?.("[data-student-nameplate-control]");
   if (studentNameplateControl) {
     const nameplate = studentNameplateControl.closest("[data-student-nameplate]");
