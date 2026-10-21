@@ -47,6 +47,7 @@ test("teacher and student display expose a private browser-only voice meter", ()
   assert.match(app, /platform-return-to-teacher-view/);
   assert.match(app, /teacherViewUrl\.searchParams\.delete\("classroomDisplay"\)/);
   assert.match(app, /teacherViewUrl\.pathname \+= "index\.html"/);
+  assert.match(app, /teacherViewUrl\.hash = session\.read\(\)\.teacherId === "teacher-preview-1"/);
   assert.match(app, /cleanupStandaloneClassroomDisplayMode/);
   assert.match(app, /Bob is calm and happy/);
   assert.match(app, /Bob is asking the class to quiet down/);
