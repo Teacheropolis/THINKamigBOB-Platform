@@ -2325,6 +2325,19 @@ function createActivityDirections({ storage, now = () => Date.now() }) {
 
 // platform/scripts/udl-lesson-plan.mjs
 var UDL_LESSON_PLAN_STORAGE_KEY = "thinkamigbob.udl-lesson-plans.v1";
+var UDL_EVIDENCE_BANK_STORAGE_KEY = "thinkamigbob.udl-evidence-bank.v1";
+var EVIDENCE_OPTIONS = Object.freeze([
+  "Student explanation",
+  "Design sketch or model",
+  "Built product or prototype",
+  "Observation notes",
+  "Test data or measurements",
+  "Photo or video evidence",
+  "Student conference",
+  "Peer feedback and revision",
+  "Do Now response",
+  "Captain's Log response"
+]);
 var OHIO_STANDARDS_3_6 = Object.freeze([
   { id: "3-PS-Forces", grade: 3, subject: "Science", code: "Grade 3 Physical Science", text: "Explain and predict changes in an object's motion using evidence about forces." },
   { id: "3-LS-Traits", grade: 3, subject: "Science", code: "Grade 3 Life Science", text: "Use observations and evidence to describe life cycles, traits, and survival." },
@@ -2344,7 +2357,27 @@ var OHIO_STANDARDS_3_6 = Object.freeze([
   { id: "6-ID", grade: 6, subject: "Technology", code: "Innovative Designer \xB7 Grades 6\u20138", text: "Use an iterative design process, data, and feedback to develop and improve solutions." }
 ]);
 var clean2 = (value, length = 4e3) => String(value ?? "").trim().slice(0, length);
-var blank = () => ({ grade: "", description: "", standardIds: [], objective: "", successCriteria: "", assessmentType: "", assessmentEvidence: "", representation: "", engagement: "", expression: "", savedAt: 0 });
+var blank = () => ({ grade: "", description: "", standardIds: [], objective: "", successCriteria: "", assessmentType: "", evidenceTypes: [], assessmentEvidence: "", representation: "", engagement: "", expression: "", savedAt: 0 });
+function completeLessonPlan(input = {}, activitySteps = []) {
+  const standards = OHIO_STANDARDS_3_6.filter((item) => (input.standardIds || []).includes(item.id));
+  const description = clean2(input.description), activityNames = activitySteps.map((item) => clean2(item.title, 100)).filter(Boolean);
+  const focus = standards[0]?.text || description || "complete the activity and explain their learning";
+  const objective = input.objective || (description && standards.length ? `Students will complete ${description.toLowerCase()} and use evidence to ${focus.charAt(0).toLowerCase()}${focus.slice(1)}` : "");
+  const evidence = [...new Set(input.evidenceTypes || [])];
+  const successCriteria = input.successCriteria || (objective ? `Students can explain what they did, provide evidence from ${evidence[0]?.toLowerCase() || "their work or test results"}, and identify a change or next step connected to the selected standard.` : "");
+  const hasChoices = activitySteps.some((step) => (step.resources || []).length > 1);
+  return {
+    ...input,
+    description,
+    objective,
+    successCriteria,
+    representation: input.representation || "Provide teacher directions in spoken and written form, use the activity visuals or models, preview key vocabulary, and allow read-aloud support.",
+    engagement: input.engagement || `${hasChoices ? "Let students choose from the assigned activity options; " : "Connect the activity to a clear purpose; "}show the learning goal, use the ordered steps, and provide progress feedback during work time.`,
+    expression: input.expression || `Students may show learning through ${evidence.length ? evidence.map((item) => item.toLowerCase()).join(", ") : "writing, speaking, drawing, building, testing, or demonstrating"}.`,
+    assessmentEvidence: input.assessmentEvidence || evidence.join("; "),
+    activitySummary: activityNames.length ? activityNames.join(" \u2192 ") : ""
+  };
+}
 function createUdlLessonPlanStore(storage) {
   const readAll = () => {
     try {
@@ -2356,25 +2389,36 @@ function createUdlLessonPlanStore(storage) {
   const read = (classId) => ({ ...blank(), ...readAll()[classId] || {} });
   const save = (classId, input = {}) => {
     const all = readAll();
-    all[classId] = { grade: ["3", "4", "5", "6"].includes(String(input.grade)) ? String(input.grade) : "", description: clean2(input.description), standardIds: [...new Set((input.standardIds || []).filter((id) => OHIO_STANDARDS_3_6.some((item) => item.id === id)))], objective: clean2(input.objective, 500), successCriteria: clean2(input.successCriteria, 800), assessmentType: ["formative", "summative"].includes(input.assessmentType) ? input.assessmentType : "", assessmentEvidence: clean2(input.assessmentEvidence, 800), representation: clean2(input.representation, 800), engagement: clean2(input.engagement, 800), expression: clean2(input.expression, 800), savedAt: Date.now() };
+    all[classId] = { grade: ["3", "4", "5", "6"].includes(String(input.grade)) ? String(input.grade) : "", description: clean2(input.description), standardIds: [...new Set((input.standardIds || []).filter((id) => OHIO_STANDARDS_3_6.some((item) => item.id === id)))], objective: clean2(input.objective, 500), successCriteria: clean2(input.successCriteria, 800), assessmentType: ["formative", "summative"].includes(input.assessmentType) ? input.assessmentType : "", evidenceTypes: [...new Set((input.evidenceTypes || []).map((item) => clean2(item, 120)).filter(Boolean))], assessmentEvidence: clean2(input.assessmentEvidence, 800), representation: clean2(input.representation, 800), engagement: clean2(input.engagement, 800), expression: clean2(input.expression, 800), savedAt: Date.now() };
     storage.setItem(UDL_LESSON_PLAN_STORAGE_KEY, JSON.stringify(all));
     return all[classId];
   };
-  return Object.freeze({ read, save });
+  const evidenceBank = () => {
+    try {
+      return [...EVIDENCE_OPTIONS, ...JSON.parse(storage.getItem(UDL_EVIDENCE_BANK_STORAGE_KEY) || "[]")].filter((item, index, all) => all.indexOf(item) === index);
+    } catch {
+      return [...EVIDENCE_OPTIONS];
+    }
+  };
+  const saveEvidence = (value) => {
+    const text = clean2(value, 120);
+    if (!text) return evidenceBank();
+    const custom = evidenceBank().filter((item) => !EVIDENCE_OPTIONS.includes(item));
+    custom.push(text);
+    storage.setItem(UDL_EVIDENCE_BANK_STORAGE_KEY, JSON.stringify([...new Set(custom)]));
+    return evidenceBank();
+  };
+  return Object.freeze({ read, save, evidenceBank, saveEvidence });
 }
 function lessonPlanSuggestions(plan, context = {}) {
   const suggestions = [];
   if (!plan.description) suggestions.push("Add a short lesson description so the purpose is clear.");
   if (!plan.standardIds?.length) suggestions.push("Select at least one Ohio standard and confirm it matches the intended learning.");
-  if (!plan.objective) suggestions.push("Add a measurable learning objective using an observable student action.");
-  if (!plan.successCriteria) suggestions.push("Describe what successful student work will show.");
+  if (!plan.objective && plan.description && plan.standardIds?.length) suggestions.push("Save the plan to automatically create the measurable objective.");
   if (!context.hasDoNow) suggestions.push("Create a Do Now that activates prior knowledge or reveals an initial misconception.");
   if (!context.hasSteps) suggestions.push("Add at least one sequential lesson step with an activity choice.");
   if (!plan.assessmentType) suggestions.push("Label the lesson evidence as formative or summative.");
-  if (!plan.assessmentEvidence) suggestions.push("Name the student evidence the teacher will review.");
-  if (!plan.representation) suggestions.push("Add a representation option such as a model, visual, demonstration, vocabulary support, or read-aloud.");
-  if (!plan.engagement) suggestions.push("Add an engagement option such as meaningful choice, collaboration, relevance, or a clear goal.");
-  if (!plan.expression) suggestions.push("Add an action/expression option such as writing, speaking, drawing, building, or demonstrating.");
+  if (!plan.evidenceTypes?.length && !plan.assessmentEvidence) suggestions.push("Choose at least one type of student evidence to review.");
   if (!context.hasExitTicket) suggestions.push("Select a Captain's Log prompt that checks the objective at the end of the lesson.");
   return suggestions;
 }
@@ -4039,21 +4083,22 @@ function assignedResearchTeacherMarkup(assignedResearch, researchLinkBank, class
   </section>`;
 }
 function udlLessonPlanMarkup(classId) {
-  const plan = udlLessonPlans.read(classId), steps = activityDirections.read(classId).cards;
+  const savedPlan = udlLessonPlans.read(classId), steps = activityDirections.read(classId).cards, plan = completeLessonPlan(savedPlan, steps);
   const doNow = readDoNowPosts().find((post) => (post.classIds || [post.classId]).includes(classId));
   const exitPlan = weeklyReflections.captainLogWeekPlan(classId);
   const exitPrompts = Object.values(exitPlan.days || {}).filter((entry) => entry.enabled);
   const suggestions = lessonPlanSuggestions(plan, { hasDoNow: Boolean(doNow), hasSteps: steps.length > 0, hasExitTicket: exitPrompts.length > 0 });
   const standards = OHIO_STANDARDS_3_6.map((standard) => `<label data-ohio-standard-grade="${standard.grade}"${String(standard.grade) === plan.grade ? "" : " hidden"}><input type="checkbox" name="standardId" value="${escapeHtml2(standard.id)}"${plan.standardIds.includes(standard.id) ? " checked" : ""}> <span><strong>${escapeHtml2(standard.subject)} \xB7 ${escapeHtml2(standard.code)}</strong>${escapeHtml2(standard.text)}</span></label>`).join("");
-  return `<section class="platform-udl-planner" data-udl-lesson-planner><header><p class="platform-command-label">Non-AI planning assistant</p><h3>UDL Lesson Plan and Ohio Standards</h3><p>Build a complete lesson with rule-based suggestions. Your Do Now opens the lesson, released activities form the middle, and Captain\u2019s Log becomes the exit ticket.</p></header>
+  const evidenceOptions = udlLessonPlans.evidenceBank().map((item) => `<label><input type="checkbox" name="evidenceType" value="${escapeHtml2(item)}"${plan.evidenceTypes.includes(item) ? " checked" : ""}> ${escapeHtml2(item)}</label>`).join("");
+  return `<section class="platform-udl-planner" data-udl-lesson-planner><header><p class="platform-command-label">Automatic non-AI lesson planner</p><h3>UDL Lesson Plan and Ohio Standards</h3><p>Teachers provide the activity description, standards, activity sequence, and evidence. The platform automatically completes the measurable objective, success criteria, UDL supports, and lesson organization.</p></header>
     <form data-form="udl-lesson-plan">
-      <div class="platform-udl-planner-grid"><label>Grade<select name="grade"><option value="">Choose grade 3\u20136</option>${[3, 4, 5, 6].map((grade) => `<option value="${grade}"${plan.grade === String(grade) ? " selected" : ""}>Grade ${grade}</option>`).join("")}</select></label><label>Lesson description<textarea name="description" rows="3" placeholder="What will students investigate, make, or explain?">${escapeHtml2(plan.description)}</textarea></label></div>
+      <div class="platform-udl-required"><p><strong>Teacher input \u2014 only these essentials are needed</strong></p><div class="platform-udl-planner-grid"><label>Grade<select name="grade"><option value="">Choose grade 3\u20136</option>${[3, 4, 5, 6].map((grade) => `<option value="${grade}"${plan.grade === String(grade) ? " selected" : ""}>Grade ${grade}</option>`).join("")}</select></label><label>Describe the activity<textarea name="description" rows="3" placeholder="What will students make, investigate, test, discuss, or explain? Include materials or important conditions.">${escapeHtml2(plan.description)}</textarea></label></div></div>
       <fieldset class="platform-ohio-standards"><legend>Ohio standards</legend><p><strong>Starter catalog:</strong> select a grade to see curated summaries, then confirm the exact standard in Ohio\u2019s official standards documents.</p><div data-ohio-standard-options>${standards}</div><a href="https://education.ohio.gov/Topics/Learning-in-Ohio/OLS-Graphic-Sections/Learning-Standards" target="_blank" rel="noopener noreferrer">Open official Ohio Learning Standards</a></fieldset>
-      <div class="platform-udl-planner-grid"><label>Measurable learning objective<textarea name="objective" rows="2" placeholder="Students will be able to\u2026">${escapeHtml2(plan.objective)}</textarea></label><label>Success criteria<textarea name="successCriteria" rows="2" placeholder="Successful work will show\u2026">${escapeHtml2(plan.successCriteria)}</textarea></label><label>Lesson assessment<select name="assessmentType"><option value="">Choose formative or summative</option><option value="formative"${plan.assessmentType === "formative" ? " selected" : ""}>Formative</option><option value="summative"${plan.assessmentType === "summative" ? " selected" : ""}>Summative</option></select></label><label>Evidence to review<textarea name="assessmentEvidence" rows="2" placeholder="What student work will show understanding?">${escapeHtml2(plan.assessmentEvidence)}</textarea></label></div>
-      <fieldset class="platform-udl-options"><legend>UDL access and choice</legend><label>Representation \u2014 how students receive information<textarea name="representation" rows="2" placeholder="Visual, model, demonstration, vocabulary support, read-aloud\u2026">${escapeHtml2(plan.representation)}</textarea></label><label>Engagement \u2014 how students connect and persist<textarea name="engagement" rows="2" placeholder="Meaningful choice, relevance, collaboration, clear goal\u2026">${escapeHtml2(plan.engagement)}</textarea></label><label>Action and expression \u2014 how students show learning<textarea name="expression" rows="2" placeholder="Write, speak, draw, build, model, or demonstrate\u2026">${escapeHtml2(plan.expression)}</textarea></label></fieldset>
+      <fieldset class="platform-evidence-picker"><legend>Evidence the teacher will review</legend><p>Select all that apply.</p><div>${evidenceOptions}</div><label>Add your own evidence type<input name="customEvidence" maxlength="120" placeholder="Example: Engineering notebook diagram"></label><label class="platform-inline-check"><input type="checkbox" name="saveEvidence"> Save my new evidence type to the Evidence Bank</label><label>Assessment purpose<select name="assessmentType"><option value="">Choose formative or summative</option><option value="formative"${plan.assessmentType === "formative" ? " selected" : ""}>Formative \u2014 guides next instruction</option><option value="summative"${plan.assessmentType === "summative" ? " selected" : ""}>Summative \u2014 evaluates learning</option></select></label></fieldset>
+      <section class="platform-auto-plan-preview"><p class="platform-command-label">Completed automatically</p><h4>Generated lesson-plan language</h4><dl><div><dt>Measurable learning objective</dt><dd>${escapeHtml2(plan.objective || "Choose a standard and describe the activity to generate this.")}</dd></div><div><dt>Success criteria</dt><dd>${escapeHtml2(plan.successCriteria || "Choose a standard, activity, and evidence to generate this.")}</dd></div><div><dt>UDL \xB7 Representation</dt><dd>${escapeHtml2(plan.representation)}</dd></div><div><dt>UDL \xB7 Engagement</dt><dd>${escapeHtml2(plan.engagement)}</dd></div><div><dt>UDL \xB7 Action and expression</dt><dd>${escapeHtml2(plan.expression)}</dd></div></dl><details><summary>Edit automatic wording if needed</summary><div class="platform-udl-planner-grid"><label>Objective<textarea name="objective" rows="2">${escapeHtml2(savedPlan.objective)}</textarea></label><label>Success criteria<textarea name="successCriteria" rows="2">${escapeHtml2(savedPlan.successCriteria)}</textarea></label><label>Representation<textarea name="representation" rows="2">${escapeHtml2(savedPlan.representation)}</textarea></label><label>Engagement<textarea name="engagement" rows="2">${escapeHtml2(savedPlan.engagement)}</textarea></label><label>Action and expression<textarea name="expression" rows="2">${escapeHtml2(savedPlan.expression)}</textarea></label></div></details></section>
       <section class="platform-lesson-arc"><h4>Lesson arc</h4><article><strong>Beginning \xB7 Do Now</strong><span>${doNow ? escapeHtml2(doNow.title) : "Not set"}</span><button type="button" data-action="open-do-now-editor">${doNow ? "Edit" : "Create Do Now"}</button></article><article><strong>Middle \xB7 Activities</strong><span>${steps.length ? `${steps.length} sequential lesson step${steps.length === 1 ? "" : "s"}` : "No activities added"}</span><button type="button" data-action="add-lesson-step">${steps.length ? "Add or reorganize" : "Add activity"}</button></article><article><strong>End \xB7 Captain\u2019s Log</strong><span>${exitPrompts.length ? `${exitPrompts.length} exit-ticket prompt${exitPrompts.length === 1 ? "" : "s"} available` : "Not set"}</span><button type="button" data-action="open-captains-log-planner">${exitPrompts.length ? "Edit" : "Plan exit ticket"}</button></article></section>
       <aside class="platform-lesson-plan-check"><h4>${suggestions.length ? "Suggestions before teaching" : "Plan check complete"}</h4>${suggestions.length ? `<ul>${suggestions.map((item) => `<li>${escapeHtml2(item)}</li>`).join("")}</ul>` : "<p>The lesson includes standards, assessment evidence, all three UDL areas, a beginning, middle, and end.</p>"}</aside>
-      <div class="platform-actions"><button type="submit">Save UDL Lesson Plan</button><p data-udl-plan-status role="status">${plan.savedAt ? "Saved for this class." : "Not saved yet."}</p></div>
+      <div class="platform-actions"><button type="submit">Complete and Save Lesson Plan</button><p data-udl-plan-status role="status">${plan.savedAt ? "Saved for this class. Saving again refreshes the automatic plan from current activities." : "Not saved yet."}</p></div>
     </form></section>`;
 }
 function todaysLessonTeacherMarkup(classId, assignedResearch, researchLinkBank, className) {
@@ -6445,7 +6490,23 @@ async function handleSubmit(event) {
   if (form.dataset.form === "udl-lesson-plan") {
     const classId = currentTeacherClass(session.read().teacherId)?.id;
     if (!classId) return;
-    udlLessonPlans.save(classId, { grade: data.get("grade"), description: data.get("description"), standardIds: data.getAll("standardId"), objective: data.get("objective"), successCriteria: data.get("successCriteria"), assessmentType: data.get("assessmentType"), assessmentEvidence: data.get("assessmentEvidence"), representation: data.get("representation"), engagement: data.get("engagement"), expression: data.get("expression") });
+    const customEvidence = String(data.get("customEvidence") || "").trim();
+    const evidenceTypes = [...data.getAll("evidenceType"), ...customEvidence ? [customEvidence] : []];
+    if (customEvidence && data.get("saveEvidence") === "on") udlLessonPlans.saveEvidence(customEvidence);
+    const input = { grade: data.get("grade"), description: data.get("description"), standardIds: data.getAll("standardId"), objective: data.get("objective"), successCriteria: data.get("successCriteria"), assessmentType: data.get("assessmentType"), evidenceTypes, representation: data.get("representation"), engagement: data.get("engagement"), expression: data.get("expression") };
+    const completed = completeLessonPlan(input, activityDirections.read(classId).cards);
+    const missing = [];
+    if (!completed.grade) missing.push("choose a grade");
+    if (!completed.description) missing.push("describe the activity");
+    if (!completed.standardIds.length) missing.push("select at least one Ohio standard");
+    if (!completed.evidenceTypes.length) missing.push("select evidence to review");
+    if (!completed.assessmentType) missing.push("choose formative or summative");
+    if (missing.length) {
+      const status = form.querySelector("[data-udl-plan-status]");
+      if (status) status.textContent = `To complete the plan: ${missing.join(", ")}.`;
+      return;
+    }
+    udlLessonPlans.save(classId, completed);
     const region = form.closest("[data-udl-lesson-planner]");
     if (region) region.outerHTML = udlLessonPlanMarkup(classId);
     return;
