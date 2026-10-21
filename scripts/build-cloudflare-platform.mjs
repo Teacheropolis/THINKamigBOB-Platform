@@ -23,6 +23,14 @@ for (const file of [
   "bob-voice-meter-states.png",
   "bob-walk-left.png",
   "bob-walk-right.png",
+  "bob-unlocks-01.webp",
+  "bob-unlocks-02.webp",
+  "bob-unlocks-03.webp",
+  "bob-unlocks-04.webp",
+  "bob-unlocks-05.webp",
+  "bob-unlocks-06.webp",
+  "bob-unlocks-07.webp",
+  "bob-unlocks-08.webp",
 ]) {
   await cp(path.join(sharedCharacterSource, file), path.join(sharedCharacterDestination, file));
 }

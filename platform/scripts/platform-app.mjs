@@ -636,7 +636,7 @@ function nextUnlockedBobPose() {
 function applyUnlockedBobPose(bobs, requestedPose = null) {
   const pose = requestedPose ?? nextUnlockedBobPose(), sheet = Math.floor(pose / 25) + 1, cell = pose % 25;
   const column = cell % 5, row = Math.floor(cell / 5);
-  const imageUrl = new URL(`../../assets/images/characters/bob-unlocks-${String(sheet).padStart(2, "0")}.webp?v=232`, import.meta.url).href;
+  const imageUrl = new URL(`../assets/images/characters/bob-unlocks-${String(sheet).padStart(2, "0")}.webp?v=232`, import.meta.url).href;
   bobs.forEach((bob) => {
     bob.classList.add("is-unlocked-pose");
     bob.style.setProperty("--bob-pose-sheet", `url("${imageUrl}")`);
@@ -658,7 +658,7 @@ function updateBobUnlockProgress(meterState) {
 
 function scheduleNextBobMove() {
   if (floatingBobRoamingInterval !== null) window.clearTimeout(floatingBobRoamingInterval);
-  const delay = Math.max(6000, 28000 - readClassroomBobUnlocks() * 110);
+  const delay = document.body.classList.contains("platform-standalone-classroom-display") ? 9000 : Math.max(6000, 28000 - readClassroomBobUnlocks() * 110);
   floatingBobRoamingInterval = window.setTimeout(() => { relocateFloatingBob(); scheduleNextBobMove(); }, delay);
 }
 
@@ -670,11 +670,12 @@ function classroomBobCorners(placement = readClassroomBobDisplay().placement) {
 
 function applyClassroomBobDisplay() {
   const setting = readClassroomBobDisplay();
+  const forceVisible = document.body.classList.contains("platform-standalone-classroom-display");
   const corners = classroomBobCorners(setting.placement);
   floatingBobCornerIndex %= corners.length;
   const activeBobs = [];
   for (const documentRef of [document, classroomPresentationWindow?.document].filter(Boolean)) {
-    documentRef.querySelectorAll(".platform-floating-voice-bob").forEach((bob) => { bob.hidden = !setting.enabled; bob.dataset.corner = corners[floatingBobCornerIndex]; if (setting.enabled && bob.dataset.meterState === "green") activeBobs.push(bob); });
+    documentRef.querySelectorAll(".platform-floating-voice-bob").forEach((bob) => { bob.hidden = !setting.enabled && !forceVisible; bob.dataset.corner = corners[floatingBobCornerIndex]; if ((setting.enabled || forceVisible) && bob.dataset.meterState === "green") activeBobs.push(bob); });
   }
   if (activeBobs.length) applyUnlockedBobPose(activeBobs);
 }
@@ -2468,10 +2469,6 @@ function teacherDashboardView(state) {
         <div class="platform-voice-meter-track"><span class="platform-voice-meter-fill"></span></div>
         <output data-voice-meter-output>0</output>
       </aside>
-      <aside class="platform-classroom-display-voice-bob" data-voice-bob data-meter-state="green" aria-live="polite">
-        <div class="platform-classroom-display-voice-bob-mascot" role="img" aria-label="Bob is calm and happy."></div>
-        <strong data-voice-bob-message>Bob is calm and happy.</strong>
-      </aside>
       <div class="platform-student-display-image-slot" data-student-image-slot hidden></div>
       <div class="platform-student-memo" data-student-memo data-memo-color="${memoState.color}" data-memo-size="${memoState.size}" data-memo-style="${memoState.style}"${showStudentMemo ? "" : " hidden"}>
         <h3 id="student-message-title">Class Message</h3>
@@ -3282,6 +3279,7 @@ function enterStandaloneClassroomDisplayMode() {
   if (!display) return;
   display.hidden = false;
   document.body.classList.add("platform-standalone-classroom-display");
+  document.querySelectorAll(".platform-floating-voice-bob").forEach((bob) => { bob.hidden = false; });
   if (!document.querySelector(".platform-classroom-window-controls")) {
     const controls = document.createElement("div");
     controls.className = "platform-classroom-window-controls";
@@ -4218,9 +4216,10 @@ function updateVoiceMeterPresentation(value) {
 
 function relocateFloatingBob() {
   const setting = readClassroomBobDisplay();
+  const forceVisible = document.body.classList.contains("platform-standalone-classroom-display");
   const corners = classroomBobCorners(setting.placement);
   const bobs = [document, classroomPresentationWindow?.document].filter(Boolean).flatMap((documentRef) => [...documentRef.querySelectorAll(".platform-floating-voice-bob")]);
-  if (!setting.enabled || !bobs.length || bobs.some((bob) => bob.dataset.meterState !== "green" || bob.classList.contains("is-walking-out") || bob.classList.contains("is-walking-in"))) return;
+  if ((!setting.enabled && !forceVisible) || !bobs.length || bobs.some((bob) => bob.dataset.meterState !== "green" || bob.classList.contains("is-walking-out") || bob.classList.contains("is-walking-in"))) return;
   bobs.forEach((bob) => { bob.classList.remove("is-unlocked-pose"); bob.classList.add("is-walking-out"); });
   window.setTimeout(() => {
     const connectedBobs = bobs.filter((bob) => bob.isConnected && bob.dataset.meterState === "green");

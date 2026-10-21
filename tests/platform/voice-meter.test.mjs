@@ -40,8 +40,9 @@ test("teacher and student display expose a private browser-only voice meter", ()
   assert.match(app, /document\.querySelectorAll\("\[data-voice-meter-target\]"\)/);
   assert.match(app, /data-voice-sensitivity/);
   assert.match(app, /class="platform-floating-voice-bob"/);
-  assert.match(app, /class="platform-classroom-display-voice-bob"/);
   assert.match(app, /class="platform-smartboard-voice-bob"/);
+  assert.match(app, /forceVisible = document\.body\.classList\.contains\("platform-standalone-classroom-display"\)/);
+  assert.match(app, /platform-standalone-classroom-display"\) \? 9000/);
   assert.match(app, /Bob is calm and happy/);
   assert.match(app, /Bob is asking the class to quiet down/);
   assert.match(app, /Bob is uncomfortable because the room is too loud/);
@@ -59,8 +60,7 @@ test("teacher and student display expose a private browser-only voice meter", ()
   assert.match(css, /platform-bob-idle-poses 48s step-end infinite/);
   assert.match(css, /\.platform-floating-voice-bob\[data-meter-state="yellow"\]/);
   assert.match(css, /\.platform-floating-voice-bob\[data-meter-state="red"\]/);
-  assert.match(css, /\.platform-classroom-display-voice-bob\[data-meter-state="yellow"\]/);
-  assert.match(css, /\.platform-classroom-display-voice-bob\[data-meter-state="red"\]/);
+  assert.match(css, /platform-bob-walk-frames/);
   assert.match(app, /state !== voiceBobState && now - voiceBobStateChangedAt >= 2400/);
   assert.match(app, /document\.body\.dataset\.voiceFrame = voiceBobState/);
   assert.match(css, /data-voice-frame="yellow"/);
