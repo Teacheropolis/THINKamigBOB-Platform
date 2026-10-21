@@ -5,12 +5,26 @@ import path from "node:path";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const source = path.join(root, "platform");
 const destination = path.join(root, "public-site", "platform");
+const sharedCharacterSource = path.join(root, "assets", "images", "characters");
+const sharedCharacterDestination = path.join(root, "public-site", "assets", "images", "characters");
 const publicClientId = "42889983876-krlc3beis1nc9f5sblrab11t2n4nmo19.apps.googleusercontent.com";
 
 await rm(destination, { recursive: true, force: true });
 await mkdir(destination, { recursive: true });
 for (const directory of ["assets", "data", "printable-lessons", "scripts", "styles"]) {
   await cp(path.join(source, directory), path.join(destination, directory), { recursive: true });
+}
+await mkdir(sharedCharacterDestination, { recursive: true });
+for (const file of [
+  "bob-active-poses-1.png",
+  "bob-active-poses-2.png",
+  "bob-idle-poses-2.png",
+  "bob-idle-poses.png",
+  "bob-voice-meter-states.png",
+  "bob-walk-left.png",
+  "bob-walk-right.png",
+]) {
+  await cp(path.join(sharedCharacterSource, file), path.join(sharedCharacterDestination, file));
 }
 
 const sourceIndex = await readFile(path.join(source, "index.html"), "utf8");
