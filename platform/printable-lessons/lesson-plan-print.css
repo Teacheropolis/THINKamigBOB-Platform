@@ -1,0 +1,33 @@
+:root { color-scheme: light; --ink: #173247; --blue: #0f607f; --green: #2f8762; --gold: #bd8108; --paper: #fffdf7; --line: #9cb1bc; }
+* { box-sizing: border-box; }
+body { margin: 0; background: #eaf3f5; color: var(--ink); font: 16px/1.45 Arial, sans-serif; }
+.toolbar { position: sticky; top: 0; display: flex; justify-content: center; gap: .75rem; padding: .8rem; background: var(--ink); }
+.toolbar button, .toolbar a { border: 2px solid white; border-radius: .45rem; padding: .6rem 1rem; background: white; color: var(--ink); font-weight: 700; text-decoration: none; cursor: pointer; }
+main { width: min(8.5in, calc(100% - 2rem)); margin: 1rem auto; padding: .5in; background: var(--paper); box-shadow: 0 4px 18px #1732472b; }
+header { border-bottom: 5px solid var(--gold); margin-bottom: 1rem; }
+h1 { margin: 0; font-size: 2rem; }
+h2 { margin: 1.2rem 0 .45rem; padding: .38rem .55rem; border-left: 6px solid var(--green); background: #eaf6ef; font-size: 1.18rem; }
+h3 { margin: .85rem 0 .3rem; font-size: 1rem; }
+p, ul, ol { margin: .35rem 0 .65rem; }
+li { margin: .2rem 0; }
+.meta, .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
+.meta div, .card { padding: .6rem; border: 1px solid var(--line); border-radius: .4rem; break-inside: avoid; }
+.meta strong, dt { color: var(--blue); }
+dl { margin: 0; }
+dt { font-weight: 700; }
+dd { margin: 0 0 .55rem; }
+.rubric { border: 2px solid var(--gold); background: #fff6dc; padding: .75rem; border-radius: .45rem; }
+.checklist { list-style: none; padding-left: 0; }
+.checklist li::before { content: "☐ "; font-weight: 700; }
+.footer-note { margin-top: 1.2rem; padding-top: .6rem; border-top: 1px solid var(--line); font-size: .88rem; color: #526b78; }
+@media (max-width: 700px) { .meta, .grid { grid-template-columns: 1fr; } main { width: 100%; margin: 0; padding: 1rem; } }
+@media print {
+  @page { size: letter; margin: .45in; }
+  body { background: white; font-size: 10.5pt; }
+  .toolbar { display: none; }
+  main { width: auto; margin: 0; padding: 0; box-shadow: none; }
+  h1 { font-size: 20pt; }
+  h2 { font-size: 12pt; break-after: avoid; }
+  h3, dt { break-after: avoid; }
+  .card, .rubric, li { break-inside: avoid; }
+}

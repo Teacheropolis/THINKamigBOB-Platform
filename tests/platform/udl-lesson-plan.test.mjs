@@ -53,3 +53,15 @@ test("teacher UI connects standards, UDL, lesson arc, and assessments", () => {
   assert.match(app, /data-resource-editor-heading/);
   for (const text of ["Selected from menus", "Typed by the teacher", "Generated automatically", "Menu choices", "teacher-created entry"]) assert.match(app, new RegExp(text));
 });
+
+test("both rubric-aligned examples link to complete printable lesson plans", () => {
+  const app = readFileSync(new URL("../../platform/scripts/platform-app.mjs", import.meta.url), "utf8");
+  const stem = readFileSync(new URL("../../platform/printable-lessons/stem-paper-bridge.html", import.meta.url), "utf8");
+  const math = readFileSync(new URL("../../platform/printable-lessons/math-ratios-rates.html", import.meta.url), "utf8");
+  assert.match(app, /printable-lessons\/stem-paper-bridge\.html/);
+  assert.match(app, /printable-lessons\/math-ratios-rates\.html/);
+  for (const document of [stem, math]) {
+    for (const heading of ["Learning Objective and Success Criteria", "Materials, Resources, and Alternatives", "Instructional Sequence and Pacing", "UDL Access, Choice, and Differentiation", "Anticipated Challenges and Responsive Moves", "Assessment, Alignment, and Next Instruction"]) assert.match(document, new RegExp(heading));
+    assert.match(document, /window\.print\(\)/);
+  }
+});
