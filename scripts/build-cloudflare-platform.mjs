@@ -9,7 +9,7 @@ const publicClientId = "42889983876-krlc3beis1nc9f5sblrab11t2n4nmo19.apps.google
 
 await rm(destination, { recursive: true, force: true });
 await mkdir(destination, { recursive: true });
-for (const directory of ["assets", "data", "scripts", "styles"]) {
+for (const directory of ["assets", "data", "printable-lessons", "scripts", "styles"]) {
   await cp(path.join(source, directory), path.join(destination, directory), { recursive: true });
 }
 

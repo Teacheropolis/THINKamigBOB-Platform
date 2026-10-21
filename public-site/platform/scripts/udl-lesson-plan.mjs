@@ -25,7 +25,7 @@ export const OHIO_STANDARDS_3_6 = Object.freeze([
 ]);
 
 const clean = (value, length = 4000) => String(value ?? "").trim().slice(0, length);
-const blank = () => ({ grade: "", description: "", standardIds: [], objective: "", successCriteria: "", assessmentType: "", evidenceTypes: [], exitTicketModes: [], customExitTicket: "", assessmentEvidence: "", representation: "", engagement: "", expression: "", savedAt: 0 });
+const blank = () => ({ grade: "", description: "", standardIds: [], objective: "", successCriteria: "", assessmentType: "", evidenceTypes: [], exitTicketModes: [], customExitTicket: "", assessmentEvidence: "", representation: "", engagement: "", expression: "", materialsAndAlternatives: "", anticipatedChallenges: "", responsiveSupports: "", masteryEvidenceNextSteps: "", savedAt: 0 });
 
 export function completeLessonPlan(input = {}, activitySteps = []) {
   const standards = OHIO_STANDARDS_3_6.filter((item) => (input.standardIds || []).includes(item.id));
@@ -35,6 +35,7 @@ export function completeLessonPlan(input = {}, activitySteps = []) {
   const evidence = [...new Set(input.evidenceTypes || [])];
   const successCriteria = input.successCriteria || (objective ? `Students can explain what they did, provide evidence from ${evidence[0]?.toLowerCase() || "their work or test results"}, and identify a change or next step connected to the selected standard.` : "");
   const hasChoices = activitySteps.some((step) => (step.resources || []).length > 1);
+  const evidenceLabel = evidence.length ? evidence.map((item) => item.toLowerCase()).join(", ") : "student work, observation notes, and an exit-ticket response";
   return {
     ...input, description, objective, successCriteria,
     representation: input.representation || "Provide teacher directions in spoken and written form, use the activity visuals or models, preview key vocabulary, and allow read-aloud support.",
@@ -42,6 +43,10 @@ export function completeLessonPlan(input = {}, activitySteps = []) {
     expression: input.expression || `Students may show learning through ${evidence.length ? evidence.map((item) => item.toLowerCase()).join(", ") : "writing, speaking, drawing, building, testing, or demonstrating"}.`,
     assessmentEvidence: input.assessmentEvidence || evidence.join("; "),
     activitySummary: activityNames.length ? activityNames.join(" → ") : "",
+    materialsAndAlternatives: input.materialsAndAlternatives || `Use the materials, models, and links named in the activity steps. Prepare one shared set per group, display or print the directions, and provide a low-tech printed or hands-on alternative for any digital resource. Confirm quantities and safety needs before class.`,
+    anticipatedChallenges: input.anticipatedChallenges || `Check for unfamiliar vocabulary, missing prerequisite knowledge, inaccurate measurement or recording, and difficulty explaining how evidence supports a conclusion. Pause after the first attempt to surface misconceptions before students continue.`,
+    responsiveSupports: input.responsiveSupports || `Provide chunked directions, visual models, read-aloud support, vocabulary and sentence frames, flexible grouping, and an alternate way to respond. Reteach with a worked example when evidence shows a misconception; extend learning by asking ready students to compare strategies, defend a choice, or transfer the idea to a new situation.`,
+    masteryEvidenceNextSteps: input.masteryEvidenceNextSteps || `Review ${evidenceLabel} against the success criteria. Students demonstrate mastery when their evidence is accurate, complete, and connected to the selected standard. Regroup students for reteaching, guided practice, independent application, or extension based on the specific criterion not yet demonstrated.`,
   };
 }
 
@@ -50,7 +55,7 @@ export function createUdlLessonPlanStore(storage) {
   const read = (classId) => ({ ...blank(), ...(readAll()[classId] || {}) });
   const save = (classId, input = {}) => {
     const all = readAll();
-    all[classId] = { grade: ["3", "4", "5", "6"].includes(String(input.grade)) ? String(input.grade) : "", description: clean(input.description), standardIds: [...new Set((input.standardIds || []).filter((id) => OHIO_STANDARDS_3_6.some((item) => item.id === id)))], objective: clean(input.objective, 500), successCriteria: clean(input.successCriteria, 800), assessmentType: ["formative", "summative"].includes(input.assessmentType) ? input.assessmentType : "", evidenceTypes: [...new Set((input.evidenceTypes || []).map((item) => clean(item, 120)).filter(Boolean))], exitTicketModes: [...new Set((input.exitTicketModes || []).filter((item) => EXIT_TICKET_MODES.includes(item)))], customExitTicket: clean(input.customExitTicket, 500), assessmentEvidence: clean(input.assessmentEvidence, 800), representation: clean(input.representation, 800), engagement: clean(input.engagement, 800), expression: clean(input.expression, 800), savedAt: Date.now() };
+    all[classId] = { grade: ["3", "4", "5", "6"].includes(String(input.grade)) ? String(input.grade) : "", description: clean(input.description), standardIds: [...new Set((input.standardIds || []).filter((id) => OHIO_STANDARDS_3_6.some((item) => item.id === id)))], objective: clean(input.objective, 500), successCriteria: clean(input.successCriteria, 800), assessmentType: ["formative", "summative"].includes(input.assessmentType) ? input.assessmentType : "", evidenceTypes: [...new Set((input.evidenceTypes || []).map((item) => clean(item, 120)).filter(Boolean))], exitTicketModes: [...new Set((input.exitTicketModes || []).filter((item) => EXIT_TICKET_MODES.includes(item)))], customExitTicket: clean(input.customExitTicket, 500), assessmentEvidence: clean(input.assessmentEvidence, 800), representation: clean(input.representation, 800), engagement: clean(input.engagement, 800), expression: clean(input.expression, 800), materialsAndAlternatives: clean(input.materialsAndAlternatives, 1200), anticipatedChallenges: clean(input.anticipatedChallenges, 1200), responsiveSupports: clean(input.responsiveSupports, 1600), masteryEvidenceNextSteps: clean(input.masteryEvidenceNextSteps, 1600), savedAt: Date.now() };
     storage.setItem(UDL_LESSON_PLAN_STORAGE_KEY, JSON.stringify(all));
     return all[classId];
   };
