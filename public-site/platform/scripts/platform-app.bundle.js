@@ -3138,7 +3138,6 @@ var floatingBobIdleSet = 1;
 var floatingBobRoamingInterval = null;
 var floatingBobGreenSince = Date.now();
 var floatingBobPoseBag = [];
-var floatingBobLastPose = -1;
 var floatingBobUnlockMessageUntil = 0;
 var floatingBobUnlockMessage = "";
 var teacherComparisonClassId = "";
@@ -3473,34 +3472,6 @@ function updateBobRewardOutputs() {
     output.textContent = String(setting.dailyUnlockLimit);
   });
 }
-function shuffledBobPoses(count) {
-  const values = Array.from({ length: count }, (_, index) => index);
-  for (let index = values.length - 1; index > 0; index -= 1) {
-    const target = Math.floor(Math.random() * (index + 1));
-    [values[index], values[target]] = [values[target], values[index]];
-  }
-  if (values.length > 1 && values[0] === floatingBobLastPose) [values[0], values[1]] = [values[1], values[0]];
-  return values;
-}
-function nextUnlockedBobPose() {
-  const unlocked = readClassroomBobUnlocks();
-  floatingBobPoseBag = floatingBobPoseBag.filter((pose2) => pose2 < unlocked && pose2 !== floatingBobLastPose);
-  if (!floatingBobPoseBag.length) floatingBobPoseBag = shuffledBobPoses(unlocked);
-  const pose = floatingBobPoseBag.shift() ?? 0;
-  floatingBobLastPose = pose;
-  return pose;
-}
-function applyUnlockedBobPose(bobs, requestedPose = null) {
-  const pose = requestedPose ?? nextUnlockedBobPose(), sheet = Math.floor(pose / 25) + 1, cell = pose % 25;
-  const column = cell % 5, row = Math.floor(cell / 5);
-  const imageUrl = new URL(`../assets/images/characters/bob-unlocks-${String(sheet).padStart(2, "0")}.webp?v=232`, import.meta.url).href;
-  bobs.forEach((bob) => {
-    bob.classList.add("is-unlocked-pose");
-    bob.style.setProperty("--bob-pose-sheet", `url("${imageUrl}")`);
-    bob.style.setProperty("--bob-pose-x", `${column * 25}%`);
-    bob.style.setProperty("--bob-pose-y", `${row * 25}%`);
-  });
-}
 function updateBobUnlockProgress(meterState) {
   const now = Date.now();
   if (meterState !== "green") {
@@ -3523,7 +3494,7 @@ function updateBobUnlockProgress(meterState) {
 }
 function scheduleNextBobMove() {
   if (floatingBobRoamingInterval !== null) window.clearTimeout(floatingBobRoamingInterval);
-  const delay = document.body.classList.contains("platform-standalone-classroom-display") ? 9e3 : Math.max(6e3, 28e3 - readClassroomBobUnlocks() * 110);
+  const delay = standaloneClassroomDisplayRequested() ? 6e4 : Math.max(3e4, 9e4 - readClassroomBobUnlocks() * 250);
   floatingBobRoamingInterval = window.setTimeout(() => {
     relocateFloatingBob();
     scheduleNextBobMove();
@@ -3547,7 +3518,10 @@ function applyClassroomBobDisplay() {
       if ((setting.enabled || forceVisible) && bob.dataset.meterState === "green") activeBobs.push(bob);
     });
   }
-  if (activeBobs.length) applyUnlockedBobPose(activeBobs);
+  activeBobs.forEach((bob) => {
+    bob.classList.remove("is-unlocked-pose");
+    bob.dataset.idleSet = String(floatingBobIdleSet);
+  });
 }
 function installClassroomDisplayChoices() {
   const tools = document.querySelector(".platform-live-lesson-tools");
@@ -6151,7 +6125,10 @@ function standaloneClassroomDisplayRequested() {
   return new URLSearchParams(window.location.search).get("classroomDisplay") === "1";
 }
 function enterStandaloneClassroomDisplayMode() {
-  if (!standaloneClassroomDisplayRequested()) return;
+  if (!standaloneClassroomDisplayRequested()) {
+    cleanupStandaloneClassroomDisplayMode();
+    return;
+  }
   const display = document.querySelector("#platform-student-timer-display");
   if (!display) return;
   display.hidden = false;
@@ -6163,7 +6140,7 @@ function enterStandaloneClassroomDisplayMode() {
     const controls = document.createElement("div");
     controls.className = "platform-classroom-window-controls";
     controls.setAttribute("aria-label", "Classroom Display screen options");
-    controls.innerHTML = '<strong>Screen Options</strong><button type="button" data-action="fullscreen-classroom-display">Full Screen</button><span data-classroom-display-layout-status role="status"></span>';
+    controls.innerHTML = '<strong>Screen Options</strong><button type="button" data-action="fullscreen-classroom-display">Full Screen</button><button type="button" data-action="return-to-teacher-view">Return to Teacher View</button><span data-classroom-display-layout-status role="status"></span>';
     controls.querySelector('[data-action="fullscreen-classroom-display"]').addEventListener("click", (event) => {
       event.stopPropagation();
       void toggleClassroomDisplayFullscreen(event.currentTarget);
@@ -6197,6 +6174,25 @@ function enterStandaloneClassroomDisplayMode() {
   installSmartboardToolPopoutButtons(document);
   updateVoiceMeterPresentation(Number(document.querySelector("[data-voice-meter-output]")?.textContent ?? 0));
   syncLessonTimerPresentation();
+}
+function cleanupStandaloneClassroomDisplayMode() {
+  document.body.classList.remove("platform-standalone-classroom-display", "platform-classroom-presentation-mode");
+  document.querySelector(".platform-classroom-window-controls:not(details)")?.remove();
+  document.querySelector('[data-action="exit-classroom-fullscreen"]')?.remove();
+  const display = document.querySelector("#platform-student-timer-display");
+  if (display) display.hidden = true;
+  document.querySelectorAll(".platform-floating-voice-bob").forEach((bob) => {
+    bob.hidden = true;
+    bob.classList.remove("is-walking-out", "is-walking-in", "is-unlocked-pose");
+  });
+}
+async function returnToTeacherViewFromClassroomDisplay() {
+  await exitClassroomDisplayFullscreen(document);
+  const url = new URL(window.location.href);
+  url.searchParams.delete("classroomDisplay");
+  window.history.replaceState({}, "", url);
+  cleanupStandaloneClassroomDisplayMode();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 function syncLessonTimerPresentation() {
   const state = currentScheduledLessonTimerState();
@@ -7114,7 +7110,10 @@ function updateVoiceMeterPresentation(value) {
     bob.setAttribute("aria-label", bobMessages[voiceBobState]);
     if (voiceBobState !== "green") bob.classList.remove("is-walking-out", "is-walking-in", "is-unlocked-pose");
   });
-  if (previousBobState !== voiceBobState && voiceBobState === "green") applyUnlockedBobPose([...document.querySelectorAll(".platform-floating-voice-bob")], Math.max(0, floatingBobLastPose));
+  if (previousBobState !== voiceBobState && voiceBobState === "green") document.querySelectorAll(".platform-floating-voice-bob").forEach((bob) => {
+    bob.classList.remove("is-unlocked-pose");
+    bob.dataset.idleSet = String(floatingBobIdleSet);
+  });
   if (voiceBobState === "green") delete document.body.dataset.voiceFrame;
   else document.body.dataset.voiceFrame = voiceBobState;
   const prediction = predictedLearningType(value);
@@ -7144,8 +7143,10 @@ function relocateFloatingBob() {
       bob.classList.add("is-walking-in");
     });
     window.setTimeout(() => {
-      connectedBobs.forEach((bob) => bob.classList.remove("is-walking-in"));
-      applyUnlockedBobPose(connectedBobs);
+      connectedBobs.forEach((bob) => {
+        bob.classList.remove("is-walking-in", "is-unlocked-pose");
+        bob.dataset.idleSet = String(floatingBobIdleSet);
+      });
     }, 2800);
   }, 2800);
 }
@@ -10938,6 +10939,10 @@ ${item.limerick}`)].join("\n\n");
   }
   if (action.dataset.action === "exit-classroom-fullscreen") {
     void exitClassroomDisplayFullscreen(action.ownerDocument);
+    return;
+  }
+  if (action.dataset.action === "return-to-teacher-view") {
+    void returnToTeacherViewFromClassroomDisplay();
     return;
   }
   if (action.dataset.action === "popout-smartboard-tool") {

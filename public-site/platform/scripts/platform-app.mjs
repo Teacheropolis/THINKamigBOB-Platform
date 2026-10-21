@@ -658,7 +658,7 @@ function updateBobUnlockProgress(meterState) {
 
 function scheduleNextBobMove() {
   if (floatingBobRoamingInterval !== null) window.clearTimeout(floatingBobRoamingInterval);
-  const delay = document.body.classList.contains("platform-standalone-classroom-display") ? 9000 : Math.max(6000, 28000 - readClassroomBobUnlocks() * 110);
+  const delay = standaloneClassroomDisplayRequested() ? 60000 : Math.max(30000, 90000 - readClassroomBobUnlocks() * 250);
   floatingBobRoamingInterval = window.setTimeout(() => { relocateFloatingBob(); scheduleNextBobMove(); }, delay);
 }
 
@@ -677,7 +677,7 @@ function applyClassroomBobDisplay() {
   for (const documentRef of [document, classroomPresentationWindow?.document].filter(Boolean)) {
     documentRef.querySelectorAll(".platform-floating-voice-bob").forEach((bob) => { bob.hidden = !setting.enabled && !forceVisible; bob.dataset.corner = corners[floatingBobCornerIndex]; if ((setting.enabled || forceVisible) && bob.dataset.meterState === "green") activeBobs.push(bob); });
   }
-  if (activeBobs.length) applyUnlockedBobPose(activeBobs);
+  activeBobs.forEach((bob) => { bob.classList.remove("is-unlocked-pose"); bob.dataset.idleSet = String(floatingBobIdleSet); });
 }
 
 function installClassroomDisplayChoices() {
@@ -3274,7 +3274,7 @@ function standaloneClassroomDisplayRequested() {
 }
 
 function enterStandaloneClassroomDisplayMode() {
-  if (!standaloneClassroomDisplayRequested()) return;
+  if (!standaloneClassroomDisplayRequested()) { cleanupStandaloneClassroomDisplayMode(); return; }
   const display = document.querySelector("#platform-student-timer-display");
   if (!display) return;
   display.hidden = false;
@@ -3284,7 +3284,7 @@ function enterStandaloneClassroomDisplayMode() {
     const controls = document.createElement("div");
     controls.className = "platform-classroom-window-controls";
     controls.setAttribute("aria-label", "Classroom Display screen options");
-    controls.innerHTML = '<strong>Screen Options</strong><button type="button" data-action="fullscreen-classroom-display">Full Screen</button><span data-classroom-display-layout-status role="status"></span>';
+    controls.innerHTML = '<strong>Screen Options</strong><button type="button" data-action="fullscreen-classroom-display">Full Screen</button><button type="button" data-action="return-to-teacher-view">Return to Teacher View</button><span data-classroom-display-layout-status role="status"></span>';
     controls.querySelector('[data-action="fullscreen-classroom-display"]').addEventListener("click", (event) => {
       event.stopPropagation();
       void toggleClassroomDisplayFullscreen(event.currentTarget);
@@ -3318,6 +3318,24 @@ function enterStandaloneClassroomDisplayMode() {
   installSmartboardToolPopoutButtons(document);
   updateVoiceMeterPresentation(Number(document.querySelector("[data-voice-meter-output]")?.textContent ?? 0));
   syncLessonTimerPresentation();
+}
+
+function cleanupStandaloneClassroomDisplayMode() {
+  document.body.classList.remove("platform-standalone-classroom-display", "platform-classroom-presentation-mode");
+  document.querySelector(".platform-classroom-window-controls:not(details)")?.remove();
+  document.querySelector('[data-action="exit-classroom-fullscreen"]')?.remove();
+  const display = document.querySelector("#platform-student-timer-display");
+  if (display) display.hidden = true;
+  document.querySelectorAll(".platform-floating-voice-bob").forEach((bob) => { bob.hidden = true; bob.classList.remove("is-walking-out", "is-walking-in", "is-unlocked-pose"); });
+}
+
+async function returnToTeacherViewFromClassroomDisplay() {
+  await exitClassroomDisplayFullscreen(document);
+  const url = new URL(window.location.href);
+  url.searchParams.delete("classroomDisplay");
+  window.history.replaceState({}, "", url);
+  cleanupStandaloneClassroomDisplayMode();
+  window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
 function syncLessonTimerPresentation() {
@@ -4207,7 +4225,7 @@ function updateVoiceMeterPresentation(value) {
   });
   document.querySelectorAll("[data-voice-bob-message]").forEach((label) => { label.textContent = voiceBobState === "green" && now < floatingBobUnlockMessageUntil ? floatingBobUnlockMessage : bobMessages[voiceBobState]; });
   document.querySelectorAll("[data-voice-bob]").forEach((bob) => { bob.dataset.meterState = voiceBobState; bob.dataset.poseUnlocked = String(voiceBobState === "green" && now < floatingBobUnlockMessageUntil); bob.setAttribute("aria-label", bobMessages[voiceBobState]); if (voiceBobState !== "green") bob.classList.remove("is-walking-out", "is-walking-in", "is-unlocked-pose"); });
-  if (previousBobState !== voiceBobState && voiceBobState === "green") applyUnlockedBobPose([...document.querySelectorAll(".platform-floating-voice-bob")], Math.max(0, floatingBobLastPose));
+  if (previousBobState !== voiceBobState && voiceBobState === "green") document.querySelectorAll(".platform-floating-voice-bob").forEach((bob) => { bob.classList.remove("is-unlocked-pose"); bob.dataset.idleSet = String(floatingBobIdleSet); });
   if (voiceBobState === "green") delete document.body.dataset.voiceFrame;
   else document.body.dataset.voiceFrame = voiceBobState;
   const prediction = predictedLearningType(value);
@@ -4227,7 +4245,7 @@ function relocateFloatingBob() {
     floatingBobCornerIndex = (floatingBobCornerIndex + 1) % corners.length;
     floatingBobIdleSet = (floatingBobIdleSet % 4) + 1;
     connectedBobs.forEach((bob) => { bob.dataset.corner = corners[floatingBobCornerIndex]; bob.dataset.idleSet = String(floatingBobIdleSet); bob.classList.remove("is-walking-out"); bob.classList.add("is-walking-in"); });
-    window.setTimeout(() => { connectedBobs.forEach((bob) => bob.classList.remove("is-walking-in")); applyUnlockedBobPose(connectedBobs); }, 2800);
+    window.setTimeout(() => { connectedBobs.forEach((bob) => { bob.classList.remove("is-walking-in", "is-unlocked-pose"); bob.dataset.idleSet = String(floatingBobIdleSet); }); }, 2800);
   }, 2800);
 }
 
@@ -6365,6 +6383,10 @@ async function handleClick(event) {
   }
   if (action.dataset.action === "exit-classroom-fullscreen") {
     void exitClassroomDisplayFullscreen(action.ownerDocument);
+    return;
+  }
+  if (action.dataset.action === "return-to-teacher-view") {
+    void returnToTeacherViewFromClassroomDisplay();
     return;
   }
   if (action.dataset.action === "popout-smartboard-tool") {

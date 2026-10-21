@@ -2093,9 +2093,9 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-floating-voice-bob[data-corner$="left"].is-walking-out { background-image: url("../assets/images/characters/bob-walk-left.png"); }
 .platform-floating-voice-bob.is-walking-in { background-image: url("../assets/images/characters/bob-walk-left.png"); }
 .platform-floating-voice-bob[data-corner$="left"].is-walking-in { background-image: url("../assets/images/characters/bob-walk-right.png"); }
-.platform-floating-voice-bob.is-walking-out { animation: platform-bob-walk-frames 0.8s step-end infinite, platform-bob-walk-out-right 2.8s linear forwards; }
+.platform-floating-voice-bob.is-walking-out { animation: platform-bob-walk-frames 0.7s step-end 4, platform-bob-walk-out-right 2.8s linear forwards; }
 .platform-floating-voice-bob[data-corner$="left"].is-walking-out { animation-name: platform-bob-walk-frames, platform-bob-walk-out-left; }
-.platform-floating-voice-bob.is-walking-in { animation: platform-bob-walk-frames 0.8s step-end infinite, platform-bob-walk-in-right 2.8s linear forwards; }
+.platform-floating-voice-bob.is-walking-in { animation: platform-bob-walk-frames 0.7s step-end 4, platform-bob-walk-in-right 2.8s linear forwards; }
 .platform-floating-voice-bob[data-corner$="left"].is-walking-in { animation-name: platform-bob-walk-frames, platform-bob-walk-in-left; }
 .platform-floating-voice-bob[data-meter-state="yellow"], .platform-floating-voice-bob[data-meter-state="red"] { background-image: url("../assets/images/characters/bob-voice-meter-states.png"); background-size: 300% 100%; animation: none; }
 .platform-floating-voice-bob[data-meter-state="yellow"] { background-position: center center; transform: translateY(2%); }
