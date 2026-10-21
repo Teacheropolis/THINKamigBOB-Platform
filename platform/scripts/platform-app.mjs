@@ -3284,6 +3284,7 @@ function enterStandaloneClassroomDisplayMode() {
     const controls = document.createElement("div");
     const teacherViewUrl = new URL(window.location.href);
     teacherViewUrl.searchParams.delete("classroomDisplay");
+    if (teacherViewUrl.pathname.endsWith("/")) teacherViewUrl.pathname += "index.html";
     controls.className = "platform-classroom-window-controls";
     controls.setAttribute("aria-label", "Classroom Display screen options");
     controls.innerHTML = `<strong>Screen Options</strong><button type="button" data-action="fullscreen-classroom-display">Full Screen</button><a class="platform-return-to-teacher-view" href="${escapeHtml(teacherViewUrl.href)}">Return to Teacher View</a><span data-classroom-display-layout-status role="status"></span>`;
