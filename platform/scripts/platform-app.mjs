@@ -3289,6 +3289,10 @@ function enterStandaloneClassroomDisplayMode() {
       event.stopPropagation();
       void toggleClassroomDisplayFullscreen(event.currentTarget);
     });
+    controls.querySelector('[data-action="return-to-teacher-view"]').addEventListener("click", (event) => {
+      event.stopPropagation();
+      void returnToTeacherViewFromClassroomDisplay();
+    });
     root.append(controls);
   }
   if (!document.querySelector(".platform-classroom-exit-presentation")) {

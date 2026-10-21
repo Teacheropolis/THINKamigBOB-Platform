@@ -45,6 +45,7 @@ test("teacher and student display expose a private browser-only voice meter", ()
   assert.match(app, /readClassroomBobDisplay\(\)\.enabled \|\| standaloneClassroomDisplayRequested\(\)/);
   assert.match(app, /standaloneClassroomDisplayRequested\(\) \? 60000/);
   assert.match(app, /return-to-teacher-view/);
+  assert.match(app, /controls\.querySelector\('\[data-action="return-to-teacher-view"\]'\)\.addEventListener/);
   assert.match(app, /cleanupStandaloneClassroomDisplayMode/);
   assert.match(app, /Bob is calm and happy/);
   assert.match(app, /Bob is asking the class to quiet down/);
