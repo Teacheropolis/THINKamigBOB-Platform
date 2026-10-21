@@ -3,6 +3,7 @@ export const UDL_EVIDENCE_BANK_STORAGE_KEY = "thinkamigbob.udl-evidence-bank.v1"
 export const EVIDENCE_OPTIONS = Object.freeze([
   "Student explanation", "Design sketch or model", "Built product or prototype", "Observation notes", "Test data or measurements", "Photo or video evidence", "Student conference", "Peer feedback and revision", "Do Now response", "Captain's Log response",
 ]);
+export const EXIT_TICKET_MODES = Object.freeze(["Written response", "Draw and label", "Solve and explain", "Quick conference", "Demonstrate or model", "Photo of work with caption", "Multiple-choice check with explanation", "Audio response", "Self-rating with evidence"]);
 
 export const OHIO_STANDARDS_3_6 = Object.freeze([
   { id: "3-PS-Forces", grade: 3, subject: "Science", code: "Grade 3 Physical Science", text: "Explain and predict changes in an object's motion using evidence about forces." },
@@ -24,7 +25,7 @@ export const OHIO_STANDARDS_3_6 = Object.freeze([
 ]);
 
 const clean = (value, length = 4000) => String(value ?? "").trim().slice(0, length);
-const blank = () => ({ grade: "", description: "", standardIds: [], objective: "", successCriteria: "", assessmentType: "", evidenceTypes: [], assessmentEvidence: "", representation: "", engagement: "", expression: "", savedAt: 0 });
+const blank = () => ({ grade: "", description: "", standardIds: [], objective: "", successCriteria: "", assessmentType: "", evidenceTypes: [], exitTicketModes: [], customExitTicket: "", assessmentEvidence: "", representation: "", engagement: "", expression: "", savedAt: 0 });
 
 export function completeLessonPlan(input = {}, activitySteps = []) {
   const standards = OHIO_STANDARDS_3_6.filter((item) => (input.standardIds || []).includes(item.id));
@@ -49,7 +50,7 @@ export function createUdlLessonPlanStore(storage) {
   const read = (classId) => ({ ...blank(), ...(readAll()[classId] || {}) });
   const save = (classId, input = {}) => {
     const all = readAll();
-    all[classId] = { grade: ["3", "4", "5", "6"].includes(String(input.grade)) ? String(input.grade) : "", description: clean(input.description), standardIds: [...new Set((input.standardIds || []).filter((id) => OHIO_STANDARDS_3_6.some((item) => item.id === id)))], objective: clean(input.objective, 500), successCriteria: clean(input.successCriteria, 800), assessmentType: ["formative", "summative"].includes(input.assessmentType) ? input.assessmentType : "", evidenceTypes: [...new Set((input.evidenceTypes || []).map((item) => clean(item, 120)).filter(Boolean))], assessmentEvidence: clean(input.assessmentEvidence, 800), representation: clean(input.representation, 800), engagement: clean(input.engagement, 800), expression: clean(input.expression, 800), savedAt: Date.now() };
+    all[classId] = { grade: ["3", "4", "5", "6"].includes(String(input.grade)) ? String(input.grade) : "", description: clean(input.description), standardIds: [...new Set((input.standardIds || []).filter((id) => OHIO_STANDARDS_3_6.some((item) => item.id === id)))], objective: clean(input.objective, 500), successCriteria: clean(input.successCriteria, 800), assessmentType: ["formative", "summative"].includes(input.assessmentType) ? input.assessmentType : "", evidenceTypes: [...new Set((input.evidenceTypes || []).map((item) => clean(item, 120)).filter(Boolean))], exitTicketModes: [...new Set((input.exitTicketModes || []).filter((item) => EXIT_TICKET_MODES.includes(item)))], customExitTicket: clean(input.customExitTicket, 500), assessmentEvidence: clean(input.assessmentEvidence, 800), representation: clean(input.representation, 800), engagement: clean(input.engagement, 800), expression: clean(input.expression, 800), savedAt: Date.now() };
     storage.setItem(UDL_LESSON_PLAN_STORAGE_KEY, JSON.stringify(all));
     return all[classId];
   };

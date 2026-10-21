@@ -35,9 +35,16 @@ test("teachers can add a reusable evidence type to the bank", () => {
   assert.equal(store.evidenceBank().includes("Engineering notebook diagram"), true);
 });
 
+test("lesson plans preserve exit-ticket modes and a teacher-created activity", () => {
+  const store = createUdlLessonPlanStore(memoryStorage());
+  const saved = store.save("class-a", { exitTicketModes: ["Solve and explain", "not-real"], customExitTicket: "Correct an incorrect ratio table." });
+  assert.deepEqual(saved.exitTicketModes, ["Solve and explain"]);
+  assert.equal(saved.customExitTicket, "Correct an incorrect ratio table.");
+});
+
 test("teacher UI connects standards, UDL, lesson arc, and assessments", () => {
   const app = readFileSync(new URL("../../platform/scripts/platform-app.mjs", import.meta.url), "utf8");
-  for (const text of ["See a filled-in example and finished plan", "Students design, build, and test a paper bridge", "Finished automatic UDL lesson plan", "Automatic non-AI lesson planner", "Teacher input — only these essentials are needed", "Generated lesson-plan language", "Evidence Bank", "UDL Lesson Plan and Ohio Standards", "Starter catalog", "Beginning · Do Now", "Middle · Activities", "End · Captain’s Log", "Formative — guides next instruction", "Summative — evaluates learning", "I understand this is a"]) assert.match(app, new RegExp(text));
+  for (const text of ["Teacher entered", "Automatically generated", "Math example · Ratios and rates", "My own exit-ticket activity", "Exit Ticket — Captain’s Log", "STEM example · Paper bridge", "Automatic non-AI lesson planner", "Teacher input — only these essentials are needed", "Generated lesson-plan language", "Evidence Bank", "UDL Lesson Plan and Ohio Standards", "Starter catalog", "Beginning · Do Now", "Middle · Activities", "Formative — guides next instruction", "Summative — evaluates learning", "I understand this is a"]) assert.match(app, new RegExp(text));
   assert.match(app, /editor\.scrollIntoView/);
   assert.match(app, /data-resource-editor-heading/);
 });
