@@ -80,6 +80,8 @@ test("teacher and student display expose a private browser-only voice meter", ()
   assert.match(css, /bottom: 100%/);
   assert.match(css, /is-walking-out \.platform-bob-sensitivity/);
   assert.match(css, /bottom: 0\.05rem/);
+  assert.match(css, /platform-bob-inline-reset \{[^}]*bottom: 1rem/);
+  assert.match(css, /12\.5% \{ transform: translate\(20%, -11%\)/);
   assert.match(app, /connectedBobs\.some\(\(bob\) => bob\.dataset\.meterState !== "green"\)/);
   assert.match(app, /if \(readClassroomBobLayout\(\)\.manual\) return/);
   assert.match(css, /--bob-size-multiplier/);
