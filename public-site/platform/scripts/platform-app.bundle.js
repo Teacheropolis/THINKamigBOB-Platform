@@ -3437,9 +3437,6 @@ function applyClassroomBobLayout() {
       bob.style.removeProperty("bottom");
     }
   });
-  document.querySelectorAll("[data-bob-size-output]").forEach((output) => {
-    output.textContent = `${Math.round(layout.scale * 100)}%`;
-  });
 }
 function installMovableClassroomBob() {
   const bob = document.querySelector(".platform-floating-voice-bob");
@@ -3448,6 +3445,24 @@ function installMovableClassroomBob() {
   bob.tabIndex = 0;
   bob.setAttribute("aria-description", "Drag Bob to place him anywhere on the classroom screen.");
   window.addEventListener("resize", applyClassroomBobLayout);
+  bob.querySelectorAll("[data-bob-inline-action]").forEach((button) => {
+    button.addEventListener("pointerdown", (event) => event.stopPropagation());
+    button.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const layout = readClassroomBobLayout(), action = button.dataset.bobInlineAction;
+      if (action === "smaller") layout.scale = Math.max(0.75, Math.round((layout.scale - 0.25) * 100) / 100);
+      if (action === "larger") layout.scale = Math.min(1.75, Math.round((layout.scale + 0.25) * 100) / 100);
+      if (action === "default") {
+        layout.manual = false;
+        layout.x = 0;
+        layout.y = 0;
+        floatingBobCornerIndex = 0;
+      }
+      writeClassroomBobLayout(layout);
+      applyClassroomBobDisplay();
+      scheduleNextBobMove();
+    });
+  });
   let drag = null;
   bob.addEventListener("pointerdown", (event) => {
     if (!standaloneClassroomDisplayRequested() || event.button !== 0) return;
@@ -5397,7 +5412,7 @@ function teacherDashboardView(state) {
       <aside class="platform-smartboard-tool platform-floating-whiteboard" data-smartboard-tool="whiteboard" hidden style="left: 8%; top: 8%; width: min(46rem, 82vw); height: min(34rem, 72vh);"><header data-smartboard-drag-handle><strong>Whiteboard</strong><button type="button" data-action="close-smartboard-tool" aria-label="Close Whiteboard window">\xD7</button></header><div class="platform-floating-whiteboard-board">${floatingWhiteboard ? `<img src="${escapeHtml2(floatingWhiteboard.displayImage || floatingWhiteboard.image)}" alt="Latest whiteboard: ${escapeHtml2(floatingWhiteboard.title)}">` : `<p>Your whiteboard will appear here. Open the full board to draw.</p>`}</div><div class="platform-floating-whiteboard-functions"><button type="button" data-action="open-whiteboard">Open Full Whiteboard and Tools</button></div>${smartboardToolSwitcherMarkup()}<span class="platform-smartboard-resize-handle" data-smartboard-resize-handle aria-label="Resize Whiteboard window"></span></aside>
       <details class="platform-smartboard-tool-tray" aria-label="Smartboard presentation tools"><summary>Tools</summary><div class="platform-smartboard-tool-options"><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="amig">AMIG Chart</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="timer">Class Timer</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="activity-timer">Activity Side Timer</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="stopwatch">Stopwatch</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="message">Message</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="voice">Voice Meter</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="names">Name Picker</button><button type="button" data-action="toggle-smartboard-tool" data-smartboard-tool-name="whiteboard">Whiteboard</button><button type="button" class="platform-smartboard-reset-tools" data-action="reset-smartboard-tools">Reset Positions</button></div></details>
     </section>
-    <aside class="platform-floating-voice-bob" data-voice-bob data-meter-state="green" data-corner="${classroomBobCorners()[floatingBobCornerIndex % classroomBobCorners().length]}" data-idle-set="${floatingBobIdleSet}" role="img" aria-label="Bob is calm and happy."${readClassroomBobDisplay().enabled || standaloneClassroomDisplayRequested() ? "" : " hidden"}><span data-voice-bob-message>Bob is calm and happy.</span></aside>
+    <aside class="platform-floating-voice-bob" data-voice-bob data-meter-state="green" data-corner="${classroomBobCorners()[floatingBobCornerIndex % classroomBobCorners().length]}" data-idle-set="${floatingBobIdleSet}" role="group" aria-label="Bob is calm and happy."${readClassroomBobDisplay().enabled || standaloneClassroomDisplayRequested() ? "" : " hidden"}><div class="platform-bob-inline-size-controls" aria-label="Resize Bob"><button type="button" data-bob-inline-action="smaller" aria-label="Make Bob smaller">\u2212</button><button type="button" data-bob-inline-action="larger" aria-label="Make Bob larger">+</button></div><button class="platform-bob-inline-reset" type="button" data-bob-inline-action="default">Reset</button><span data-voice-bob-message>Bob is calm and happy.</span></aside>
     <section id="platform-large-voice-meter-display" class="platform-large-voice-meter-display" data-voice-display-mode="${readVoiceMeterDisplayMode()}" role="dialog" aria-modal="true" aria-labelledby="large-voice-meter-title" tabindex="-1" hidden>
       <p class="platform-student-display-brand">THINKamigBOB</p>
       <h2 id="large-voice-meter-title">Classroom Voice Meter</h2>
@@ -6232,27 +6247,11 @@ function enterStandaloneClassroomDisplayMode() {
     teacherViewUrl.hash = session.read().teacherId === "teacher-preview-1" ? `#${ROUTES.PREVIEW_TEACHER}` : `#${ROUTES.TEACHER_DASHBOARD}`;
     controls.className = "platform-classroom-window-controls";
     controls.setAttribute("aria-label", "Classroom Display screen options");
-    controls.innerHTML = `<strong>Screen Options</strong><button type="button" data-action="fullscreen-classroom-display">Full Screen</button><span class="platform-classroom-bob-layout-controls" aria-label="Bob size and position"><span class="platform-classroom-bob-drag-hint">Drag Bob to move him</span><button type="button" data-action="classroom-bob-smaller" aria-label="Make Bob smaller">Bob \u2212</button><output data-bob-size-output>100%</output><button type="button" data-action="classroom-bob-larger" aria-label="Make Bob larger">Bob +</button><button type="button" data-action="classroom-bob-default">Default Position</button></span><a class="platform-return-to-teacher-view" href="${escapeHtml2(teacherViewUrl.href)}">Return to Teacher View</a><span data-classroom-display-layout-status role="status"></span>`;
+    controls.innerHTML = `<strong>Screen Options</strong><button type="button" data-action="fullscreen-classroom-display">Full Screen</button><a class="platform-return-to-teacher-view" href="${escapeHtml2(teacherViewUrl.href)}">Return to Teacher View</a><span data-classroom-display-layout-status role="status"></span>`;
     controls.querySelector('[data-action="fullscreen-classroom-display"]').addEventListener("click", (event) => {
       event.stopPropagation();
       void toggleClassroomDisplayFullscreen(event.currentTarget);
     });
-    controls.querySelectorAll('[data-action^="classroom-bob-"]').forEach((button) => button.addEventListener("click", () => {
-      const layout = readClassroomBobLayout();
-      if (button.dataset.action === "classroom-bob-smaller") layout.scale = Math.max(0.75, Math.round((layout.scale - 0.25) * 100) / 100);
-      if (button.dataset.action === "classroom-bob-larger") layout.scale = Math.min(1.75, Math.round((layout.scale + 0.25) * 100) / 100);
-      if (button.dataset.action === "classroom-bob-default") {
-        layout.manual = false;
-        layout.x = 0;
-        layout.y = 0;
-        floatingBobCornerIndex = 0;
-      }
-      writeClassroomBobLayout(layout);
-      applyClassroomBobDisplay();
-      scheduleNextBobMove();
-      const status = controls.querySelector("[data-classroom-display-layout-status]");
-      if (status) status.textContent = button.dataset.action === "classroom-bob-default" ? "Bob returned to his default automatic positions." : `Bob size is now ${Math.round(layout.scale * 100)}%.`;
-    }));
     root.append(controls);
   }
   if (!document.querySelector(".platform-classroom-exit-presentation")) {

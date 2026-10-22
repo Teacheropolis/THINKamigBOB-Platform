@@ -70,9 +70,10 @@ test("teacher and student display expose a private browser-only voice meter", ()
   assert.match(css, /platform-bob-walk-frames 0\.7s step-end 4/);
   assert.match(app, /CLASSROOM_BOB_LAYOUT_KEY/);
   assert.match(app, /installMovableClassroomBob/);
-  assert.match(app, /Drag Bob to move him/);
-  assert.match(app, /classroom-bob-larger/);
-  assert.match(app, /classroom-bob-default/);
+  assert.match(app, /platform-bob-inline-size-controls/);
+  assert.match(app, /data-bob-inline-action="larger"/);
+  assert.match(app, /platform-bob-inline-reset/);
+  assert.doesNotMatch(app, /classroom-bob-larger/);
   assert.match(app, /if \(readClassroomBobLayout\(\)\.manual\) return/);
   assert.match(css, /--bob-size-multiplier/);
   assert.match(css, /cursor: grab/);

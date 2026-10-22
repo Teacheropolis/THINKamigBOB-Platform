@@ -1344,10 +1344,6 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-classroom-window-controls button { min-height: 2.6rem; padding: 0.4rem 0.8rem; border: 2px solid #fff; color: var(--platform-navy); background: #fff8e7; font-weight: 900; white-space: nowrap; }
 .platform-classroom-window-controls button:first-of-type { color: #fff; background: var(--platform-blue); }
 .platform-classroom-window-controls .platform-return-to-teacher-view { display: inline-flex; min-height: 2.6rem; align-items: center; padding: 0.4rem 0.8rem; border: 2px solid #fff; color: var(--platform-navy); background: #fff8e7; font-weight: 900; text-decoration: none; white-space: nowrap; }
-.platform-classroom-bob-layout-controls { display: inline-flex; align-items: center; gap: 0.25rem; }
-.platform-classroom-bob-drag-hint { color: #fff; font-size: 0.75rem; font-weight: 800; }
-.platform-classroom-bob-layout-controls output { min-width: 3.1rem; color: #fff; font-size: 0.75rem; font-weight: 900; text-align: center; }
-.platform-classroom-bob-layout-controls button { padding-inline: 0.55rem; }
 .platform-classroom-window-controls span { max-width: 17rem; font-size: 0.72rem; font-weight: 800; }
 .platform-classroom-split-control { position: relative; }
 .platform-classroom-split-control > summary { min-height: 2.6rem; padding: 0.55rem 0.8rem; border: 2px solid #fff; border-radius: 0.35rem; color: var(--platform-navy); background: #fff8e7; font-weight: 900; list-style: none; cursor: pointer; }
@@ -2090,6 +2086,11 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-standalone-classroom-display .platform-floating-voice-bob:hover, .platform-standalone-classroom-display .platform-floating-voice-bob:focus-visible { outline: 4px dashed rgba(255, 255, 255, 0.85); outline-offset: 0.25rem; }
 .platform-standalone-classroom-display .platform-floating-voice-bob.is-being-moved { cursor: grabbing; transition: none; }
 .platform-floating-voice-bob[data-position="manual"] { right: auto; bottom: auto; }
+.platform-bob-inline-size-controls { position: absolute; left: 50%; bottom: calc(100% + 0.35rem); display: flex; gap: 0.25rem; opacity: 0; pointer-events: none; transform: translateX(-50%); transition: opacity 120ms ease; }
+.platform-bob-inline-size-controls button, .platform-bob-inline-reset { min-width: 1.7rem; min-height: 1.7rem; padding: 0.05rem 0.35rem; border: 2px solid #fff; border-radius: 0.4rem; color: #fff; background: rgba(16, 47, 69, 0.94); box-shadow: 0 0.2rem 0.45rem rgba(0,0,0,0.32); font: 900 0.9rem/1 system-ui, sans-serif; cursor: pointer; }
+.platform-bob-inline-reset { position: absolute; right: -0.15rem; bottom: -0.15rem; display: none; font-size: 0.65rem; }
+.platform-floating-voice-bob[data-position="manual"] .platform-bob-inline-reset { display: block; }
+.platform-standalone-classroom-display .platform-floating-voice-bob:hover .platform-bob-inline-size-controls, .platform-standalone-classroom-display .platform-floating-voice-bob:focus-within .platform-bob-inline-size-controls { opacity: 1; pointer-events: auto; }
 .platform-floating-voice-bob[data-idle-set="2"] { background-image: url("../assets/images/characters/bob-idle-poses-2.png"); }
 .platform-floating-voice-bob[data-idle-set="3"] { background-image: url("../assets/images/characters/bob-active-poses-1.png"); }
 .platform-floating-voice-bob[data-idle-set="4"] { background-image: url("../assets/images/characters/bob-active-poses-2.png"); }
