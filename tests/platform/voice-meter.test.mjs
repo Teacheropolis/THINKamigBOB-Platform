@@ -79,8 +79,9 @@ test("teacher and student display expose a private browser-only voice meter", ()
   assert.match(app, /voiceMeterStarting/);
   assert.match(css, /bottom: 100%/);
   assert.match(css, /is-walking-out \.platform-bob-voice-controls/);
-  assert.match(css, /bottom: 0\.05rem/);
-  assert.match(css, /platform-bob-inline-reset \{[^}]*bottom: 3\.1rem/);
+  assert.match(css, /platform-bob-voice-controls \{[^}]*top: calc\(100% \+ 0\.15rem\)/);
+  assert.match(css, /bottom: clamp\(3\.6rem, 6vh, 4\.4rem\)/);
+  assert.match(app, /window\.innerHeight - bob\.offsetHeight - 52/);
   assert.match(css, /12\.5% \{ transform: translate\(20%, -11%\)/);
   assert.match(app, /connectedBobs\.some\(\(bob\) => bob\.dataset\.meterState !== "green"\)/);
   assert.match(app, /platform-bob-voice-controls/);

@@ -585,7 +585,7 @@ function applyClassroomBobLayout() {
   document.querySelectorAll(".platform-floating-voice-bob").forEach((bob) => {
     bob.style.setProperty("--bob-size-multiplier", String(layout.scale));
     if (layout.manual) {
-      const maxX = Math.max(0, window.innerWidth - bob.offsetWidth), maxY = Math.max(0, window.innerHeight - bob.offsetHeight);
+      const maxX = Math.max(0, window.innerWidth - bob.offsetWidth), maxY = Math.max(0, window.innerHeight - bob.offsetHeight - 52);
       bob.dataset.position = "manual"; bob.classList.remove("is-walking-out", "is-walking-in"); bob.style.left = `${layout.x * maxX}px`; bob.style.top = `${layout.y * maxY}px`; bob.style.right = "auto"; bob.style.bottom = "auto";
     } else {
       delete bob.dataset.position; bob.style.removeProperty("left"); bob.style.removeProperty("top"); bob.style.removeProperty("right"); bob.style.removeProperty("bottom");
@@ -620,13 +620,13 @@ function installMovableClassroomBob() {
   });
   bob.addEventListener("pointermove", (event) => {
     if (!drag || drag.pointerId !== event.pointerId) return;
-    const maxX = Math.max(0, window.innerWidth - bob.offsetWidth), maxY = Math.max(0, window.innerHeight - bob.offsetHeight);
+    const maxX = Math.max(0, window.innerWidth - bob.offsetWidth), maxY = Math.max(0, window.innerHeight - bob.offsetHeight - 52);
     const left = Math.min(maxX, Math.max(0, event.clientX - drag.offsetX)), top = Math.min(maxY, Math.max(0, event.clientY - drag.offsetY));
     bob.dataset.position = "manual"; bob.style.left = `${left}px`; bob.style.top = `${top}px`; bob.style.right = "auto"; bob.style.bottom = "auto";
   });
   const finishMove = (event) => {
     if (!drag || drag.pointerId !== event.pointerId) return;
-    const maxX = Math.max(1, window.innerWidth - bob.offsetWidth), maxY = Math.max(1, window.innerHeight - bob.offsetHeight);
+    const maxX = Math.max(1, window.innerWidth - bob.offsetWidth), maxY = Math.max(1, window.innerHeight - bob.offsetHeight - 52);
     const rect = bob.getBoundingClientRect(), current = readClassroomBobLayout();
     writeClassroomBobLayout({ ...current, manual: true, x: Math.min(1, Math.max(0, rect.left / maxX)), y: Math.min(1, Math.max(0, rect.top / maxY)) });
     bob.classList.remove("is-being-moved"); drag = null; applyClassroomBobLayout();
