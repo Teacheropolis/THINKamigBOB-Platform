@@ -2086,11 +2086,13 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-standalone-classroom-display .platform-floating-voice-bob:hover, .platform-standalone-classroom-display .platform-floating-voice-bob:focus-visible { outline: 4px dashed rgba(255, 255, 255, 0.85); outline-offset: 0.25rem; }
 .platform-standalone-classroom-display .platform-floating-voice-bob.is-being-moved { cursor: grabbing; transition: none; }
 .platform-floating-voice-bob[data-position="manual"] { right: auto; bottom: auto; }
-.platform-bob-inline-size-controls { position: absolute; left: 50%; bottom: calc(100% + 0.35rem); display: flex; gap: 0.25rem; opacity: 0; pointer-events: none; transform: translateX(-50%); transition: opacity 120ms ease; }
+.platform-bob-inline-size-controls { position: absolute; left: 50%; bottom: 100%; display: flex; gap: 0.25rem; padding-bottom: 0.35rem; opacity: 0; pointer-events: none; transform: translateX(-50%); transition: opacity 120ms ease; }
 .platform-bob-inline-size-controls button, .platform-bob-inline-reset { min-width: 1.7rem; min-height: 1.7rem; padding: 0.05rem 0.35rem; border: 2px solid #fff; border-radius: 0.4rem; color: #fff; background: rgba(16, 47, 69, 0.94); box-shadow: 0 0.2rem 0.45rem rgba(0,0,0,0.32); font: 900 0.9rem/1 system-ui, sans-serif; cursor: pointer; }
 .platform-bob-inline-reset { position: absolute; right: -0.15rem; bottom: -0.15rem; display: none; font-size: 0.65rem; }
 .platform-floating-voice-bob[data-position="manual"] .platform-bob-inline-reset { display: block; }
 .platform-standalone-classroom-display .platform-floating-voice-bob:hover .platform-bob-inline-size-controls, .platform-standalone-classroom-display .platform-floating-voice-bob:focus-within .platform-bob-inline-size-controls { opacity: 1; pointer-events: auto; }
+.platform-bob-sensitivity { position: absolute; z-index: 2; left: 12%; right: 12%; top: calc(100% + 0.15rem); display: block; height: 0.75rem; padding: 0.05rem 0.25rem; border: 1px solid rgba(255,255,255,0.9); border-radius: 999px; background: rgba(16,47,69,0.82); box-shadow: 0 0.2rem 0.4rem rgba(0,0,0,0.25); cursor: pointer; }
+.platform-bob-sensitivity input[type="range"] { display: block; width: 100%; height: 0.6rem; margin: 0; accent-color: var(--platform-gold); cursor: pointer; }
 .platform-floating-voice-bob[data-idle-set="2"] { background-image: url("../assets/images/characters/bob-idle-poses-2.png"); }
 .platform-floating-voice-bob[data-idle-set="3"] { background-image: url("../assets/images/characters/bob-active-poses-1.png"); }
 .platform-floating-voice-bob[data-idle-set="4"] { background-image: url("../assets/images/characters/bob-active-poses-2.png"); }
