@@ -3079,6 +3079,7 @@ var TEACHER_RESEARCH_LINK_BANK_KEY = "thinkamigbob.teacher-research-link-bank.v1
 var DO_NOW_POSTS_KEY = "thinkamigbob.do-now-posts.v1";
 var DO_NOW_LIVE_KEY = "thinkamigbob.do-now-live.v1";
 var CLASSROOM_BOB_DISPLAY_KEY = "thinkamigbob.classroom-bob-display.v1";
+var CLASSROOM_BOB_LAYOUT_KEY = "thinkamigbob.classroom-bob-layout.v1";
 var CLASSROOM_BOB_DAILY_MENU_KEY = "thinkamigbob.classroom-bob-daily-menu.v1";
 var CLASSROOM_BOB_UNLOCK_KEY = "thinkamigbob.classroom-bob-unlocks.v1";
 var CLASSROOM_BOB_DAILY_KEY = "thinkamigbob.classroom-bob-daily.v1";
@@ -3397,6 +3398,88 @@ function readClassroomBobDisplay() {
     return { enabled: false, placement: "move", earnMinutes: 5, dailyUnlockLimit: 6 };
   }
 }
+function readClassroomBobLayout() {
+  const classId = currentDoNowClassId();
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(CLASSROOM_BOB_LAYOUT_KEY) || "{}")[classId] || {};
+    return { manual: Boolean(saved.manual), x: Math.min(1, Math.max(0, Number(saved.x) || 0)), y: Math.min(1, Math.max(0, Number(saved.y) || 0)), scale: Math.min(1.75, Math.max(0.75, Number(saved.scale) || 1)) };
+  } catch {
+    return { manual: false, x: 0, y: 0, scale: 1 };
+  }
+}
+function writeClassroomBobLayout(layout) {
+  const classId = currentDoNowClassId();
+  let all = {};
+  try {
+    all = JSON.parse(window.localStorage.getItem(CLASSROOM_BOB_LAYOUT_KEY) || "{}");
+  } catch {
+  }
+  all[classId] = layout;
+  window.localStorage.setItem(CLASSROOM_BOB_LAYOUT_KEY, JSON.stringify(all));
+}
+function applyClassroomBobLayout() {
+  const layout = readClassroomBobLayout();
+  document.querySelectorAll(".platform-floating-voice-bob").forEach((bob) => {
+    bob.style.setProperty("--bob-size-multiplier", String(layout.scale));
+    if (layout.manual) {
+      const maxX = Math.max(0, window.innerWidth - bob.offsetWidth), maxY = Math.max(0, window.innerHeight - bob.offsetHeight);
+      bob.dataset.position = "manual";
+      bob.classList.remove("is-walking-out", "is-walking-in");
+      bob.style.left = `${layout.x * maxX}px`;
+      bob.style.top = `${layout.y * maxY}px`;
+      bob.style.right = "auto";
+      bob.style.bottom = "auto";
+    } else {
+      delete bob.dataset.position;
+      bob.style.removeProperty("left");
+      bob.style.removeProperty("top");
+      bob.style.removeProperty("right");
+      bob.style.removeProperty("bottom");
+    }
+  });
+  document.querySelectorAll("[data-bob-size-output]").forEach((output) => {
+    output.textContent = `${Math.round(layout.scale * 100)}%`;
+  });
+}
+function installMovableClassroomBob() {
+  const bob = document.querySelector(".platform-floating-voice-bob");
+  if (!bob || bob.dataset.dragReady === "true") return;
+  bob.dataset.dragReady = "true";
+  bob.tabIndex = 0;
+  bob.setAttribute("aria-description", "Drag Bob to place him anywhere on the classroom screen.");
+  window.addEventListener("resize", applyClassroomBobLayout);
+  let drag = null;
+  bob.addEventListener("pointerdown", (event) => {
+    if (!standaloneClassroomDisplayRequested() || event.button !== 0) return;
+    event.preventDefault();
+    bob.setPointerCapture(event.pointerId);
+    const rect = bob.getBoundingClientRect();
+    drag = { pointerId: event.pointerId, offsetX: event.clientX - rect.left, offsetY: event.clientY - rect.top };
+    bob.classList.add("is-being-moved");
+    if (floatingBobRoamingInterval !== null) window.clearTimeout(floatingBobRoamingInterval);
+  });
+  bob.addEventListener("pointermove", (event) => {
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const maxX = Math.max(0, window.innerWidth - bob.offsetWidth), maxY = Math.max(0, window.innerHeight - bob.offsetHeight);
+    const left = Math.min(maxX, Math.max(0, event.clientX - drag.offsetX)), top = Math.min(maxY, Math.max(0, event.clientY - drag.offsetY));
+    bob.dataset.position = "manual";
+    bob.style.left = `${left}px`;
+    bob.style.top = `${top}px`;
+    bob.style.right = "auto";
+    bob.style.bottom = "auto";
+  });
+  const finishMove = (event) => {
+    if (!drag || drag.pointerId !== event.pointerId) return;
+    const maxX = Math.max(1, window.innerWidth - bob.offsetWidth), maxY = Math.max(1, window.innerHeight - bob.offsetHeight);
+    const rect = bob.getBoundingClientRect(), current = readClassroomBobLayout();
+    writeClassroomBobLayout({ ...current, manual: true, x: Math.min(1, Math.max(0, rect.left / maxX)), y: Math.min(1, Math.max(0, rect.top / maxY)) });
+    bob.classList.remove("is-being-moved");
+    drag = null;
+    applyClassroomBobLayout();
+  };
+  bob.addEventListener("pointerup", finishMove);
+  bob.addEventListener("pointercancel", finishMove);
+}
 function readClassroomBobDailyMenu() {
   const classId = currentDoNowClassId(), today = localBobRewardDate();
   try {
@@ -3494,6 +3577,10 @@ function updateBobUnlockProgress(meterState) {
 }
 function scheduleNextBobMove() {
   if (floatingBobRoamingInterval !== null) window.clearTimeout(floatingBobRoamingInterval);
+  if (readClassroomBobLayout().manual) {
+    floatingBobRoamingInterval = null;
+    return;
+  }
   const delay = standaloneClassroomDisplayRequested() ? 6e4 : Math.max(3e4, 9e4 - readClassroomBobUnlocks() * 250);
   floatingBobRoamingInterval = window.setTimeout(() => {
     relocateFloatingBob();
@@ -3522,6 +3609,7 @@ function applyClassroomBobDisplay() {
     bob.classList.remove("is-unlocked-pose");
     bob.dataset.idleSet = String(floatingBobIdleSet);
   });
+  applyClassroomBobLayout();
 }
 function installClassroomDisplayChoices() {
   const tools = document.querySelector(".platform-live-lesson-tools");
@@ -6144,11 +6232,27 @@ function enterStandaloneClassroomDisplayMode() {
     teacherViewUrl.hash = session.read().teacherId === "teacher-preview-1" ? `#${ROUTES.PREVIEW_TEACHER}` : `#${ROUTES.TEACHER_DASHBOARD}`;
     controls.className = "platform-classroom-window-controls";
     controls.setAttribute("aria-label", "Classroom Display screen options");
-    controls.innerHTML = `<strong>Screen Options</strong><button type="button" data-action="fullscreen-classroom-display">Full Screen</button><a class="platform-return-to-teacher-view" href="${escapeHtml2(teacherViewUrl.href)}">Return to Teacher View</a><span data-classroom-display-layout-status role="status"></span>`;
+    controls.innerHTML = `<strong>Screen Options</strong><button type="button" data-action="fullscreen-classroom-display">Full Screen</button><span class="platform-classroom-bob-layout-controls" aria-label="Bob size and position"><span class="platform-classroom-bob-drag-hint">Drag Bob to move him</span><button type="button" data-action="classroom-bob-smaller" aria-label="Make Bob smaller">Bob \u2212</button><output data-bob-size-output>100%</output><button type="button" data-action="classroom-bob-larger" aria-label="Make Bob larger">Bob +</button><button type="button" data-action="classroom-bob-default">Default Position</button></span><a class="platform-return-to-teacher-view" href="${escapeHtml2(teacherViewUrl.href)}">Return to Teacher View</a><span data-classroom-display-layout-status role="status"></span>`;
     controls.querySelector('[data-action="fullscreen-classroom-display"]').addEventListener("click", (event) => {
       event.stopPropagation();
       void toggleClassroomDisplayFullscreen(event.currentTarget);
     });
+    controls.querySelectorAll('[data-action^="classroom-bob-"]').forEach((button) => button.addEventListener("click", () => {
+      const layout = readClassroomBobLayout();
+      if (button.dataset.action === "classroom-bob-smaller") layout.scale = Math.max(0.75, Math.round((layout.scale - 0.25) * 100) / 100);
+      if (button.dataset.action === "classroom-bob-larger") layout.scale = Math.min(1.75, Math.round((layout.scale + 0.25) * 100) / 100);
+      if (button.dataset.action === "classroom-bob-default") {
+        layout.manual = false;
+        layout.x = 0;
+        layout.y = 0;
+        floatingBobCornerIndex = 0;
+      }
+      writeClassroomBobLayout(layout);
+      applyClassroomBobDisplay();
+      scheduleNextBobMove();
+      const status = controls.querySelector("[data-classroom-display-layout-status]");
+      if (status) status.textContent = button.dataset.action === "classroom-bob-default" ? "Bob returned to his default automatic positions." : `Bob size is now ${Math.round(layout.scale * 100)}%.`;
+    }));
     root.append(controls);
   }
   if (!document.querySelector(".platform-classroom-exit-presentation")) {
@@ -6176,6 +6280,8 @@ function enterStandaloneClassroomDisplayMode() {
     if (!isFullscreen && presentationMode && status) status.textContent = "Full-screen presentation mode closed.";
   });
   installSmartboardToolPopoutButtons(document);
+  installMovableClassroomBob();
+  applyClassroomBobLayout();
   updateVoiceMeterPresentation(Number(document.querySelector("[data-voice-meter-output]")?.textContent ?? 0));
   syncLessonTimerPresentation();
 }
@@ -7119,6 +7225,7 @@ function updateVoiceMeterPresentation(value) {
 }
 function relocateFloatingBob() {
   const setting = readClassroomBobDisplay();
+  if (readClassroomBobLayout().manual) return;
   const forceVisible = standaloneClassroomDisplayRequested();
   const corners = classroomBobCorners(setting.placement);
   const bobs = [document, classroomPresentationWindow?.document].filter(Boolean).flatMap((documentRef) => [...documentRef.querySelectorAll(".platform-floating-voice-bob")]);

@@ -1320,7 +1320,7 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-smartboard-tool-tray [data-smartboard-tool-name="whiteboard"] { background: #8a5a2b; }
 .platform-smartboard-tool-tray .platform-smartboard-reset-tools { min-height: 2.35rem; color: var(--platform-navy); background: #fff; font-size: 0.75rem; }
 .platform-classroom-window-controls { position: fixed; z-index: 320; top: 0.6rem; left: 0.6rem; color: #fff; }
-.platform-classroom-window-controls:not(details) { display: flex; align-items: center; gap: 0.45rem; padding: 0.4rem; border: 2px solid var(--platform-gold); border-radius: 0.75rem; background: rgba(16, 47, 69, 0.96); box-shadow: 0 0.45rem 1rem rgba(0,0,0,0.28); }
+.platform-classroom-window-controls:not(details) { display: flex; max-width: calc(100vw - 1.2rem); flex-wrap: wrap; align-items: center; gap: 0.45rem; padding: 0.4rem; border: 2px solid var(--platform-gold); border-radius: 0.75rem; background: rgba(16, 47, 69, 0.96); box-shadow: 0 0.45rem 1rem rgba(0,0,0,0.28); }
 .platform-classroom-window-controls:not(details) > strong { padding-inline: 0.35rem; font-size: 0.82rem; }
 .platform-classroom-window-controls > summary { min-width: 7rem; padding: 0.65rem 0.8rem; border: 2px solid var(--platform-gold); border-radius: 0.75rem; color: #fff; background: rgba(16, 47, 69, 0.96); font-weight: 900; text-align: center; list-style: none; cursor: pointer; }
 .platform-classroom-window-controls > summary::-webkit-details-marker { display: none; }
@@ -1344,6 +1344,10 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-classroom-window-controls button { min-height: 2.6rem; padding: 0.4rem 0.8rem; border: 2px solid #fff; color: var(--platform-navy); background: #fff8e7; font-weight: 900; white-space: nowrap; }
 .platform-classroom-window-controls button:first-of-type { color: #fff; background: var(--platform-blue); }
 .platform-classroom-window-controls .platform-return-to-teacher-view { display: inline-flex; min-height: 2.6rem; align-items: center; padding: 0.4rem 0.8rem; border: 2px solid #fff; color: var(--platform-navy); background: #fff8e7; font-weight: 900; text-decoration: none; white-space: nowrap; }
+.platform-classroom-bob-layout-controls { display: inline-flex; align-items: center; gap: 0.25rem; }
+.platform-classroom-bob-drag-hint { color: #fff; font-size: 0.75rem; font-weight: 800; }
+.platform-classroom-bob-layout-controls output { min-width: 3.1rem; color: #fff; font-size: 0.75rem; font-weight: 900; text-align: center; }
+.platform-classroom-bob-layout-controls button { padding-inline: 0.55rem; }
 .platform-classroom-window-controls span { max-width: 17rem; font-size: 0.72rem; font-weight: 800; }
 .platform-classroom-split-control { position: relative; }
 .platform-classroom-split-control > summary { min-height: 2.6rem; padding: 0.55rem 0.8rem; border: 2px solid #fff; border-radius: 0.35rem; color: var(--platform-navy); background: #fff8e7; font-weight: 900; list-style: none; cursor: pointer; }
@@ -2081,7 +2085,11 @@ article[data-plan-card="voice"] .platform-current-plan-card-title::before { cont
 .platform-large-voice-controls { display: grid; width: min(48rem, 92vw); grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.75rem; }
 .platform-large-voice-controls button { min-height: 3.25rem; font-size: clamp(1rem, 1.8vw, 1.3rem); }
 .platform-large-voice-controls [data-action="voice-meter-stop"] { border-color: #9a6800; color: #fff; background: #8a5e00; }
-.platform-floating-voice-bob { --bob-exit-x: 155%; position: fixed; z-index: 500; right: clamp(0.35rem, 1.5vw, 1.5rem); bottom: clamp(0.6rem, 1.5vh, 1.25rem); width: clamp(7rem, 12vw, 11rem); aspect-ratio: 1; pointer-events: none; background: url("../assets/images/characters/bob-idle-poses.png") left center / 400% 100% no-repeat; filter: drop-shadow(0 0.6rem 0.65rem rgba(7, 41, 61, 0.35)); animation: platform-bob-idle-poses 48s step-end infinite; transition: background-position 180ms ease, transform 2200ms ease-in, opacity 1500ms ease; }
+.platform-floating-voice-bob { --bob-exit-x: 155%; --bob-size-multiplier: 1; position: fixed; z-index: 500; right: clamp(0.35rem, 1.5vw, 1.5rem); bottom: clamp(0.6rem, 1.5vh, 1.25rem); width: calc(clamp(7rem, 12vw, 11rem) * var(--bob-size-multiplier)); aspect-ratio: 1; pointer-events: none; background: url("../assets/images/characters/bob-idle-poses.png") left center / 400% 100% no-repeat; filter: drop-shadow(0 0.6rem 0.65rem rgba(7, 41, 61, 0.35)); animation: platform-bob-idle-poses 48s step-end infinite; transition: width 180ms ease, background-position 180ms ease, transform 2200ms ease-in, opacity 1500ms ease; }
+.platform-standalone-classroom-display .platform-floating-voice-bob { pointer-events: auto; cursor: grab; touch-action: none; }
+.platform-standalone-classroom-display .platform-floating-voice-bob:hover, .platform-standalone-classroom-display .platform-floating-voice-bob:focus-visible { outline: 4px dashed rgba(255, 255, 255, 0.85); outline-offset: 0.25rem; }
+.platform-standalone-classroom-display .platform-floating-voice-bob.is-being-moved { cursor: grabbing; transition: none; }
+.platform-floating-voice-bob[data-position="manual"] { right: auto; bottom: auto; }
 .platform-floating-voice-bob[data-idle-set="2"] { background-image: url("../assets/images/characters/bob-idle-poses-2.png"); }
 .platform-floating-voice-bob[data-idle-set="3"] { background-image: url("../assets/images/characters/bob-active-poses-1.png"); }
 .platform-floating-voice-bob[data-idle-set="4"] { background-image: url("../assets/images/characters/bob-active-poses-2.png"); }
