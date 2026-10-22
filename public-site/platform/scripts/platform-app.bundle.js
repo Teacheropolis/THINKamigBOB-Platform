@@ -7237,8 +7237,15 @@ function relocateFloatingBob() {
     bob.classList.add("is-walking-out");
   });
   window.setTimeout(() => {
-    const connectedBobs = bobs.filter((bob) => bob.isConnected && bob.dataset.meterState === "green");
+    const connectedBobs = bobs.filter((bob) => bob.isConnected);
     if (!connectedBobs.length) return;
+    if (connectedBobs.some((bob) => bob.dataset.meterState !== "green")) {
+      connectedBobs.forEach((bob) => {
+        bob.classList.remove("is-walking-out", "is-walking-in");
+        bob.dataset.idleSet = String(floatingBobIdleSet);
+      });
+      return;
+    }
     floatingBobCornerIndex = (floatingBobCornerIndex + 1) % corners.length;
     floatingBobIdleSet = floatingBobIdleSet % 4 + 1;
     connectedBobs.forEach((bob) => {
@@ -7249,7 +7256,7 @@ function relocateFloatingBob() {
     });
     window.setTimeout(() => {
       connectedBobs.forEach((bob) => {
-        bob.classList.remove("is-walking-in", "is-unlocked-pose");
+        bob.classList.remove("is-walking-in", "is-walking-out", "is-unlocked-pose");
         bob.dataset.idleSet = String(floatingBobIdleSet);
       });
     }, 2800);
