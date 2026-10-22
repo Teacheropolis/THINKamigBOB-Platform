@@ -77,6 +77,10 @@ test("teacher and student display expose a private browser-only voice meter", ()
   assert.match(app, /platform-bob-sensitivity/);
   assert.match(app, /if \(!voiceMeterStream\) void startVoiceMeter\(\)/);
   assert.match(app, /voiceMeterStarting/);
+  assert.match(app, /echoCancellation: true/);
+  assert.match(app, /noiseSuppression: false/);
+  assert.match(app, /autoGainControl: false/);
+  assert.match(app, /listening in room mode/);
   assert.match(css, /bottom: 100%/);
   assert.match(css, /is-walking-out \.platform-bob-voice-controls/);
   assert.match(css, /platform-bob-voice-controls \{[^}]*top: calc\(100% \+ 0\.15rem\)/);

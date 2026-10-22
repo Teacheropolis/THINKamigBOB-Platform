@@ -5976,7 +5976,14 @@ async function startVoiceMeter() {
   voiceMeterStarting = true;
   if (status) status.textContent = "Requesting microphone permission…";
   try {
-    voiceMeterStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    voiceMeterStream = await navigator.mediaDevices.getUserMedia({
+      audio: {
+        echoCancellation: true,
+        noiseSuppression: false,
+        autoGainControl: false,
+        channelCount: 1,
+      },
+    });
     voiceBobStateChangedAt = 0; floatingBobGreenSince = Date.now();
     const AudioContextClass = window.AudioContext || window.webkitAudioContext;
     voiceMeterAudioContext = new AudioContextClass();
@@ -5989,7 +5996,7 @@ async function startVoiceMeter() {
     document.querySelectorAll("[data-student-voice-meter]").forEach((meter) => { meter.hidden = !studentDisplayVoiceMeterIsEnabled(); });
     document.querySelectorAll('[data-action="voice-meter-start"]').forEach((button) => { button.disabled = true; });
     document.querySelectorAll('[data-action="voice-meter-stop"]').forEach((button) => { button.disabled = false; });
-    if (status) status.textContent = "Voice Meter is listening. Audio is analyzed live and never saved.";
+    if (status) status.textContent = "Voice Meter is listening in room mode. Computer-speaker echo is reduced; audio is analyzed live and never saved.";
     document.querySelectorAll("[data-live-voice-status]").forEach((label) => { label.dataset.state = "on"; label.innerHTML = `<span aria-hidden="true"></span> Voice Meter is on and listening`; });
     const sample = () => {
       if (!voiceMeterAudioContext || !voiceMeterStream) return;
